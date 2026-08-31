@@ -35,3 +35,6 @@ apps/api/fixtures/
 coverage/
 playwright-report/
 test-results/
+
+# TypeScript incremental build cache — machine-local, changes on every build
+*.tsbuildinfo
