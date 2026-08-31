@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8" />
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 14px; width: 250px; background: #0c0e12; color: #c9d0da;
+    font: 12px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  .title { font-size: 13px; font-weight: 600; color: #e8ecf1; }
+  .state { margin: 2px 0 12px; font-size: 11px; }
+  .on { color: #34d399; } .off { color: #fbbf24; } .bad { color: #f87171; }
+  dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin: 0 0 12px; }
+  dt { color: #6b7688; font-size: 11px; }
+  dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; color: #e8ecf1; }
+  button {
+    width: 100%; padding: 7px; margin-top: 6px; border-radius: 6px; cursor: pointer;
+    border: 1px solid #2a3140; background: #1e232c; color: #c9d0da; font-size: 12px;
+  }
+  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .err { color: #f87171; font-size: 11px; margin-top: 8px; }
+</style>
+<div class="title">LOOP Collector</div>
+<div class="state" id="state">…</div>
+<dl>
+  <dt>Sent</dt><dd id="sent">0</dd>
+  <dt>Queued</dt><dd id="queued">0</dd>
+  <dt>Transfers</dt><dd id="transfers">0</dd>
+</dl>
+<button id="toggle" class="primary">Pause</button>
+<button id="flush">Send queued now</button>
+<button id="options">Settings</button>
+<div class="err" id="err"></div>
+<script src="popup.js"></script>

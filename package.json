@@ -1,0 +1,25 @@
+{
+  "name": "loop",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "check": "npm run check --workspace apps/web",
+    "test:collector": "node collectors/tests/background.test.mjs && node collectors/tests/content.test.mjs"
+  },
+  "overrides": {
+    "postcss": "^8.5.26",
+    "sharp": "^0.35.4",
+    "next": {
+      "postcss": "^8.5.26",
+      "sharp": "^0.35.4"
+    }
+  },
+  "devDependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

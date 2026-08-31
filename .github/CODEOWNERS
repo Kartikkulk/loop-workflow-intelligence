@@ -1,0 +1,29 @@
+# Ownership boundaries for a three-person team.
+#
+# GitHub auto-requests a review from the owner of every path a PR touches. The
+# point is not gatekeeping — it is that a PR crossing the frontend/backend
+# boundary is *visibly* crossing it, and gets both pairs of eyes.
+#
+# Replace the placeholder handles below with real GitHub usernames before the
+# first PR, or CODEOWNERS is silently inert.
+
+# Default owner: anything not matched below.
+*                       @Kartikkulk
+
+# ── backend ────────────────────────────────────────────────────────────────
+/apps/api/              @BACKEND-DEV
+/contracts/             @BACKEND-DEV @FRONTEND-DEV
+
+# ── frontend ───────────────────────────────────────────────────────────────
+/apps/web/              @FRONTEND-DEV
+
+# ── shared: integration owner reviews these ────────────────────────────────
+/collectors/            @Kartikkulk
+/Makefile               @Kartikkulk
+/docker-compose.yml     @Kartikkulk
+/.github/               @Kartikkulk
+/README.md              @Kartikkulk
+/DEMO.md                @Kartikkulk
+/ARCHITECTURE.md        @Kartikkulk
+/CLAUDE.md              @Kartikkulk
+/.env.example           @Kartikkulk

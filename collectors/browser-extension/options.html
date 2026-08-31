@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>LOOP Collector — setup</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 28px 32px; max-width: 620px;
+    font: 13px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: #0c0e12; color: #c9d0da;
+  }
+  h1 { font-size: 16px; margin: 0 0 4px; color: #e8ecf1; letter-spacing: -0.01em; }
+  .sub { color: #6b7688; font-size: 12px; margin-bottom: 24px; }
+  label { display: block; font-size: 11px; text-transform: uppercase;
+          letter-spacing: 0.12em; color: #6b7688; margin: 18px 0 6px; }
+  input[type=text], textarea {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid #2a3140; background: #11141a; color: #c9d0da;
+    font: 12px/1.5 ui-monospace, Menlo, monospace;
+  }
+  input:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+  textarea { resize: vertical; min-height: 64px; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+  button {
+    padding: 8px 14px; border-radius: 6px; border: 0; cursor: pointer;
+    background: #2563eb; color: #fff; font-size: 12px; font-weight: 500;
+  }
+  button.ghost { background: #1e232c; color: #c9d0da; border: 1px solid #2a3140; }
+  .hint { color: #6b7688; font-size: 11px; margin-top: 6px; }
+  .notice {
+    margin-top: 22px; padding: 12px 14px; border-radius: 6px;
+    border: 1px solid #1e232c; background: #0e1115; font-size: 12px;
+  }
+  .notice b { color: #e8ecf1; font-weight: 600; }
+  .notice ul { margin: 8px 0 0; padding-left: 18px; color: #8b96a8; }
+  #status { margin-top: 16px; font-size: 12px; min-height: 18px; }
+  .ok { color: #34d399; } .bad { color: #f87171; }
+  code { color: #93c5fd; font-family: ui-monospace, Menlo, monospace; }
+</style>
+
+<h1>LOOP Activity Collector</h1>
+<p class="sub">Reports the shape of your work so LOOP can find what you repeat.</p>
+
+<label for="apiBase">LOOP API address</label>
+<input id="apiBase" type="text" placeholder="http://localhost:8000" />
+
+<label for="token">Source token</label>
+<input id="token" type="text" placeholder="loop_src_…" />
+<p class="hint">
+  From the LOOP console: <b>System → Observation sources → Connect a browser</b>.
+  The token is shown once.
+</p>
+
+<label for="denylist">Never observe these (one per line)</label>
+<textarea id="denylist" placeholder="bank.example.com&#10;payroll&#10;myhealth"></textarea>
+<p class="hint">
+  Matched against the whole URL. Applied here <i>and</i> re-checked on the server,
+  so an out-of-date extension cannot keep reporting an excluded site.
+</p>
+
+<div class="row">
+  <button id="save">Save and connect</button>
+  <button id="pause" class="ghost">Pause capture</button>
+  <button id="flush" class="ghost">Send queued now</button>
+</div>
+<div id="status"></div>
+
+<div class="notice">
+  <b>What is collected</b>
+  <ul>
+    <li>The application, the kind of action, and what sort of object it acted on.</li>
+    <li>The <i>names</i> of fields you filled — never what you typed into them.</li>
+    <li>A hash of copied text, so LOOP can tell that a value moved from one
+        application to another without ever receiving the value.</li>
+  </ul>
+  <b style="display:block;margin-top:12px">What is not collected</b>
+  <ul>
+    <li>Page content, message bodies, field values, passwords, or screenshots.</li>
+    <li>Anything at all while paused, or on a site you have excluded.</li>
+  </ul>
+  <p style="margin:12px 0 0;color:#8b96a8">
+    Revoking this source in the console invalidates the token and deletes every
+    event it reported.
+  </p>
+</div>
+
+<script src="options.js"></script>

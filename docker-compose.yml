@@ -1,0 +1,52 @@
+# Full stack in containers. Postgres is used here rather than the SQLite
+# default, so `docker compose up` also exercises the Postgres code path.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: loop
+      POSTGRES_PASSWORD: loop
+      POSTGRES_DB: loop
+    ports:
+      - "5432:5432"
+    volumes:
+      - loop-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loop -d loop"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      LOOP_DATABASE_URL: postgresql+asyncpg://loop:loop@postgres:5432/loop
+      LOOP_ENABLE_MOCK_CONNECTORS: "true"
+      # Optional: pass a key through to enable the LLM-backed paths.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Seed on first boot so a clean clone has data to show immediately.
+    command: >
+      sh -c "python scripts/seed.py &&
+             python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      # Resolved in the browser, so it must be the host address, not `api`.
+      NEXT_PUBLIC_API_BASE: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  loop-pgdata:

@@ -1,0 +1,1796 @@
+{
+  "/api/v1/analytics/roi": {
+    "automatable_clusters": 5,
+    "automations": [
+      {
+        "annual_hours": 0.0,
+        "coverage": 0.0,
+        "id": "auto_33f16bdf381c",
+        "interruption_tax_hours": 0.0,
+        "name": "Invoice Email to confirmation",
+        "replay_accuracy": null,
+        "shadow_run_count": 0,
+        "trust_level": "SHADOW"
+      },
+      {
+        "annual_hours": 0.0,
+        "coverage": 0.0,
+        "id": "auto_0a005cd0b731",
+        "interruption_tax_hours": 0.0,
+        "name": "Purchase Order to match log",
+        "replay_accuracy": null,
+        "shadow_run_count": 0,
+        "trust_level": "SUGGEST"
+      },
+      {
+        "annual_hours": 0.0,
+        "coverage": 0.0,
+        "id": "auto_1da66ad5e971",
+        "interruption_tax_hours": 0.0,
+        "name": "Expense Claim to approval notice",
+        "replay_accuracy": null,
+        "shadow_run_count": 0,
+        "trust_level": "SUGGEST"
+      }
+    ],
+    "autonomous_count": 0,
+    "average_coverage": 0.0,
+    "coverage_trend": [],
+    "do_not_automate_clusters": 1,
+    "interruption_tax_hours": 239.6,
+    "interruption_tax_recovered_hours": 0.0,
+    "projected_annual_hours": 608.8,
+    "realised_annual_hours": 0.0,
+    "total_automations": 3,
+    "total_clusters": 6,
+    "trust_distribution": [
+      {
+        "count": 0,
+        "level": "OBSERVE"
+      },
+      {
+        "count": 2,
+        "level": "SUGGEST"
+      },
+      {
+        "count": 1,
+        "level": "SHADOW"
+      },
+      {
+        "count": 0,
+        "level": "ASSIST"
+      },
+      {
+        "count": 0,
+        "level": "AUTONOMOUS"
+      }
+    ]
+  },
+  "/api/v1/automations": {
+    "items": [
+      {
+        "annual_hours": 0.0,
+        "cluster_id": "clu_ca852ec931d5",
+        "confidence": 0.0,
+        "coverage": 0.0,
+        "created_at": "2026-08-31T09:52:05.520721",
+        "critical_mismatch_count": 0,
+        "description": "Automates the 3-step workflow observed 259 times across 4 employee(s).",
+        "generated_by": "heuristic",
+        "id": "auto_1da66ad5e971",
+        "name": "Expense Claim to approval notice",
+        "replay_accuracy": null,
+        "replay_human_count": 0,
+        "replay_total": 0,
+        "shadow_run_count": 0,
+        "step_count": 3,
+        "trust_level": "SUGGEST"
+      },
+      {
+        "annual_hours": 0.0,
+        "cluster_id": "clu_3f253c254163",
+        "confidence": 0.0,
+        "coverage": 0.0,
+        "created_at": "2026-08-31T09:52:05.520717",
+        "critical_mismatch_count": 0,
+        "description": "Automates the 4-step workflow observed 819 times across 6 employee(s).",
+        "generated_by": "heuristic",
+        "id": "auto_33f16bdf381c",
+        "name": "Invoice Email to confirmation",
+        "replay_accuracy": null,
+        "replay_human_count": 0,
+        "replay_total": 0,
+        "shadow_run_count": 0,
+        "step_count": 4,
+        "trust_level": "SHADOW"
+      },
+      {
+        "annual_hours": 0.0,
+        "cluster_id": "clu_84f7fc10e03d",
+        "confidence": 0.0,
+        "coverage": 0.0,
+        "created_at": "2026-08-31T09:52:05.520721",
+        "critical_mismatch_count": 0,
+        "description": "Automates the 3-step workflow observed 440 times across 5 employee(s).",
+        "generated_by": "heuristic",
+        "id": "auto_0a005cd0b731",
+        "name": "Purchase Order to match log",
+        "replay_accuracy": null,
+        "replay_human_count": 0,
+        "replay_total": 0,
+        "shadow_run_count": 0,
+        "step_count": 3,
+        "trust_level": "SUGGEST"
+      }
+    ],
+    "total": 3
+  },
+  "/api/v1/automations/auto_0a005cd0b731": {
+    "annual_hours": 0.0,
+    "cluster_id": "clu_84f7fc10e03d",
+    "confidence": 0.0,
+    "coverage": 0.0,
+    "created_at": "2026-08-31T09:52:05.520721",
+    "critical_mismatch_count": 0,
+    "description": "Automates the 3-step workflow observed 440 times across 5 employee(s).",
+    "generated_by": "heuristic",
+    "guards": {
+      "irreversible": [],
+      "requires_approval_if": "amount > 1000000"
+    },
+    "id": "auto_0a005cd0b731",
+    "name": "Purchase Order to match log",
+    "open_exception_count": 0,
+    "pending_patch_count": 0,
+    "replay_accuracy": null,
+    "replay_human_count": 0,
+    "replay_total": 0,
+    "rules": [],
+    "shadow_run_count": 0,
+    "step_count": 3,
+    "steps": [
+      {
+        "connector": "erp",
+        "depends_on": [],
+        "description": "read purchase order in erp",
+        "id": "s1",
+        "inputs": {
+          "object_type": "purchase_order"
+        },
+        "outputs": [
+          "po_number"
+        ],
+        "type": "read"
+      },
+      {
+        "connector": "erp",
+        "depends_on": [
+          "po_number"
+        ],
+        "description": "search invoice in erp",
+        "id": "s2",
+        "inputs": {
+          "object_type": "invoice"
+        },
+        "outputs": [
+          "amount",
+          "amount_inr",
+          "currency",
+          "po_number"
+        ],
+        "type": "search"
+      },
+      {
+        "connector": "sheets",
+        "depends_on": [
+          "po_number"
+        ],
+        "description": "update match log in sheets",
+        "id": "s3",
+        "inputs": {
+          "object_type": "match_log"
+        },
+        "outputs": [
+          "po_number",
+          "status"
+        ],
+        "type": "update"
+      }
+    ],
+    "trigger": {
+      "filter": {
+        "object_type": "purchase_order"
+      },
+      "type": "record_updated"
+    },
+    "trust": {
+      "average_score": 0.0,
+      "blockers": [
+        "needs 5 more shadow run(s)",
+        "rolling average is 0%, needs 90%"
+      ],
+      "can_promote": false,
+      "confidence": 0.0,
+      "critical_mismatches": 0,
+      "level": "SUGGEST",
+      "next_level": "SHADOW",
+      "runs_in_window": 0,
+      "runs_required": 5,
+      "should_demote": false,
+      "threshold": 0.9
+    },
+    "trust_history": [
+      {
+        "level": "SUGGEST",
+        "reason": "generated from detected cluster"
+      }
+    ],
+    "trust_level": "SUGGEST"
+  },
+  "/api/v1/automations/auto_0a005cd0b731/shadow-runs": {
+    "items": [],
+    "total": 0,
+    "trust": {
+      "average_score": 0.0,
+      "blockers": [
+        "needs 5 more shadow run(s)",
+        "rolling average is 0%, needs 90%"
+      ],
+      "can_promote": false,
+      "confidence": 0.0,
+      "critical_mismatches": 0,
+      "level": "SUGGEST",
+      "next_level": "SHADOW",
+      "runs_in_window": 0,
+      "runs_required": 5,
+      "should_demote": false,
+      "threshold": 0.9
+    }
+  },
+  "/api/v1/automations/auto_1da66ad5e971": {
+    "annual_hours": 0.0,
+    "cluster_id": "clu_ca852ec931d5",
+    "confidence": 0.0,
+    "coverage": 0.0,
+    "created_at": "2026-08-31T09:52:05.520721",
+    "critical_mismatch_count": 0,
+    "description": "Automates the 3-step workflow observed 259 times across 4 employee(s).",
+    "generated_by": "heuristic",
+    "guards": {
+      "irreversible": [
+        "s3"
+      ],
+      "requires_approval_if": "amount > 1000000"
+    },
+    "id": "auto_1da66ad5e971",
+    "name": "Expense Claim to approval notice",
+    "open_exception_count": 0,
+    "pending_patch_count": 0,
+    "replay_accuracy": null,
+    "replay_human_count": 0,
+    "replay_total": 0,
+    "rules": [],
+    "shadow_run_count": 0,
+    "step_count": 3,
+    "steps": [
+      {
+        "connector": "gmail",
+        "depends_on": [],
+        "description": "read expense claim in gmail",
+        "id": "s1",
+        "inputs": {
+          "object_type": "expense_claim"
+        },
+        "outputs": [
+          "amount",
+          "amount_inr",
+          "claimant",
+          "currency"
+        ],
+        "type": "read"
+      },
+      {
+        "connector": "erp",
+        "depends_on": [
+          "amount",
+          "currency"
+        ],
+        "description": "update approval status in erp",
+        "id": "s2",
+        "inputs": {
+          "object_type": "approval_status"
+        },
+        "outputs": [
+          "amount",
+          "amount_inr",
+          "currency",
+          "status"
+        ],
+        "type": "update"
+      },
+      {
+        "connector": "gmail",
+        "depends_on": [
+          "claimant"
+        ],
+        "description": "send approval notice in gmail",
+        "id": "s3",
+        "inputs": {
+          "object_type": "approval_notice"
+        },
+        "outputs": [
+          "claimant"
+        ],
+        "type": "send"
+      }
+    ],
+    "trigger": {
+      "filter": {
+        "object_type": "expense_claim"
+      },
+      "type": "email_received"
+    },
+    "trust": {
+      "average_score": 0.0,
+      "blockers": [
+        "needs 5 more shadow run(s)",
+        "rolling average is 0%, needs 90%"
+      ],
+      "can_promote": false,
+      "confidence": 0.0,
+      "critical_mismatches": 0,
+      "level": "SUGGEST",
+      "next_level": "SHADOW",
+      "runs_in_window": 0,
+      "runs_required": 5,
+      "should_demote": false,
+      "threshold": 0.9
+    },
+    "trust_history": [
+      {
+        "level": "SUGGEST",
+        "reason": "generated from detected cluster"
+      }
+    ],
+    "trust_level": "SUGGEST"
+  },
+  "/api/v1/automations/auto_1da66ad5e971/shadow-runs": {
+    "items": [],
+    "total": 0,
+    "trust": {
+      "average_score": 0.0,
+      "blockers": [
+        "needs 5 more shadow run(s)",
+        "rolling average is 0%, needs 90%"
+      ],
+      "can_promote": false,
+      "confidence": 0.0,
+      "critical_mismatches": 0,
+      "level": "SUGGEST",
+      "next_level": "SHADOW",
+      "runs_in_window": 0,
+      "runs_required": 5,
+      "should_demote": false,
+      "threshold": 0.9
+    }
+  },
+  "/api/v1/automations/auto_33f16bdf381c": {
+    "annual_hours": 0.0,
+    "cluster_id": "clu_3f253c254163",
+    "confidence": 0.0,
+    "coverage": 0.0,
+    "created_at": "2026-08-31T09:52:05.520717",
+    "critical_mismatch_count": 0,
+    "description": "Automates the 4-step workflow observed 819 times across 6 employee(s).",
+    "generated_by": "heuristic",
+    "guards": {
+      "irreversible": [
+        "s4"
+      ],
+      "requires_approval_if": "amount > 1000000"
+    },
+    "id": "auto_33f16bdf381c",
+    "name": "Invoice Email to confirmation",
+    "open_exception_count": 0,
+    "pending_patch_count": 0,
+    "replay_accuracy": null,
+    "replay_human_count": 0,
+    "replay_total": 0,
+    "rules": [],
+    "shadow_run_count": 0,
+    "step_count": 4,
+    "steps": [
+      {
+        "connector": "gmail",
+        "depends_on": [],
+        "description": "read invoice email in gmail",
+        "id": "s1",
+        "inputs": {
+          "object_type": "invoice_email"
+        },
+        "outputs": [
+          "sender",
+          "subject"
+        ],
+        "type": "read"
+      },
+      {
+        "connector": "pdf",
+        "depends_on": [],
+        "description": "extract fields in pdf",
+        "id": "s2",
+        "inputs": {
+          "object_type": "fields"
+        },
+        "outputs": [
+          "amount",
+          "amount_inr",
+          "currency",
+          "vendor"
+        ],
+        "type": "extract"
+      },
+      {
+        "connector": "sheets",
+        "depends_on": [
+          "amount",
+          "currency",
+          "vendor"
+        ],
+        "description": "create row in sheets",
+        "id": "s3",
+        "inputs": {
+          "object_type": "row"
+        },
+        "outputs": [
+          "amount",
+          "amount_inr",
+          "currency",
+          "vendor"
+        ],
+        "type": "create"
+      },
+      {
+        "connector": "gmail",
+        "depends_on": [],
+        "description": "send confirmation in gmail",
+        "id": "s4",
+        "inputs": {
+          "object_type": "confirmation"
+        },
+        "outputs": [
+          "recipient"
+        ],
+        "type": "send"
+      }
+    ],
+    "trigger": {
+      "filter": {
+        "object_type": "invoice_email"
+      },
+      "type": "email_received"
+    },
+    "trust": {
+      "average_score": 0.0,
+      "blockers": [
+        "needs 5 more shadow run(s)",
+        "rolling average is 0%, needs 90%"
+      ],
+      "can_promote": false,
+      "confidence": 0.0,
+      "critical_mismatches": 0,
+      "level": "SHADOW",
+      "next_level": "ASSIST",
+      "runs_in_window": 0,
+      "runs_required": 5,
+      "should_demote": false,
+      "threshold": 0.9
+    },
+    "trust_history": [
+      {
+        "level": "SUGGEST",
+        "reason": "generated from detected cluster"
+      },
+      {
+        "level": "SHADOW",
+        "reason": "placed in shadow mode for observation"
+      }
+    ],
+    "trust_level": "SHADOW"
+  },
+  "/api/v1/automations/auto_33f16bdf381c/shadow-runs": {
+    "items": [],
+    "total": 0,
+    "trust": {
+      "average_score": 0.0,
+      "blockers": [
+        "needs 5 more shadow run(s)",
+        "rolling average is 0%, needs 90%"
+      ],
+      "can_promote": false,
+      "confidence": 0.0,
+      "critical_mismatches": 0,
+      "level": "SHADOW",
+      "next_level": "ASSIST",
+      "runs_in_window": 0,
+      "runs_required": 5,
+      "should_demote": false,
+      "threshold": 0.9
+    }
+  },
+  "/api/v1/clusters": {
+    "not_recommended": [
+      {
+        "annual_hours": 94.7,
+        "apps": [
+          "slack",
+          "sheets",
+          "browser",
+          "drive",
+          "erp"
+        ],
+        "automatability": 0.28,
+        "automation_id": null,
+        "build_effort": 3,
+        "context_switches_total": 75,
+        "description": "5 steps across slack \u2192 sheets \u2192 browser \u2192 drive \u2192 erp. Observed 84 times by 3 employee(s).",
+        "distinct_users": 3,
+        "do_not_automate": true,
+        "has_automation": false,
+        "id": "clu_5ad87e11a0e3",
+        "instance_count": 84,
+        "instances_per_user_per_week": 2.42,
+        "interruption_tax_hours": 20.7,
+        "is_organisational": false,
+        "median_duration_ms": 978500,
+        "name": "Escalation handling",
+        "priority": 10.8,
+        "reasoning": "Not recommended for automation. Step order varies across 99% of instances (84 distinct sequences observed); 7 branch point(s); judgement content scored 66%. step order varies across 100% of the theoretical maximum, 7 branch point(s) observed, 47% of steps carry substantial free text",
+        "signature": [
+          "slack:send:internal_consult",
+          "sheets:update:escalation_tracker",
+          "browser:search:contract_terms",
+          "drive:read:prior_correspondence",
+          "erp:update:case_notes"
+        ],
+        "teams": [
+          "accounts_receivable"
+        ],
+        "user_ids": [
+          "u_arjun",
+          "u_nikhil",
+          "u_sana"
+        ],
+        "variance_breakdown": {
+          "branch_count": 7,
+          "dominant_variant_share": 0.012,
+          "judgement_ratio": 0.663,
+          "parameter_spread": 0.022,
+          "step_order_entropy": 1.0,
+          "variant_count": 84
+        }
+      }
+    ],
+    "recommended": [
+      {
+        "annual_hours": 358.6,
+        "apps": [
+          "gmail",
+          "pdf",
+          "sheets"
+        ],
+        "automatability": 0.65,
+        "automation_id": null,
+        "build_effort": 3,
+        "context_switches_total": 424,
+        "description": "4 steps across gmail \u2192 pdf \u2192 sheets. Observed 819 times by 6 employee(s).",
+        "distinct_users": 6,
+        "do_not_automate": false,
+        "has_automation": false,
+        "id": "clu_61596a7a0220",
+        "instance_count": 819,
+        "instances_per_user_per_week": 11.8,
+        "interruption_tax_hours": 117.3,
+        "is_organisational": true,
+        "median_duration_ms": 380000,
+        "name": "Invoice Email to confirmation",
+        "priority": 103.1,
+        "reasoning": "63% of instances follow an identical step order across 6 employee(s). step order varies across 36% of the theoretical maximum, 6 branch point(s) observed, 0% of steps carry substantial free text",
+        "signature": [
+          "gmail:read:invoice_email",
+          "pdf:extract:fields",
+          "sheets:create:row",
+          "gmail:send:confirmation"
+        ],
+        "teams": [
+          "accounts_payable"
+        ],
+        "user_ids": [
+          "u_asha",
+          "u_dev",
+          "u_karan",
+          "u_meera",
+          "u_priya",
+          "u_ravi"
+        ],
+        "variance_breakdown": {
+          "branch_count": 6,
+          "dominant_variant_share": 0.625,
+          "judgement_ratio": 0.0,
+          "parameter_spread": 0.127,
+          "step_order_entropy": 0.356,
+          "variant_count": 39
+        }
+      },
+      {
+        "annual_hours": 148.0,
+        "apps": [
+          "erp",
+          "sheets"
+        ],
+        "automatability": 0.596,
+        "automation_id": null,
+        "build_effort": 3,
+        "context_switches_total": 210,
+        "description": "3 steps across erp \u2192 sheets. Observed 440 times by 5 employee(s).",
+        "distinct_users": 5,
+        "do_not_automate": false,
+        "has_automation": false,
+        "id": "clu_ed76e837f800",
+        "instance_count": 440,
+        "instances_per_user_per_week": 7.6,
+        "interruption_tax_hours": 58.1,
+        "is_organisational": true,
+        "median_duration_ms": 292000,
+        "name": "Purchase Order to match log",
+        "priority": 40.9,
+        "reasoning": "67% of instances follow an identical step order across 5 employee(s). step order varies across 39% of the theoretical maximum, 4 branch point(s) observed, 0% of steps carry substantial free text",
+        "signature": [
+          "erp:read:purchase_order",
+          "erp:search:invoice",
+          "sheets:update:match_log"
+        ],
+        "teams": [
+          "accounts_payable"
+        ],
+        "user_ids": [
+          "u_asha",
+          "u_dev",
+          "u_karan",
+          "u_meera",
+          "u_ravi"
+        ],
+        "variance_breakdown": {
+          "branch_count": 4,
+          "dominant_variant_share": 0.668,
+          "judgement_ratio": 0.0,
+          "parameter_spread": 0.339,
+          "step_order_entropy": 0.39,
+          "variant_count": 24
+        }
+      },
+      {
+        "annual_hours": 72.2,
+        "apps": [
+          "gmail",
+          "erp"
+        ],
+        "automatability": 0.601,
+        "automation_id": null,
+        "build_effort": 3,
+        "context_switches_total": 226,
+        "description": "3 steps across gmail \u2192 erp. Observed 259 times by 4 employee(s).",
+        "distinct_users": 4,
+        "do_not_automate": false,
+        "has_automation": false,
+        "id": "clu_6b48de1a69a9",
+        "instance_count": 259,
+        "instances_per_user_per_week": 5.6,
+        "interruption_tax_hours": 62.5,
+        "is_organisational": true,
+        "median_duration_ms": 242000,
+        "name": "Expense Claim to approval notice",
+        "priority": 27.0,
+        "reasoning": "56% of instances follow an identical step order across 4 employee(s). step order varies across 48% of the theoretical maximum, 4 branch point(s) observed, 0% of steps carry substantial free text",
+        "signature": [
+          "gmail:read:expense_claim",
+          "erp:update:approval_status",
+          "gmail:send:approval_notice"
+        ],
+        "teams": [
+          "accounts_receivable"
+        ],
+        "user_ids": [
+          "u_arjun",
+          "u_nikhil",
+          "u_sana",
+          "u_tara"
+        ],
+        "variance_breakdown": {
+          "branch_count": 4,
+          "dominant_variant_share": 0.556,
+          "judgement_ratio": 0.0,
+          "parameter_spread": 0.156,
+          "step_order_entropy": 0.481,
+          "variant_count": 21
+        }
+      },
+      {
+        "annual_hours": 14.0,
+        "apps": [
+          "gmail",
+          "northwind-erp"
+        ],
+        "automatability": 0.971,
+        "automation_id": null,
+        "build_effort": 2,
+        "context_switches_total": 0,
+        "description": "5 steps across gmail \u2192 northwind-erp. Observed 20 times by 1 employee(s).",
+        "distinct_users": 1,
+        "do_not_automate": false,
+        "has_automation": false,
+        "id": "clu_c34babd71608",
+        "instance_count": 20,
+        "instances_per_user_per_week": 7.37,
+        "interruption_tax_hours": 0.0,
+        "is_organisational": false,
+        "median_duration_ms": 142000,
+        "name": "Email handling",
+        "priority": 6.8,
+        "reasoning": "100% of instances follow an identical step order across 1 employee(s). step order varies across 0% of the theoretical maximum, 0 branch point(s) observed, 0% of steps carry substantial free text",
+        "signature": [
+          "gmail:read:email",
+          "gmail:extract:email",
+          "northwind-erp:create:ledger_entry",
+          "northwind-erp:update:ledger_entry",
+          "gmail:send:email"
+        ],
+        "teams": [
+          "accounts_payable"
+        ],
+        "user_ids": [
+          "u_asha"
+        ],
+        "variance_breakdown": {
+          "branch_count": 0,
+          "dominant_variant_share": 1.0,
+          "judgement_ratio": 0.0,
+          "parameter_spread": 0.147,
+          "step_order_entropy": 0.0,
+          "variant_count": 1
+        }
+      },
+      {
+        "annual_hours": 16.0,
+        "apps": [
+          "sheets",
+          "drive",
+          "gmail"
+        ],
+        "automatability": 0.687,
+        "automation_id": null,
+        "build_effort": 2,
+        "context_switches_total": 6,
+        "description": "5 steps across sheets \u2192 drive \u2192 gmail. Observed 19 times by 4 employee(s).",
+        "distinct_users": 4,
+        "do_not_automate": false,
+        "has_automation": false,
+        "id": "clu_287bf1fb8b36",
+        "instance_count": 19,
+        "instances_per_user_per_week": 0.42,
+        "interruption_tax_hours": 1.7,
+        "is_organisational": true,
+        "median_duration_ms": 715000,
+        "name": "Report handling",
+        "priority": 6.1,
+        "reasoning": "53% of instances follow an identical step order across 4 employee(s). step order varies across 78% of the theoretical maximum, 1 branch point(s) observed, 0% of steps carry substantial free text",
+        "signature": [
+          "sheets:read:report_source",
+          "sheets:search:overdue_rows",
+          "sheets:update:summary",
+          "drive:create:report_pdf",
+          "gmail:send:report"
+        ],
+        "teams": [
+          "fp_and_a"
+        ],
+        "user_ids": [
+          "u_bhavna",
+          "u_leela",
+          "u_omar",
+          "u_vikram"
+        ],
+        "variance_breakdown": {
+          "branch_count": 1,
+          "dominant_variant_share": 0.526,
+          "judgement_ratio": 0.0,
+          "parameter_spread": 0.0,
+          "step_order_entropy": 0.78,
+          "variant_count": 3
+        }
+      }
+    ],
+    "total": 6,
+    "total_annual_hours": 703.5,
+    "total_interruption_tax_hours": 260.3
+  },
+  "/api/v1/clusters/clu_61596a7a0220": {
+    "annual_hours": 358.6,
+    "apps": [
+      "gmail",
+      "pdf",
+      "sheets"
+    ],
+    "automatability": 0.65,
+    "automation_id": null,
+    "build_effort": 3,
+    "context_switches_total": 424,
+    "description": "4 steps across gmail \u2192 pdf \u2192 sheets. Observed 819 times by 6 employee(s).",
+    "distinct_users": 6,
+    "do_not_automate": false,
+    "has_automation": false,
+    "id": "clu_61596a7a0220",
+    "instance_count": 819,
+    "instances_per_user_per_week": 11.8,
+    "interruption_tax_hours": 117.3,
+    "is_organisational": true,
+    "median_duration_ms": 380000,
+    "name": "Invoice Email to confirmation",
+    "priority": 103.1,
+    "reasoning": "63% of instances follow an identical step order across 6 employee(s). step order varies across 36% of the theoretical maximum, 6 branch point(s) observed, 0% of steps carry substantial free text",
+    "signature": [
+      "gmail:read:invoice_email",
+      "pdf:extract:fields",
+      "sheets:create:row",
+      "gmail:send:confirmation"
+    ],
+    "step_graph": [
+      {
+        "action": "read",
+        "alternatives": [
+          "drive:search:supporting_doc",
+          "erp:delete:duplicate_record",
+          "erp:search:vendor_record",
+          "gmail:send:confirmation",
+          "pdf:extract:fields"
+        ],
+        "app": "gmail",
+        "index": 0,
+        "label": "invoice email",
+        "median_duration_ms": 95000,
+        "object_type": "invoice_email"
+      },
+      {
+        "action": "extract",
+        "alternatives": [
+          "drive:create:manual_note",
+          "erp:delete:duplicate_record",
+          "erp:search:vendor_record",
+          "gmail:read:invoice_email",
+          "gmail:send:confirmation"
+        ],
+        "app": "pdf",
+        "index": 1,
+        "label": "fields",
+        "median_duration_ms": 95000,
+        "object_type": "fields"
+      },
+      {
+        "action": "create",
+        "alternatives": [
+          "browser:search:tax_rule",
+          "drive:create:manual_note",
+          "erp:search:vendor_record",
+          "gmail:send:confirmation",
+          "pdf:extract:fields"
+        ],
+        "app": "sheets",
+        "index": 2,
+        "label": "row",
+        "median_duration_ms": 95000,
+        "object_type": "row"
+      },
+      {
+        "action": "send",
+        "alternatives": [
+          "browser:search:tax_rule",
+          "drive:create:manual_note",
+          "drive:search:supporting_doc",
+          "erp:delete:duplicate_record",
+          "erp:search:vendor_record"
+        ],
+        "app": "gmail",
+        "index": 3,
+        "label": "confirmation",
+        "median_duration_ms": 95000,
+        "object_type": "confirmation"
+      }
+    ],
+    "teams": [
+      "accounts_payable"
+    ],
+    "user_ids": [
+      "u_asha",
+      "u_dev",
+      "u_karan",
+      "u_meera",
+      "u_priya",
+      "u_ravi"
+    ],
+    "users": [
+      {
+        "annual_hours": 62.5,
+        "instance_count": 148,
+        "median_duration_ms": 397000,
+        "team": "accounts_payable",
+        "user_id": "u_meera"
+      },
+      {
+        "annual_hours": 60.9,
+        "instance_count": 141,
+        "median_duration_ms": 387000,
+        "team": "accounts_payable",
+        "user_id": "u_asha"
+      },
+      {
+        "annual_hours": 55.5,
+        "instance_count": 139,
+        "median_duration_ms": 353000,
+        "team": "accounts_payable",
+        "user_id": "u_dev"
+      },
+      {
+        "annual_hours": 58.8,
+        "instance_count": 131,
+        "median_duration_ms": 374000,
+        "team": "accounts_payable",
+        "user_id": "u_ravi"
+      },
+      {
+        "annual_hours": 60.4,
+        "instance_count": 131,
+        "median_duration_ms": 384000,
+        "team": "accounts_payable",
+        "user_id": "u_karan"
+      },
+      {
+        "annual_hours": 59.8,
+        "instance_count": 129,
+        "median_duration_ms": 380000,
+        "team": "accounts_payable",
+        "user_id": "u_priya"
+      }
+    ],
+    "variance_breakdown": {
+      "branch_count": 6,
+      "dominant_variant_share": 0.625,
+      "judgement_ratio": 0.0,
+      "parameter_spread": 0.127,
+      "step_order_entropy": 0.356,
+      "variant_count": 39
+    },
+    "variants": [
+      {
+        "count": 512,
+        "share": 0.6252,
+        "signature": [
+          "gmail:read:invoice_email",
+          "pdf:extract:fields",
+          "sheets:create:row",
+          "gmail:send:confirmation"
+        ]
+      },
+      {
+        "count": 202,
+        "share": 0.2466,
+        "signature": [
+          "gmail:read:invoice_email",
+          "pdf:extract:fields",
+          "erp:search:vendor_record",
+          "sheets:create:row",
+          "gmail:send:confirmation"
+        ]
+      },
+      {
+        "count": 15,
+        "share": 0.0183,
+        "signature": [
+          "sheets:create:row",
+          "gmail:send:confirmation"
+        ]
+      },
+      {
+        "count": 13,
+        "share": 0.0159,
+        "signature": [
+          "pdf:extract:fields",
+          "gmail:read:invoice_email",
+          "sheets:create:row",
+          "gmail:send:confirmation"
+        ]
+      },
+      {
+        "count": 9,
+        "share": 0.011,
+        "signature": [
+          "gmail:read:invoice_email",
+          "pdf:extract:fields",
+          "gmail:send:confirmation",
+          "sheets:create:row"
+        ]
+      },
+      {
+        "count": 8,
+        "share": 0.0098,
+        "signature": [
+          "gmail:read:invoice_email",
+          "sheets:create:row",
+          "pdf:extract:fields",
+          "gmail:send:confirmation"
+        ]
+      },
+      {
+        "count": 6,
+        "share": 0.0073,
+        "signature": [
+          "gmail:read:invoice_email",
+          "pdf:extract:fields",
+          "sheets:create:row"
+        ]
+      },
+      {
+        "count": 5,
+        "share": 0.0061,
+        "signature": [
+          "pdf:extract:fields",
+          "sheets:create:row",
+          "gmail:send:confirmation"
+        ]
+      }
+    ]
+  },
+  "/api/v1/clusters/clu_61596a7a0220/sop": {
+    "cluster_id": "clu_61596a7a0220",
+    "generated_by": "heuristic",
+    "markdown": "# Invoice Email to confirmation\n\n## Purpose\nThis procedure documents a workflow observed 819 times across 6 employee(s) during the observation window. It accounts for an estimated 359 hours per year across the organisation, plus a further 117 hours of context-switching cost.\n\n## Trigger\nBegins when a invoice email arrives in gmail.\n\n## Systems Touched\ngmail, pdf, sheets\n\n## Procedure\n1. Open and read invoice email in gmail.\n2. Extract the required fields from fields in pdf.\n3. Create a new row in sheets.\n4. Send the confirmation in gmail.\n\n## Known Exceptions\n- 39 distinct step sequences were observed; 62% of instances follow the order above.\n- 6 step position(s) varied between instances and may require a judgement call.\n\n## Owner\nAccounts Payable team.\n\n## Estimated Duration\n6.3 minutes (median of 819 observed instances).\n",
+    "name": "Invoice Email to confirmation"
+  },
+  "/api/v1/clusters/clu_6b48de1a69a9": {
+    "annual_hours": 72.2,
+    "apps": [
+      "gmail",
+      "erp"
+    ],
+    "automatability": 0.601,
+    "automation_id": null,
+    "build_effort": 3,
+    "context_switches_total": 226,
+    "description": "3 steps across gmail \u2192 erp. Observed 259 times by 4 employee(s).",
+    "distinct_users": 4,
+    "do_not_automate": false,
+    "has_automation": false,
+    "id": "clu_6b48de1a69a9",
+    "instance_count": 259,
+    "instances_per_user_per_week": 5.6,
+    "interruption_tax_hours": 62.5,
+    "is_organisational": true,
+    "median_duration_ms": 242000,
+    "name": "Expense Claim to approval notice",
+    "priority": 27.0,
+    "reasoning": "56% of instances follow an identical step order across 4 employee(s). step order varies across 48% of the theoretical maximum, 4 branch point(s) observed, 0% of steps carry substantial free text",
+    "signature": [
+      "gmail:read:expense_claim",
+      "erp:update:approval_status",
+      "gmail:send:approval_notice"
+    ],
+    "step_graph": [
+      {
+        "action": "read",
+        "alternatives": [
+          "drive:read:policy_doc",
+          "erp:update:approval_status",
+          "sheets:read:reference_table"
+        ],
+        "app": "gmail",
+        "index": 0,
+        "label": "expense claim",
+        "median_duration_ms": 80666,
+        "object_type": "expense_claim"
+      },
+      {
+        "action": "update",
+        "alternatives": [
+          "browser:search:tax_rule",
+          "drive:read:policy_doc",
+          "gmail:read:expense_claim",
+          "gmail:send:approval_notice"
+        ],
+        "app": "erp",
+        "index": 1,
+        "label": "approval status",
+        "median_duration_ms": 80666,
+        "object_type": "approval_status"
+      },
+      {
+        "action": "send",
+        "alternatives": [
+          "drive:read:policy_doc",
+          "erp:delete:duplicate_record",
+          "erp:update:approval_status",
+          "gmail:read:expense_claim"
+        ],
+        "app": "gmail",
+        "index": 2,
+        "label": "approval notice",
+        "median_duration_ms": 80666,
+        "object_type": "approval_notice"
+      }
+    ],
+    "teams": [
+      "accounts_receivable"
+    ],
+    "user_ids": [
+      "u_arjun",
+      "u_nikhil",
+      "u_sana",
+      "u_tara"
+    ],
+    "users": [
+      {
+        "annual_hours": 17.6,
+        "instance_count": 71,
+        "median_duration_ms": 236000,
+        "team": "accounts_receivable",
+        "user_id": "u_sana"
+      },
+      {
+        "annual_hours": 17.9,
+        "instance_count": 67,
+        "median_duration_ms": 240000,
+        "team": "accounts_receivable",
+        "user_id": "u_arjun"
+      },
+      {
+        "annual_hours": 19.6,
+        "instance_count": 63,
+        "median_duration_ms": 263000,
+        "team": "accounts_receivable",
+        "user_id": "u_nikhil"
+      },
+      {
+        "annual_hours": 18.0,
+        "instance_count": 58,
+        "median_duration_ms": 241500,
+        "team": "accounts_receivable",
+        "user_id": "u_tara"
+      }
+    ],
+    "variance_breakdown": {
+      "branch_count": 4,
+      "dominant_variant_share": 0.556,
+      "judgement_ratio": 0.0,
+      "parameter_spread": 0.156,
+      "step_order_entropy": 0.481,
+      "variant_count": 21
+    },
+    "variants": [
+      {
+        "count": 144,
+        "share": 0.556,
+        "signature": [
+          "gmail:read:expense_claim",
+          "erp:update:approval_status",
+          "gmail:send:approval_notice"
+        ]
+      },
+      {
+        "count": 66,
+        "share": 0.2548,
+        "signature": [
+          "gmail:read:expense_claim",
+          "drive:read:policy_doc",
+          "erp:update:approval_status",
+          "gmail:send:approval_notice"
+        ]
+      },
+      {
+        "count": 11,
+        "share": 0.0425,
+        "signature": [
+          "gmail:read:expense_claim",
+          "gmail:send:approval_notice",
+          "erp:update:approval_status"
+        ]
+      },
+      {
+        "count": 9,
+        "share": 0.0347,
+        "signature": [
+          "erp:update:approval_status",
+          "gmail:read:expense_claim",
+          "gmail:send:approval_notice"
+        ]
+      },
+      {
+        "count": 5,
+        "share": 0.0193,
+        "signature": [
+          "erp:update:approval_status",
+          "gmail:send:approval_notice"
+        ]
+      },
+      {
+        "count": 4,
+        "share": 0.0154,
+        "signature": [
+          "drive:read:policy_doc",
+          "gmail:read:expense_claim",
+          "erp:update:approval_status",
+          "gmail:send:approval_notice"
+        ]
+      },
+      {
+        "count": 4,
+        "share": 0.0154,
+        "signature": [
+          "gmail:read:expense_claim",
+          "erp:update:approval_status",
+          "erp:delete:duplicate_record",
+          "gmail:send:approval_notice"
+        ]
+      },
+      {
+        "count": 2,
+        "share": 0.0077,
+        "signature": [
+          "erp:update:approval_status",
+          "browser:search:tax_rule",
+          "gmail:read:expense_claim",
+          "gmail:send:approval_notice"
+        ]
+      }
+    ]
+  },
+  "/api/v1/clusters/clu_6b48de1a69a9/sop": {
+    "cluster_id": "clu_6b48de1a69a9",
+    "generated_by": "heuristic",
+    "markdown": "# Expense Claim to approval notice\n\n## Purpose\nThis procedure documents a workflow observed 259 times across 4 employee(s) during the observation window. It accounts for an estimated 72 hours per year across the organisation, plus a further 62 hours of context-switching cost.\n\n## Trigger\nBegins when a expense claim arrives in gmail.\n\n## Systems Touched\ngmail, erp\n\n## Procedure\n1. Open and read expense claim in gmail.\n2. Update the approval status in erp.\n3. Send the approval notice in gmail.\n\n## Known Exceptions\n- 21 distinct step sequences were observed; 56% of instances follow the order above.\n- 4 step position(s) varied between instances and may require a judgement call.\n\n## Owner\nAccounts Receivable team.\n\n## Estimated Duration\n4.0 minutes (median of 259 observed instances).\n",
+    "name": "Expense Claim to approval notice"
+  },
+  "/api/v1/clusters/clu_ed76e837f800": {
+    "annual_hours": 148.0,
+    "apps": [
+      "erp",
+      "sheets"
+    ],
+    "automatability": 0.596,
+    "automation_id": null,
+    "build_effort": 3,
+    "context_switches_total": 210,
+    "description": "3 steps across erp \u2192 sheets. Observed 440 times by 5 employee(s).",
+    "distinct_users": 5,
+    "do_not_automate": false,
+    "has_automation": false,
+    "id": "clu_ed76e837f800",
+    "instance_count": 440,
+    "instances_per_user_per_week": 7.6,
+    "interruption_tax_hours": 58.1,
+    "is_organisational": true,
+    "median_duration_ms": 292000,
+    "name": "Purchase Order to match log",
+    "priority": 40.9,
+    "reasoning": "67% of instances follow an identical step order across 5 employee(s). step order varies across 39% of the theoretical maximum, 4 branch point(s) observed, 0% of steps carry substantial free text",
+    "signature": [
+      "erp:read:purchase_order",
+      "erp:search:invoice",
+      "sheets:update:match_log"
+    ],
+    "step_graph": [
+      {
+        "action": "read",
+        "alternatives": [
+          "drive:create:manual_note",
+          "drive:search:supporting_doc",
+          "erp:delete:duplicate_record",
+          "erp:search:invoice",
+          "sheets:read:reference_table"
+        ],
+        "app": "erp",
+        "index": 0,
+        "label": "purchase order",
+        "median_duration_ms": 97333,
+        "object_type": "purchase_order"
+      },
+      {
+        "action": "search",
+        "alternatives": [
+          "drive:create:manual_note",
+          "erp:delete:duplicate_record",
+          "erp:read:purchase_order",
+          "sheets:update:match_log",
+          "slack:send:mismatch_flag"
+        ],
+        "app": "erp",
+        "index": 1,
+        "label": "invoice",
+        "median_duration_ms": 97333,
+        "object_type": "invoice"
+      },
+      {
+        "action": "update",
+        "alternatives": [
+          "drive:create:manual_note",
+          "erp:delete:duplicate_record",
+          "erp:search:invoice",
+          "slack:send:mismatch_flag"
+        ],
+        "app": "sheets",
+        "index": 2,
+        "label": "match log",
+        "median_duration_ms": 97333,
+        "object_type": "match_log"
+      }
+    ],
+    "teams": [
+      "accounts_payable"
+    ],
+    "user_ids": [
+      "u_asha",
+      "u_dev",
+      "u_karan",
+      "u_meera",
+      "u_ravi"
+    ],
+    "users": [
+      {
+        "annual_hours": 28.9,
+        "instance_count": 94,
+        "median_duration_ms": 285500,
+        "team": "accounts_payable",
+        "user_id": "u_asha"
+      },
+      {
+        "annual_hours": 28.9,
+        "instance_count": 91,
+        "median_duration_ms": 285000,
+        "team": "accounts_payable",
+        "user_id": "u_meera"
+      },
+      {
+        "annual_hours": 29.7,
+        "instance_count": 87,
+        "median_duration_ms": 293000,
+        "team": "accounts_payable",
+        "user_id": "u_dev"
+      },
+      {
+        "annual_hours": 30.1,
+        "instance_count": 86,
+        "median_duration_ms": 297000,
+        "team": "accounts_payable",
+        "user_id": "u_karan"
+      },
+      {
+        "annual_hours": 30.2,
+        "instance_count": 82,
+        "median_duration_ms": 298500,
+        "team": "accounts_payable",
+        "user_id": "u_ravi"
+      }
+    ],
+    "variance_breakdown": {
+      "branch_count": 4,
+      "dominant_variant_share": 0.668,
+      "judgement_ratio": 0.0,
+      "parameter_spread": 0.339,
+      "step_order_entropy": 0.39,
+      "variant_count": 24
+    },
+    "variants": [
+      {
+        "count": 294,
+        "share": 0.6682,
+        "signature": [
+          "erp:read:purchase_order",
+          "erp:search:invoice",
+          "sheets:update:match_log"
+        ]
+      },
+      {
+        "count": 81,
+        "share": 0.1841,
+        "signature": [
+          "erp:read:purchase_order",
+          "erp:search:invoice",
+          "sheets:update:match_log",
+          "slack:send:mismatch_flag"
+        ]
+      },
+      {
+        "count": 17,
+        "share": 0.0386,
+        "signature": [
+          "erp:read:purchase_order",
+          "sheets:update:match_log",
+          "erp:search:invoice"
+        ]
+      },
+      {
+        "count": 11,
+        "share": 0.025,
+        "signature": [
+          "erp:search:invoice",
+          "erp:read:purchase_order",
+          "sheets:update:match_log"
+        ]
+      },
+      {
+        "count": 6,
+        "share": 0.0136,
+        "signature": [
+          "erp:read:purchase_order",
+          "erp:search:invoice"
+        ]
+      },
+      {
+        "count": 6,
+        "share": 0.0136,
+        "signature": [
+          "erp:read:purchase_order",
+          "erp:search:invoice",
+          "slack:send:mismatch_flag",
+          "sheets:update:match_log"
+        ]
+      },
+      {
+        "count": 3,
+        "share": 0.0068,
+        "signature": [
+          "erp:search:invoice",
+          "sheets:update:match_log"
+        ]
+      },
+      {
+        "count": 2,
+        "share": 0.0045,
+        "signature": [
+          "erp:read:purchase_order",
+          "erp:search:invoice",
+          "sheets:update:match_log",
+          "drive:create:manual_note"
+        ]
+      }
+    ]
+  },
+  "/api/v1/clusters/clu_ed76e837f800/sop": {
+    "cluster_id": "clu_ed76e837f800",
+    "generated_by": "heuristic",
+    "markdown": "# Purchase Order to match log\n\n## Purpose\nThis procedure documents a workflow observed 440 times across 5 employee(s) during the observation window. It accounts for an estimated 148 hours per year across the organisation, plus a further 58 hours of context-switching cost.\n\n## Trigger\nBegins when a purchase order arrives in erp.\n\n## Systems Touched\nerp, sheets\n\n## Procedure\n1. Open and read purchase order in erp.\n2. Search for the matching invoice in erp.\n3. Update the match log in sheets.\n\n## Known Exceptions\n- 24 distinct step sequences were observed; 67% of instances follow the order above.\n- 4 step position(s) varied between instances and may require a judgement call.\n\n## Owner\nAccounts Payable team.\n\n## Estimated Duration\n4.9 minutes (median of 440 observed instances).\n",
+    "name": "Purchase Order to match log"
+  },
+  "/api/v1/exceptions": {
+    "items": [],
+    "open_count": 0,
+    "total": 0
+  },
+  "/api/v1/llm-usage": {
+    "available": false,
+    "calls": 0,
+    "estimated_cost_usd": 0.0,
+    "fallbacks": 6,
+    "input_tokens": 0,
+    "model": "none",
+    "output_tokens": 0
+  },
+  "/api/v1/patches": {
+    "items": [],
+    "proposed_count": 0,
+    "total": 0
+  },
+  "/api/v1/sources": {
+    "capabilities": [
+      {
+        "available": true,
+        "blind_to": [
+          "What actually happens, as opposed to what is remembered",
+          "Real durations and interruptions",
+          "Variance between instances"
+        ],
+        "coverage_estimate": 0.1,
+        "effort": "seconds",
+        "invasiveness": "none",
+        "kind": "describe",
+        "label": "Describe a task",
+        "sees": [
+          "The steps a person believes they take",
+          "Rough frequency"
+        ],
+        "setup": "Nothing to install. Type a paragraph.",
+        "summary": "Someone types out a recurring task in their own words.",
+        "unavailable_reason": ""
+      },
+      {
+        "available": true,
+        "blind_to": [
+          "Anything outside that one system",
+          "Cross-application sequences"
+        ],
+        "coverage_estimate": 0.25,
+        "effort": "minutes",
+        "invasiveness": "none",
+        "kind": "upload",
+        "label": "Upload an activity log",
+        "sees": [
+          "Whatever the exporting system recorded"
+        ],
+        "setup": "Export from the source system and upload the file.",
+        "summary": "An export from an existing tool, as CSV or JSONL.",
+        "unavailable_reason": ""
+      },
+      {
+        "available": true,
+        "blind_to": [
+          "Desktop applications: Excel, Outlook desktop, SAP GUI",
+          "Anything inside a Citrix or VDI session",
+          "Field values, in metadata-only mode"
+        ],
+        "coverage_estimate": 0.7,
+        "effort": "about two minutes per person",
+        "invasiveness": "low \u2014 metadata only, pausable, domain denylist",
+        "kind": "browser_extension",
+        "label": "Browser extension",
+        "sees": [
+          "Every web app, including internal tools with no API",
+          "Cross-application step sequences",
+          "Copy-paste transfers between systems",
+          "Real durations and context switches",
+          "Field names that were filled"
+        ],
+        "setup": "Install the unpacked extension and paste the source token.",
+        "summary": "Observes activity across every web application in the browser, including data copied from one tool and pasted into another.",
+        "unavailable_reason": ""
+      },
+      {
+        "available": false,
+        "blind_to": [
+          "How the person got there, and what else they had open",
+          "Time spent, and interruptions",
+          "Anything the vendor does not expose in an audit API"
+        ],
+        "coverage_estimate": 0.45,
+        "effort": "hours, plus an admin conversation",
+        "invasiveness": "medium \u2014 reads real content unless scoped down",
+        "kind": "api_connector",
+        "label": "Connect an application account",
+        "sees": [
+          "Authoritative records of what changed in that system",
+          "Tenant-wide activity, not just one person's",
+          "History from before LOOP was installed"
+        ],
+        "setup": "OAuth consent. Tenant-wide audit APIs need an administrator.",
+        "summary": "OAuth into Microsoft 365, Google Workspace, Slack or a line-of-business system and pull its audit trail.",
+        "unavailable_reason": "Requires per-provider OAuth credentials. The connector interfaces and their exact API surfaces are declared, but no live credentials are configured in this build."
+      },
+      {
+        "available": false,
+        "blind_to": [
+          "What is inside a window, without accessibility APIs or OCR"
+        ],
+        "coverage_estimate": 0.95,
+        "effort": "days, and an IT rollout",
+        "invasiveness": "high \u2014 needs a serious consent conversation",
+        "kind": "desktop_agent",
+        "label": "Desktop agent",
+        "sees": [
+          "Desktop applications the browser cannot see",
+          "Application focus and switching across the whole machine",
+          "The full cross-application picture"
+        ],
+        "setup": "Signed installer, plus OS accessibility permission per machine.",
+        "summary": "A background process reporting active-window and clipboard activity.",
+        "unavailable_reason": "Not built. The collector API it would post to is implemented and documented, so an agent is an independent piece of work."
+      },
+      {
+        "available": false,
+        "blind_to": [
+          "Nothing much \u2014 which is the problem"
+        ],
+        "coverage_estimate": 1.0,
+        "effort": "minutes per recording, and it does not scale",
+        "invasiveness": "very high \u2014 captures everything on screen",
+        "kind": "screen_recording",
+        "label": "Screen recording",
+        "sees": [
+          "Legacy, Citrix and VDI applications with no API and no DOM",
+          "Exactly what the person saw"
+        ],
+        "setup": "Upload frames from a consented recording session.",
+        "summary": "Frames from a recorded session, read by a vision model.",
+        "unavailable_reason": "Reading a frame needs a vision model, and no ANTHROPIC_API_KEY is configured. Every other feature has a deterministic fallback; this one cannot, so it is disabled rather than faked."
+      }
+    ],
+    "coverage": {
+      "apps_observed": [
+        {
+          "app": "gmail",
+          "events": 2578
+        },
+        {
+          "app": "erp",
+          "events": 1924
+        },
+        {
+          "app": "sheets",
+          "events": 1732
+        },
+        {
+          "app": "pdf",
+          "events": 941
+        },
+        {
+          "app": "browser",
+          "events": 540
+        },
+        {
+          "app": "drive",
+          "events": 492
+        },
+        {
+          "app": "slack",
+          "events": 392
+        },
+        {
+          "app": "northwind-erp",
+          "events": 40
+        }
+      ],
+      "connected_sources": 1,
+      "distinct_apps": 8,
+      "estimated_coverage": 0.7,
+      "kinds_connected": [
+        "browser_extension"
+      ],
+      "observed_events": 100,
+      "total_events": 8639,
+      "total_sources": 1
+    },
+    "items": [
+      {
+        "capture_scope": "metadata_only",
+        "consent_granted": true,
+        "created_at": "2026-08-31T09:52:08.130640",
+        "denylist": [
+          "bank",
+          "payroll"
+        ],
+        "event_count": 100,
+        "id": "src_13a92f136503",
+        "kind": "browser_extension",
+        "label": "Asha \u2014 Chrome",
+        "last_event_at": "2026-08-22T19:54:13.238401",
+        "rejected_count": 20,
+        "status": "connected",
+        "team": "accounts_payable",
+        "user_id": "u_asha"
+      }
+    ],
+    "total": 1
+  },
+  "/api/v1/system": {
+    "automation_count": 3,
+    "cluster_count": 6,
+    "connectors": [
+      {
+        "active": "mock",
+        "api": "Playwright \u2014 drives a real browser for systems with no API",
+        "live_available": true,
+        "mock_available": true,
+        "name": "browser",
+        "required_credentials": []
+      },
+      {
+        "active": "mock",
+        "api": "Google Drive API v3 (files.create / .get)",
+        "live_available": true,
+        "mock_available": true,
+        "name": "drive",
+        "required_credentials": [
+          "GOOGLE_OAUTH_CLIENT_ID",
+          "GOOGLE_OAUTH_CLIENT_SECRET"
+        ]
+      },
+      {
+        "active": "mock",
+        "api": "tenant ERP REST API",
+        "live_available": true,
+        "mock_available": true,
+        "name": "erp",
+        "required_credentials": [
+          "ERP_BASE_URL",
+          "ERP_API_TOKEN"
+        ]
+      },
+      {
+        "active": "mock",
+        "api": "Gmail API v1 (users.messages.list / .get / .send)",
+        "live_available": true,
+        "mock_available": true,
+        "name": "gmail",
+        "required_credentials": [
+          "GOOGLE_OAUTH_CLIENT_ID",
+          "GOOGLE_OAUTH_CLIENT_SECRET"
+        ]
+      },
+      {
+        "active": "mock",
+        "api": "Microsoft Graph v1.0 (/me/messages/delta, /me/sendMail)",
+        "live_available": true,
+        "mock_available": true,
+        "name": "outlook",
+        "required_credentials": [
+          "MS_CLIENT_ID",
+          "MS_CLIENT_SECRET",
+          "MS_TENANT_ID"
+        ]
+      },
+      {
+        "active": "mock",
+        "api": "local extraction (pdfplumber) \u2014 no external credentials needed",
+        "live_available": true,
+        "mock_available": true,
+        "name": "pdf",
+        "required_credentials": []
+      },
+      {
+        "active": "mock",
+        "api": "Google Sheets API v4 (spreadsheets.values.append / .get)",
+        "live_available": true,
+        "mock_available": true,
+        "name": "sheets",
+        "required_credentials": [
+          "GOOGLE_OAUTH_CLIENT_ID",
+          "GOOGLE_OAUTH_CLIENT_SECRET"
+        ]
+      },
+      {
+        "active": "mock",
+        "api": "Slack Web API (chat.postMessage)",
+        "live_available": true,
+        "mock_available": true,
+        "name": "slack",
+        "required_credentials": [
+          "SLACK_BOT_TOKEN"
+        ]
+      }
+    ],
+    "event_count": 8639,
+    "llm_available": false,
+    "llm_calls": 0,
+    "llm_estimated_cost_usd": 0.0,
+    "llm_fallbacks": 6,
+    "llm_model": "none (deterministic fallback)",
+    "mock_connectors": true,
+    "settings": {
+      "cluster_threshold": 0.35,
+      "demotion_lookback": 3,
+      "do_not_automate_threshold": 0.4,
+      "exception_rule_min_samples": 3,
+      "interruption_cost_minutes": 4.0,
+      "org_user_threshold": 3,
+      "patch_auto_apply_confidence": 0.9,
+      "sequence_weight": 0.45,
+      "session_gap_minutes": 15,
+      "set_weight": 0.3,
+      "shadow_min_runs": 5,
+      "shadow_promotion_threshold": 0.9,
+      "shadow_window": 5
+    }
+  },
+  "/health": {
+    "connectors": "mock",
+    "database": "ok",
+    "llm": "deterministic fallback (no API key)",
+    "status": "ok",
+    "version": "0.1.0"
+  }
+}

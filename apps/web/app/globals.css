@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ground: #08090b;
+    --panel: #0c0e12;
+    --panel-raised: #11141a;
+    --line: #1e232c;
+    --line-bright: #2a3140;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: #c9d0da;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular figures everywhere a number is compared against another number. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: #2563eb44;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--ground);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-bright);
+    border: 3px solid var(--ground);
+    border-radius: 6px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a4354;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-lg border border-ink-700 bg-ink-900;
+  }
+
+  .panel-raised {
+    @apply rounded-lg border border-ink-700 bg-ink-850;
+  }
+
+  /* Section label: small, wide-tracked, quiet. Used above every panel. */
+  .eyebrow {
+    @apply text-2xs font-medium uppercase tracking-[0.14em] text-mist-500;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-600
+           bg-ink-800 px-2 py-0.5 text-2xs font-medium text-mist-300;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2
+           text-xs font-medium transition-colors duration-150
+           focus-visible:outline focus-visible:outline-2
+           focus-visible:outline-offset-2 focus-visible:outline-accent-500
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-600 text-white hover:bg-accent-500
+           disabled:bg-ink-700 disabled:text-mist-500;
+  }
+
+  .btn-ghost {
+    @apply btn border border-ink-600 bg-ink-850 text-mist-200
+           hover:border-ink-500 hover:bg-ink-800 disabled:text-mist-500;
+  }
+
+  .btn-danger {
+    @apply btn border border-bad-500/40 bg-bad-500/10 text-bad-400
+           hover:bg-bad-500/20;
+  }
+
+  .link {
+    @apply text-accent-400 underline decoration-accent-400/30
+           underline-offset-2 transition-colors hover:decoration-accent-400;
+  }
+
+  .mono {
+    @apply font-mono text-2xs text-mist-400;
+  }
+
+  /* Motion is reserved for state transitions only, never for decoration. */
+  .bar-fill {
+    transition: width 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
