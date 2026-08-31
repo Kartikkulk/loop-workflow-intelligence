@@ -1,29 +1,24 @@
-# Ownership boundaries for a three-person team.
+# Ownership. GitHub auto-requests a review from the owner of every path a PR
+# touches, so a PR that crosses a boundary is visibly crossing it.
 #
-# GitHub auto-requests a review from the owner of every path a PR touches. The
-# point is not gatekeeping — it is that a PR crossing the frontend/backend
-# boundary is *visibly* crossing it, and gets both pairs of eyes.
-#
-# Replace the placeholder handles below with real GitHub usernames before the
-# first PR, or CODEOWNERS is silently inert.
+# Replace the placeholder handles with real GitHub usernames — CODEOWNERS is
+# silently inert until the handles resolve.
 
-# Default owner: anything not matched below.
-*                       @Kartikkulk
+# Core platform. Nobody else edits these.
+*                                   @Kartikkulk
+/apps/api/app/services/             @Kartikkulk
+/apps/api/app/api/                  @Kartikkulk
+/apps/api/app/llm/                  @Kartikkulk
+/apps/web/                          @Kartikkulk
+/collectors/shared/                 @Kartikkulk
+/contracts/                         @Kartikkulk
 
-# ── backend ────────────────────────────────────────────────────────────────
-/apps/api/              @BACKEND-DEV
-/contracts/             @BACKEND-DEV @FRONTEND-DEV
+# ── domain packs · one file each, no core changes needed ──────────────────
+/apps/api/app/domains/finance.py            @ANIRUDH
+/apps/api/app/domains/customer_support.py   @ANIRUDH
+/apps/api/app/domains/sales.py              @VIJAY
+/apps/api/app/domains/hr.py                 @VIJAY
 
-# ── frontend ───────────────────────────────────────────────────────────────
-/apps/web/              @FRONTEND-DEV
-
-# ── shared: integration owner reviews these ────────────────────────────────
-/collectors/            @Kartikkulk
-/Makefile               @Kartikkulk
-/docker-compose.yml     @Kartikkulk
-/.github/               @Kartikkulk
-/README.md              @Kartikkulk
-/DEMO.md                @Kartikkulk
-/ARCHITECTURE.md        @Kartikkulk
-/CLAUDE.md              @Kartikkulk
-/.env.example           @Kartikkulk
+# ── browser collectors · one folder each ──────────────────────────────────
+/collectors/chrome/                 @ANUSHREE
+/collectors/edge/                   @GOURI

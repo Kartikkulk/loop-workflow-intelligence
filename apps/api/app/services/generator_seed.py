@@ -9,6 +9,7 @@ from __future__ import annotations
 import random
 from datetime import UTC, datetime, timedelta
 
+from app.domains import DOMAINS, DomainPack, Step
 from app.services.ids import SequentialIds
 from app.services.normaliser import NormalisedEvent
 from app.services.seed_spec import (
@@ -19,18 +20,15 @@ from app.services.seed_spec import (
     SCHEMA_CHANGE_TO,
     USERS,
     VENDORS,
-    WORKFLOWS,
-    StepSpec,
-    WorkflowSpec,
 )
 
 # Mid-task lookups used to create genuine A -> B -> A context switches. None of
 # these are sessioniser reset tokens, so the bounce stays inside one instance
 # where the Interruption Tax can measure it.
-_SWITCH_STEPS = [
-    StepSpec("erp", "search", "vendor_record", 35),
-    StepSpec("drive", "search", "supporting_doc", 30),
-    StepSpec("sheets", "read", "reference_table", 25),
+_SWITCH_STEPS: list[Step] = [
+    Step("erp", "search", "vendor_record", 35),
+    Step("drive", "search", "supporting_doc", 30),
+    Step("sheets", "read", "reference_table", 25),
 ]
 
 # Coherent ambient activity. Every triple here is a sessioniser reset token, so
@@ -41,10 +39,10 @@ _NOISE_ACTIVITY = [
     ("browser", "read", "page"),
 ]
 
-_ANOMALY_STEPS = [
-    StepSpec("erp", "delete", "duplicate_record", 55),
-    StepSpec("browser", "search", "tax_rule", 95),
-    StepSpec("drive", "create", "manual_note", 40),
+_ANOMALY_STEPS: list[Step] = [
+    Step("erp", "delete", "duplicate_record", 55),
+    Step("browser", "search", "tax_rule", 95),
+    Step("drive", "create", "manual_note", 40),
 ]
 
 # Working hours, so timestamps do not fall at 3am.
@@ -57,7 +55,7 @@ def _column_name(day_index: int) -> str:
     return SCHEMA_CHANGE_FROM if day_index < SCHEMA_CHANGE_DAY else SCHEMA_CHANGE_TO
 
 
-def _instance_facts(rng: random.Random, workflow: WorkflowSpec) -> dict:
+def _instance_facts(rng: random.Random, domain: DomainPack) -> dict:
     """Draw the facts of one task instance, once.
 
     Every step of an instance then reads from these shared facts. This is not a
@@ -109,7 +107,7 @@ def _instance_facts(rng: random.Random, workflow: WorkflowSpec) -> dict:
 
 
 def _payload_for(
-    step: StepSpec, facts: dict, day_index: int, workflow: WorkflowSpec
+    step: Step, facts: dict, day_index: int, domain: DomainPack
 ) -> dict:
     """Build one step's payload by projecting the instance's shared facts.
 
@@ -117,7 +115,7 @@ def _payload_for(
     day, which is the drift F8 has to find.
     """
     payload: dict = {}
-    for key in step.payload_keys:
+    for key in step.fields:
         if key == "vendor_column":
             payload[_column_name(day_index)] = facts["vendor"]
         elif key == "amount":
@@ -129,37 +127,37 @@ def _payload_for(
             payload[key] = facts[key]
         else:
             payload[key] = facts["vendor"]
-    payload["workflow_hint"] = workflow.key
+    payload["workflow_hint"] = domain.key
     return payload
 
 
-def _steps_for_instance(workflow: WorkflowSpec, rng: random.Random) -> list[StepSpec]:
+def _steps_for_instance(domain: DomainPack, rng: random.Random) -> list[Step]:
     """Draw the step sequence for one instance, applying the spec's variance."""
-    if workflow.freeform:
-        count = rng.randint(workflow.freeform_min, workflow.freeform_max)
-        chosen = rng.sample(workflow.steps, min(count, len(workflow.steps)))
+    if domain.freeform:
+        count = rng.randint(domain.freeform_min, domain.freeform_max)
+        chosen = rng.sample(domain.steps, min(count, len(domain.steps)))
         rng.shuffle(chosen)
         return chosen
 
-    chosen = [s for s in workflow.steps if rng.random() <= s.probability]
+    chosen = [s for s in domain.steps if rng.random() <= s.probability]
     if len(chosen) < 2:
-        chosen = list(workflow.steps[:2])
+        chosen = list(domain.steps[:2])
 
-    if rng.random() < workflow.reorder_probability and len(chosen) >= 3:
+    if rng.random() < domain.reorder_probability and len(chosen) >= 3:
         i = rng.randrange(len(chosen) - 1)
         chosen[i], chosen[i + 1] = chosen[i + 1], chosen[i]
 
-    if rng.random() < workflow.anomaly_probability:
+    if rng.random() < domain.anomaly_probability:
         chosen.insert(rng.randrange(len(chosen) + 1), rng.choice(_ANOMALY_STEPS))
 
     return chosen
 
 
 def _inject_context_switch(
-    steps: list[StepSpec], workflow: WorkflowSpec, rng: random.Random
-) -> list[StepSpec]:
+    steps: list[Step], domain: DomainPack, rng: random.Random
+) -> list[Step]:
     """Insert an A -> B -> A bounce so the Interruption Tax has real data."""
-    if rng.random() >= workflow.context_switch_probability or len(steps) < 2:
+    if rng.random() >= domain.context_switch_probability or len(steps) < 2:
         return steps
     anchor_index = rng.randrange(len(steps) - 1)
     anchor = steps[anchor_index]
@@ -188,14 +186,14 @@ def generate_events(
     )
     events: list[NormalisedEvent] = []
 
-    for workflow in WORKFLOWS:
-        for user_id in workflow.users:
+    for domain in DOMAINS:
+        for user_id in domain.people:
             team = USERS[user_id]
             # Poisson-ish weekly volume, drawn per week so the frequency is
             # realistic rather than perfectly uniform.
             for week in range(max(days // 7, 1)):
-                weekly = max(0, int(rng.gauss(workflow.per_user_per_week, 
-                                              workflow.per_user_per_week * 0.25)))
+                weekly = max(0, int(rng.gauss(domain.per_person_per_week, 
+                                              domain.per_person_per_week * 0.25)))
                 for _ in range(weekly):
                     day_offset = week * 7 + rng.randrange(0, 5)  # weekdays only
                     if day_offset >= days:
@@ -207,9 +205,9 @@ def generate_events(
                         minutes=rng.randrange(0, 60),
                     )
                     steps = _inject_context_switch(
-                        _steps_for_instance(workflow, rng), workflow, rng
+                        _steps_for_instance(domain, rng), domain, rng
                     )
-                    facts = _instance_facts(rng, workflow)
+                    facts = _instance_facts(rng, domain)
                     session_id = new_id("ses")
                     for step in steps:
                         duration = max(5, int(rng.gauss(step.seconds, step.seconds * 0.3)))
@@ -224,9 +222,9 @@ def generate_events(
                                 object_type=step.object_type,
                                 object_id=new_id("obj"),
                                 duration_ms=duration * 1000,
-                                payload=_payload_for(step, facts, day_index, workflow),
+                                payload=_payload_for(step, facts, day_index, domain),
                                 session_id=session_id,
-                                ground_truth_workflow=workflow.key,
+                                ground_truth_workflow=domain.key,
                                 source="seed",
                             )
                         )

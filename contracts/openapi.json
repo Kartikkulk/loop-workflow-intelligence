@@ -1059,6 +1059,103 @@
         "title": "DescribeRequest",
         "type": "object"
       },
+      "DomainList": {
+        "description": "GET /api/v1/domains",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DomainOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unwatched_tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unwatched Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "total",
+          "items",
+          "unwatched_tools"
+        ],
+        "title": "DomainList",
+        "type": "object"
+      },
+      "DomainOut": {
+        "description": "A team, the work they repeat, and the tools that work happens in.",
+        "properties": {
+          "is_template": {
+            "title": "Is Template",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "people": {
+            "title": "People",
+            "type": "integer"
+          },
+          "step_count": {
+            "title": "Step Count",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          },
+          "tool_coverage": {
+            "title": "Tool Coverage",
+            "type": "number"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/ToolStatus"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "workflow_name": {
+            "title": "Workflow Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "owner",
+          "summary",
+          "team",
+          "people",
+          "workflow_name",
+          "step_count",
+          "tools",
+          "is_template",
+          "tool_coverage"
+        ],
+        "title": "DomainOut",
+        "type": "object"
+      },
       "EventOut": {
         "description": "One canonical event.",
         "properties": {
@@ -2655,6 +2752,30 @@
         "title": "SystemStatus",
         "type": "object"
       },
+      "ToolStatus": {
+        "description": "One application a domain needs watched, and whether it is being watched.",
+        "properties": {
+          "app": {
+            "title": "App",
+            "type": "string"
+          },
+          "events": {
+            "title": "Events",
+            "type": "integer"
+          },
+          "observed": {
+            "title": "Observed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "app",
+          "observed",
+          "events"
+        ],
+        "title": "ToolStatus",
+        "type": "object"
+      },
       "TrustDistribution": {
         "properties": {
           "count": {
@@ -3677,6 +3798,28 @@
         "summary": "Simulate Shadow",
         "tags": [
           "demo"
+        ]
+      }
+    },
+    "/api/v1/domains": {
+      "get": {
+        "description": "The teams LOOP knows about, and whether their tools are being watched.\n\nThis is the honest answer to \"what do I need to onboard?\". A domain whose\ntools have produced no events is a domain LOOP is blind to, however good the\ndetection is \u2014 so the gap is reported per tool rather than as one number.",
+        "operationId": "list_domains_api_v1_domains_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Domains",
+        "tags": [
+          "sources"
         ]
       }
     },

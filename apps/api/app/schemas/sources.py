@@ -157,3 +157,37 @@ class RecordingIngestRequest(BaseModel):
             "clears the minimum-support floor."
         ),
     )
+
+
+class ToolStatus(BaseModel):
+    """One application a domain needs watched, and whether it is being watched."""
+
+    app: str
+    observed: bool
+    events: int
+
+
+class DomainOut(BaseModel):
+    """A team, the work they repeat, and the tools that work happens in."""
+
+    key: str
+    label: str
+    owner: str
+    summary: str
+    team: str
+    people: int
+    workflow_name: str
+    step_count: int
+    tools: list[ToolStatus]
+    is_template: bool
+    #: Share of this domain's tools that have produced observed activity.
+    tool_coverage: float
+
+
+class DomainList(BaseModel):
+    """GET /api/v1/domains"""
+
+    total: int
+    items: list[DomainOut]
+    #: Every tool across every domain that nothing is currently watching.
+    unwatched_tools: list[str]

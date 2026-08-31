@@ -383,3 +383,29 @@ export interface RegisterSourceResult {
   consent_text: string;
   collector_config: Record<string, unknown>;
 }
+
+export interface ToolStatus {
+  app: string;
+  observed: boolean;
+  events: number;
+}
+
+export interface Domain {
+  key: string;
+  label: string;
+  owner: string;
+  summary: string;
+  team: string;
+  people: number;
+  workflow_name: string;
+  step_count: number;
+  tools: ToolStatus[];
+  is_template: boolean;
+  tool_coverage: number;
+}
+
+export interface DomainList {
+  total: number;
+  items: Domain[];
+  unwatched_tools: string[];
+}

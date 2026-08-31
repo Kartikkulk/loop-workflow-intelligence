@@ -12,6 +12,7 @@ import {
   Stat,
 } from "@/components/ui";
 import {
+  useDomains,
   useRedetect,
   useRegisterSource,
   useRevokeSource,
@@ -23,6 +24,7 @@ import type { Capability, ObservationSource } from "@/lib/api/types";
 
 export default function SourcesPage() {
   const { data, isLoading, error } = useSources();
+  const { data: domains } = useDomains();
   const [connecting, setConnecting] = useState<Capability | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const redetect = useRedetect();
@@ -94,6 +96,109 @@ export default function SourcesPage() {
             hint={`of ${coverage.total_events.toLocaleString()} total, the rest seeded or uploaded`}
           />
         </div>
+
+        <Panel
+          title="How the activity monitor works"
+          hint="Three steps. Nothing is inferred from anything you have not connected."
+        >
+          <ol className="grid gap-4 px-4 py-4 sm:grid-cols-3">
+            {[
+              {
+                n: "1",
+                t: "A collector watches",
+                d: "A browser extension on someone's laptop reports which application they used and what kind of action they took. It never reads field values.",
+              },
+              {
+                n: "2",
+                t: "Everything becomes one event",
+                d: "Whatever the source, it normalises to the same shape: who, when, which app, which action, which kind of object.",
+              },
+              {
+                n: "3",
+                t: "Repetition is mined",
+                d: "Events group into task instances, instances into workflows. A workflow more than three people repeat becomes an opportunity.",
+              },
+            ].map((step) => (
+              <li key={step.n} className="flex gap-3">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent-500/40 bg-accent-500/10 text-2xs font-semibold text-accent-300">
+                  {step.n}
+                </span>
+                <span>
+                  <span className="block text-xs font-medium text-mist-100">{step.t}</span>
+                  <span className="mt-1 block text-2xs leading-relaxed text-mist-500">
+                    {step.d}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Panel>
+
+        {domains && (
+          <Panel
+            title="Tools each team needs watched"
+            hint="A team whose tools produce no activity is a team LOOP is blind to, however good the detection is."
+            actions={
+              domains.unwatched_tools.length > 0 ? (
+                <Badge tone="warn">{domains.unwatched_tools.length} not yet seen</Badge>
+              ) : (
+                <Badge tone="good">All tools seen</Badge>
+              )
+            }
+          >
+            <ul className="divide-y divide-ink-700">
+              {domains.items.map((domain) => (
+                <li key={domain.key} className="px-4 py-3.5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xs font-medium text-mist-100">{domain.label}</h3>
+                        <span className="text-2xs text-mist-500">{domain.owner}</span>
+                        {domain.is_template && <Badge tone="warn">Template</Badge>}
+                      </div>
+                      <p className="mt-1 max-w-2xl text-2xs leading-relaxed text-mist-500">
+                        {domain.summary}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {domain.tools.map((tool) => (
+                          <span
+                            key={tool.app}
+                            className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-2xs ${
+                              tool.observed
+                                ? "border-good-500/35 bg-good-500/10 text-good-400"
+                                : "border-ink-600 bg-ink-800 text-mist-500"
+                            }`}
+                            title={
+                              tool.observed
+                                ? `${tool.events.toLocaleString()} events observed`
+                                : "no activity seen from this tool yet"
+                            }
+                          >
+                            <span
+                              className={`h-1 w-1 rounded-full ${
+                                tool.observed ? "bg-good-400" : "bg-ink-500"
+                              }`}
+                            />
+                            {tool.app}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="w-24 shrink-0 text-right">
+                      <p className="eyebrow">Tools seen</p>
+                      <p className="metric mt-1 text-base text-mist-100">
+                        {percent(domain.tool_coverage)}
+                      </p>
+                      <p className="tnum mt-1 text-2xs text-mist-500">
+                        {domain.people} people
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
 
         {connecting && (
           <ConnectPanel

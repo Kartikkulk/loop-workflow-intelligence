@@ -12,7 +12,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
-const SOURCE = fs.readFileSync(path.join(HERE, "..", "browser-extension", "background.js"), "utf8");
+const SOURCE = fs.readFileSync(path.join(HERE, "..", "shared", "background.js"), "utf8");
 
 /** Boot background.js in isolation, returning handles to poke at it. */
 function boot({ fetchImpl } = {}) {

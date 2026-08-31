@@ -1,152 +1,152 @@
-# Team plan — submission Friday 4 September
+# Team — who owns what
 
-Three people. Today is Monday 31 August, so there are **four and a half working
-days**. The product already works end to end; these four days are about
-hardening, the gaps that will get asked about, and the artefact.
+Six people, one repo, submission Friday 4 September.
 
-## Roles
+**The rule that keeps us mergeable: you own a folder, and you only edit that
+folder.** If you need something from outside it, open an issue rather than
+reaching in.
 
-| Who | Owns | Does not touch |
+| Who | Owns | Edits nothing else |
 |---|---|---|
-| **Kartik** | `collectors/`, docs, demo, integration, release | — |
-| **Backend dev** | `apps/api/` | `apps/web/` |
-| **Frontend dev** | `apps/web/` | `apps/api/` |
+| **Kartik** | Core platform — `apps/api/app/services`, `app/api`, `app/llm`, `apps/web`, `collectors/shared` | — |
+| **Anirudh** | `apps/api/app/domains/finance.py`, `customer_support.py` | ✓ |
+| **Vijay** | `apps/api/app/domains/sales.py` **or** `hr.py` — pick one | ✓ |
+| **Anushree** | `collectors/chrome/` | ✓ |
+| **Gouri** | `collectors/edge/` | ✓ |
 
-The frontend developer is **not blocked on the backend at any point**:
-`make web-mock` serves the whole console from committed fixtures with no Python
-installed.
-
-## Where things stand
-
-Green today: detection recovers all 5 seeded workflows at 99.9% purity, replay
-reports 92.71% with three named failure modes, the trust ladder promotes and
-auto-demotes, schema drift self-heals, rule learning closes the loop, the browser
-collector observes real activity and detects a workflow from it. 131 backend
-tests + 33 collector checks, `make check` clean.
-
-So this is not a build sprint. It is a *close the credible gaps* sprint.
+Nobody's daily work touches anybody else's files. That is deliberate.
 
 ---
 
-## Day by day
+## Everyone: first 15 minutes
 
-### Monday 31 Aug (today, partial) — setup
+```bash
+git clone https://github.com/Kartikkulk/loop-workflow-intelligence.git
+cd loop-workflow-intelligence
+make setup      # venv + npm install + .env
+make demo       # generate the synthetic activity log and run detection
+make dev        # API on :8000 (docs at /docs), console on :3000
+```
 
-**All three**
-- Clone, `make setup && make seed && make dev`, confirm the console loads.
-- Read `CONTRIBUTING.md`. Skim `ARCHITECTURE.md` sections 2 and 4.
-- Put your real GitHub handle in `.github/CODEOWNERS`.
+Needs Node ≥ 18.18, Python ≥ 3.11, [uv](https://docs.astral.sh/uv/).
+**No Docker, no database, no API key.** If `make setup` fails, message Kartik —
+do not spend an hour on it.
 
-**Kartik**
-- Repo created, CI green, both devs added as collaborators.
-- Install the extension unpacked and confirm it reports — this is the only part
-  of the collector never verified in a loaded-extension environment.
+Open <http://localhost:3000>. You should see four detected workflows, one of
+them flagged **do not automate**. That is the whole product in one screen.
 
-### Tuesday 1 Sep — the biggest gaps
-
-**Backend — one live API connector (the top gap)**
-Everything execution-side is mocked. One real read-only connector changes the
-answer to "could this touch production?" from an argument to a demo.
-- Microsoft Graph is the best target: `/me/messages/delta` needs only delegated
-  consent, no tenant admin.
-- Land it as an *ingestion* adapter first (read mail metadata → canonical
-  events), not an execution connector. Lower risk, and it feeds Observation.
-- Acceptance: a real mailbox produces canonical events visible on Observation.
-
-**Frontend — loading and empty states**
-- Replace every `<Loading label="…" />` with a skeleton matching the real layout.
-  Six screens currently flash a text spinner.
-- Empty states: `/automations` and `/exceptions` with zero rows should teach the
-  next action, not just say "nothing here".
-- Acceptance: no layout shift when data lands.
-
-**Kartik**
-- Rehearse `DEMO.md` once end to end. Time it. Note anything slow or fragile.
-
-### Wednesday 2 Sep — hardening
-
-**Backend**
-- Verify the Postgres path: `docker compose up --build` from a clean clone. This
-  is the least-tested route in the repo and it is what a judge may run.
-- Persist replay failures so `/analytics/roi` can trend failure modes over time
-  (currently returned but not stored).
-- Acceptance: `docker compose up` works from a fresh clone; ROI shows a failure
-  trend.
-
-**Frontend**
-- Responsive pass. The console is desktop-only; below ~1100px the stat grids and
-  the flow-definition table break.
-- Keyboard and focus pass: the trust ladder, the promote button and the exception
-  queue are the paths a judge is most likely to drive by keyboard.
-- Acceptance: usable at 1024px; every interactive control reachable by Tab with a
-  visible focus ring.
-
-**Kartik**
-- Screenshots for the README (there are placeholders).
-- Second rehearsal, with the fixes from Tuesday.
-
-### Thursday 3 Sep — freeze
-
-**Feature freeze at 12:00.** After that, only bug fixes.
-
-**Backend**
-- Alembic initial migration (currently `create_all`). Only if Wednesday's work
-  landed cleanly — this is a nice-to-have, not a blocker.
-- Re-run the full suite against Postgres as well as SQLite.
-
-**Frontend**
-- Polish only. No new components.
-- `make build` must be clean with zero warnings.
-
-**All three**
-- Full run-through together. Each person drives `DEMO.md` once.
-- Fix whatever breaks. Nothing else.
-
-### Friday 4 Sep — submit
-
-- Morning: `make demo` → full rehearsal → submit.
-- Nothing merges after the rehearsal except a demo-breaking fix.
+Then: `git checkout -b <your-name>/<what-you-are-doing>`
 
 ---
 
-## The cut list
+## Anirudh — Finance and Customer Support
 
-If time runs short, cut in this order and say what you cut:
+**Your files:** `apps/api/app/domains/finance.py`, `customer_support.py`
 
-1. Alembic migrations
-2. ROI failure-mode trend
-3. Responsive breakpoints below 1024px
-4. The live Graph connector *(cut this only if it is genuinely not working — it
-   is the highest-value item on the list)*
+Both already work and produce detected workflows. Your job is to make them
+reflect what you actually found, not what I guessed.
 
-**Never cut:** the clustering, replay, the trust ladder, self-healing, or the
-do-not-automate detection. Those five are the product.
+1. Read `apps/api/app/domains/README.md` — it is the whole API you need.
+2. Open `finance.py`. Replace the `steps` with the real ones you observed.
+3. Same for `customer_support.py`.
+4. `make demo && make dev` — check your workflow appears on Discovery.
 
-## Definition of done, per task
+**Please keep `customer_support.py` freeform.** It is the pack that proves the
+platform knows when *not* to automate, and there is a test that fails if it
+stops being caught. If your real customer-support work turns out to be highly
+repetitive, add it as a *second* domain rather than changing this one.
 
-1. `make check` green.
-2. No `TODO`, no bare `pass`, no placeholder return.
-3. New env vars in `.env.example` with a comment.
-4. If the API surface changed: `make contract` and `make fixtures` re-run and
-   committed.
-5. You ran it. "Tests pass" is not verification of a UI change.
+**Do not touch** anything under `app/services/` — that is the central
+implementation. If a domain needs something the core cannot express, open an
+issue.
 
-## Risks worth naming now
+---
 
-**The extension is the one thing never verified as a loaded extension.** Chrome
-137+ removed `--load-extension`, so it could not be automated. Both shipped
-files are tested directly and the collector API is tested end to end, but
-Chrome's own plumbing is unverified. **Kartik should install it manually on day
-one**, not day four.
+## Vijay — Sales or HR
 
-**`docker compose up` is the least-tested path.** If a judge runs anything, it
-is that. Wednesday's job.
+**Your files:** `apps/api/app/domains/sales.py` **or** `hr.py`
 
-**No API key is set.** Everything works without one by design, but the LLM-backed
-paths (flow generation, SOP prose, drift remapping) produce better output with
-one, and screen-recording ingestion needs one. Decide by Wednesday whether to
-demo with a key, and if so rehearse with it — the outputs differ.
+**Pick one.** Both are marked `is_template=True` today. One domain you can
+explain end to end is worth more than two you half-understand — delete the
+other file or leave it as a template.
 
-**Three people, one `main`.** The contract check and CODEOWNERS handle the
-frontend/backend boundary. The real risk is `main` going red and nobody noticing
-before the rehearsal. Whoever breaks it fixes it before starting anything else.
+1. Research which applications that team actually lives in.
+2. Find one task they repeat. Not the most interesting one — the most
+   *repetitive* one.
+3. Write it down as observable steps: not "review the lead" but "open the
+   enquiry email", "search the CRM", "create the record".
+4. Set `is_template=False` when it reflects reality.
+
+Same rule: your file only, and `README.md` in that folder is your guide.
+
+---
+
+## Anushree — Chrome · Gouri — Edge
+
+**Your folders:** `collectors/chrome/` and `collectors/edge/`
+
+```bash
+make collectors     # assembles collectors/dist/chrome and dist/edge
+```
+
+Then in your browser: `chrome://extensions` (or `edge://extensions`) →
+**Developer mode** → **Load unpacked** → point at `collectors/dist/<yours>`.
+
+Get a token from the console: **Observation → Browser extension → Connect**.
+Paste it into the extension's options page. Browse normally for a few minutes,
+then check `/sources` — your events should appear.
+
+**Read this before you start, it will save you a day:** Chrome and Edge are
+both Chromium and both run Manifest V3, so *the observing logic is identical*.
+It lives once in `collectors/shared/` and the build copies it into both. Your
+folders hold only what genuinely differs — today that is just the manifest.
+
+So the work is **not** "write the extension twice". It is:
+
+1. **Get it loaded and reporting** in your browser. This is the part that has
+   never been verified — Chrome 137 removed `--load-extension`, so it could not
+   be automated. Both shipped files are unit-tested and the collector API is
+   tested end to end, but nobody has confirmed the browser's own plumbing.
+2. **Find where your browser actually differs.** Permission prompts, the
+   service-worker lifecycle, whether `chrome.*` needs a `browser.*` shim,
+   store-packaging requirements. Put those differences in your folder.
+3. **Report what breaks.** A precise bug report here is worth more than code.
+
+If you find something that has to change in `collectors/shared/`, message
+Kartik rather than editing it — that file is shared with the other browser.
+
+---
+
+## The rules that keep five people mergeable
+
+**Small PRs.** A 400-line PR on Thursday gets rubber-stamped, which is the same
+as not being reviewed.
+
+**Branch per task**, `<name>/<thing>`. Never commit to `main`.
+
+**`main` must always demo.** Before you push:
+
+```bash
+make check              # ruff + tsc + eslint + pytest — must be green
+make test-collector     # only if you touched collectors/
+```
+
+If you break `main`, fixing it is your highest priority regardless of what else
+is open.
+
+**Don't get stuck.** Thirty minutes on the same error means message the group.
+
+---
+
+## What already works, so you don't rebuild it
+
+Detection, scoring, the Interruption Tax, flow generation, the SOP writer, the
+execution engine, replay backtesting, the trust ladder, self-healing, exception
+learning, the console, and the browser collector. 131 backend tests and 33
+collector checks, all green.
+
+Your job is not to build the platform. It is to make it true about a real
+domain, and to get it observing a real browser.
+
+Read `README.md` for what the platform does, `ARCHITECTURE.md` for why each
+decision was made.

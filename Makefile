@@ -13,7 +13,7 @@ UV := $(shell command -v uv 2>/dev/null)
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-api setup-web dev api web seed demo test test-api test-web \
         test-collector check check-all lint typecheck fmt build clean reset-db logs \
-        contract contract-check fixtures web-mock
+        contract contract-check fixtures web-mock collectors
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -68,6 +68,9 @@ contract-check: ## Fail if the committed contract is stale
 
 fixtures: ## Capture live API responses as frontend fixtures (needs `make api`)
 	cd $(API) && .venv/bin/python scripts/export_fixtures.py
+
+collectors: ## Assemble the browser extensions into collectors/dist/
+	node collectors/build.mjs
 
 demo: ## Reset to the exact known-good demo starting state
 	cd $(API) && rm -f loop.db && .venv/bin/python scripts/seed.py

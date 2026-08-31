@@ -119,13 +119,12 @@ def test_clustering_recovers_ground_truth(clusters):
     Ground truth is carried on the events but read by no detection service, so
     this asserts that detection found the structure independently.
     """
-    expected = {
-        "invoice_to_ledger",
-        "weekly_vendor_report",
-        "po_matching",
-        "expense_approval",
-        "customer_escalation",
-    }
+    # One workflow per domain, so the ground-truth labels are the domain keys.
+    # Read from the registry rather than hardcoded: adding a domain should
+    # extend what this test demands, not silently escape it.
+    from app.domains import DOMAINS
+
+    expected = {domain.key for domain in DOMAINS}
     largest: dict[str, int] = {}
     for cluster in clusters:
         counts: dict[str, int] = {}
@@ -156,11 +155,11 @@ def test_clusters_are_pure(clusters):
 
 
 def test_hero_workflow_is_organisational(clusters):
-    """invoice_to_ledger is performed by six users and must span >3."""
+    """Finance is performed by six people and must clear the org threshold."""
     for cluster in clusters:
         labels = [i.ground_truth_workflow for i in cluster.instances]
-        if labels.count("invoice_to_ledger") > 100:
+        if labels.count("finance") > 100:
             users = {i.user_id for i in cluster.instances}
             assert len(users) > settings.org_user_threshold
             return
-    raise AssertionError("no substantial invoice_to_ledger cluster was found")
+    raise AssertionError("no substantial finance cluster was found")

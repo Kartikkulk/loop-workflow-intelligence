@@ -14,6 +14,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.domains import DOMAINS
 from app.llm.client import llm
 from app.llm.tools import ACTIONS, APPS, READ_FRAMES
 from app.models.event import Event
@@ -23,11 +24,14 @@ from app.schemas.sources import (
     CollectBatch,
     CollectorConfig,
     CollectResult,
+    DomainList,
+    DomainOut,
     RecordingIngestRequest,
     RegisterSourceRequest,
     RegisterSourceResult,
     SourceList,
     SourceOut,
+    ToolStatus,
     UpdateSourceRequest,
 )
 from app.services import sources as source_service
@@ -574,4 +578,54 @@ async def ingest_recording(
         transfers_linked=0,
         apps_discovered=sorted(set(discovered)),
         detection_suggested=True,
+    )
+
+
+# ── domains ────────────────────────────────────────────────────────────────
+
+@router.get("/domains", response_model=DomainList)
+async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainList:
+    """The teams LOOP knows about, and whether their tools are being watched.
+
+    This is the honest answer to "what do I need to onboard?". A domain whose
+    tools have produced no events is a domain LOOP is blind to, however good the
+    detection is — so the gap is reported per tool rather than as one number.
+    """
+    counted = await session.execute(
+        select(Event.app, func.count()).group_by(Event.app)
+    )
+    events_by_app = {app: count for app, count in counted.all()}
+
+    items: list[DomainOut] = []
+    unwatched: set[str] = set()
+
+    for domain in DOMAINS:
+        tools = []
+        for app in domain.tools:
+            events = int(events_by_app.get(app, 0))
+            if events == 0:
+                unwatched.add(app)
+            tools.append(ToolStatus(app=app, observed=events > 0, events=events))
+
+        watched = sum(1 for t in tools if t.observed)
+        items.append(
+            DomainOut(
+                key=domain.key,
+                label=domain.label,
+                owner=domain.owner,
+                summary=domain.summary,
+                team=domain.team,
+                people=len(domain.people),
+                workflow_name=domain.workflow_name,
+                step_count=len(domain.steps),
+                tools=tools,
+                is_template=domain.is_template,
+                tool_coverage=round(watched / len(tools), 3) if tools else 0.0,
+            )
+        )
+
+    return DomainList(
+        total=len(items),
+        items=items,
+        unwatched_tools=sorted(unwatched),
     )

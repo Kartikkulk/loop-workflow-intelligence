@@ -52,7 +52,7 @@ def test_uniform_sequences_have_zero_entropy(clusters):
 
 
 async def test_hero_workflow_is_automatable(clusters):
-    cluster = _find(clusters, "invoice_to_ledger", minimum=200)
+    cluster = _find(clusters, "finance", minimum=200)
     score = await score_cluster(cluster, "invoice to ledger")
     assert score.automatability >= settings.do_not_automate_threshold
     assert not score.do_not_automate
@@ -68,7 +68,7 @@ async def test_escalation_workflow_is_flagged_do_not_automate(clusters):
     specification. It must be caught because its instances genuinely disagree
     with each other in the log.
     """
-    cluster = _find(clusters, "customer_escalation", minimum=50)
+    cluster = _find(clusters, "customer_support", minimum=50)
     score = await score_cluster(cluster, "customer escalation")
 
     assert score.do_not_automate, "high-variance workflow was not flagged"
@@ -81,7 +81,7 @@ async def test_escalation_workflow_is_flagged_do_not_automate(clusters):
 
 
 async def test_reasoning_is_specific_not_generic(clusters):
-    cluster = _find(clusters, "customer_escalation", minimum=50)
+    cluster = _find(clusters, "customer_support", minimum=50)
     score = await score_cluster(cluster, "customer escalation")
     # The reasoning must cite measured numbers, so it survives scrutiny.
     assert "%" in score.reasoning
@@ -89,8 +89,8 @@ async def test_reasoning_is_specific_not_generic(clusters):
 
 
 async def test_priority_prefers_high_volume_low_variance(clusters):
-    hero = await score_cluster(_find(clusters, "invoice_to_ledger", 200), "invoice")
-    escalation = await score_cluster(_find(clusters, "customer_escalation", 50), "escalation")
+    hero = await score_cluster(_find(clusters, "finance", 200), "invoice")
+    escalation = await score_cluster(_find(clusters, "customer_support", 50), "escalation")
     assert hero.priority > escalation.priority
 
 
@@ -122,6 +122,6 @@ def test_branch_count_detects_varying_positions(clusters):
 
 
 def test_free_text_ratio_is_higher_for_judgement_work(clusters):
-    escalation = free_text_ratio(_find(clusters, "customer_escalation", 50))
-    invoice = free_text_ratio(_find(clusters, "invoice_to_ledger", 200))
+    escalation = free_text_ratio(_find(clusters, "customer_support", 50))
+    invoice = free_text_ratio(_find(clusters, "finance", 200))
     assert escalation > invoice

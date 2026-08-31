@@ -16,7 +16,7 @@ import path from "node:path";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const CONTENT = fs.readFileSync(
-  path.join(HERE, "..", "browser-extension", "content.js"),
+  path.join(HERE, "..", "shared", "content.js"),
   "utf8",
 );
 

@@ -15,6 +15,7 @@ import type {
   BreakSchemaResult,
   ClusterDetail,
   ClusterList,
+  DomainList,
   ExceptionList,
   IngestResult,
   PatchList,
@@ -41,6 +42,7 @@ export const keys = {
   roi: ["roi"] as const,
   system: ["system"] as const,
   sources: ["sources"] as const,
+  domains: ["domains"] as const,
 };
 
 type Options<T> = Omit<UseQueryOptions<T>, "queryKey" | "queryFn">;
@@ -111,6 +113,13 @@ export function useRoi() {
   return useQuery({
     queryKey: keys.roi,
     queryFn: () => http.get<RoiReport>("/api/v1/analytics/roi"),
+  });
+}
+
+export function useDomains() {
+  return useQuery({
+    queryKey: keys.domains,
+    queryFn: () => http.get<DomainList>("/api/v1/domains"),
   });
 }
 

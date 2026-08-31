@@ -98,6 +98,35 @@ suspiciously round 100%.
 
 ---
 
+## Adding a domain
+
+The platform is domain-agnostic. A team's repetitive work is **one file**:
+
+```python
+# apps/api/app/domains/sales.py
+DOMAIN = DomainPack(
+    key="sales", label="Sales", owner="Vijay",
+    tools=["gmail", "crm", "sheets"],
+    people=["u_rohit", "u_neha", "u_imran", "u_divya"],
+    workflow_name="Inbound lead to CRM record",
+    per_person_per_week=9.0,
+    steps=[
+        Step("gmail", "read",   "enquiry_email",     50, fields=["sender"]),
+        Step("crm",   "search", "existing_contact",  55, fields=["customer"]),
+        Step("crm",   "create", "lead_record",       95, fields=["customer"]),
+        Step("gmail", "send",   "acknowledgement",   40, fields=["recipient"]),
+    ],
+)
+```
+
+The registry discovers it automatically — there is no list to edit, so two
+people adding a domain on the same day do not conflict. Nothing in
+`app/services/`, `app/api/` or `app/web/` changes.
+
+**One workflow per domain, deliberately.** A domain you can explain end to end
+is worth more than five you half-understand. See
+[`apps/api/app/domains/README.md`](apps/api/app/domains/README.md).
+
 ## How LOOP gets to observe
 
 A platform that can only be *fed* logs is a report generator. LOOP can also
@@ -500,6 +529,13 @@ Stated plainly, because a reviewer will find them anyway.
 ```
 apps/api/                     FastAPI backend
   app/
+    domains/                  ONE FILE PER TEAM — add a domain, change nothing else
+      base.py                 the DomainPack shape
+      finance.py              Anirudh · the hero workflow
+      customer_support.py     Anirudh · the do-not-automate one
+      sales.py                Vijay   · template
+      hr.py                   Vijay   · template
+      README.md               the copy-paste guide
     api/v1/                   route modules
     connectors/               Connector protocol, real + mock implementations
     llm/
@@ -527,11 +563,14 @@ apps/api/                     FastAPI backend
   scripts/seed.py             CLI: rebuild + export fixtures
   tests/                      90 tests
 collectors/
-  browser-extension/          MV3 extension — the ~70% coverage tier
+  shared/                     MV3 logic — ONE copy, used by every browser
     content.js                observes the page; hashes clipboard; strips URLs
     background.js             batches, retries, honours pause and revocation
     options.html/js           token, denylist, pause, and the consent notice
-  tests/                      33 checks over both shipped files
+  chrome/                     Anushree · Chrome-specific files
+  edge/                       Gouri    · Edge-specific files
+  build.mjs                   assembles dist/chrome and dist/edge
+  tests/                      33 checks over the shared logic
   README.md                   tiers, privacy as implemented, collector API
 apps/web/                     Next.js 15 console
   app/                        seven screens
