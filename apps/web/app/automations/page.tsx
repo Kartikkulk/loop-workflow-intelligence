@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { TrustBadge } from "@/components/trust-ladder";
-import { Empty, ErrorNote, Loading, Meter, PageHeader, Panel, Stat } from "@/components/ui";
+import {
+  Empty,
+  ErrorNote,
+  Meter,
+  PageHeader,
+  PageSkeleton,
+  Panel,
+  Stat,
+} from "@/components/ui";
+import { StateStripe } from "@/components/viz";
 import { useAutomations } from "@/lib/api/queries";
 import { hours, percent, relativeTime } from "@/lib/format";
 import { TRUST_LADDER } from "@/lib/api/types";
@@ -29,7 +38,7 @@ export default function AutomationsPage() {
 
       <div className="space-y-6 px-8 pt-6">
         {error && <ErrorNote error={error} />}
-        {isLoading && <Loading label="Loading automations" />}
+        {isLoading && <PageSkeleton rows={3} />}
 
         {data && (
           <>
@@ -61,9 +70,7 @@ export default function AutomationsPage() {
                     <div
                       className={`h-0.5 rounded-full ${count > 0 ? "bg-accent-500" : "bg-ink-700"}`}
                     />
-                    <p className="tnum mt-2 text-lg font-semibold leading-none text-mist-100">
-                      {count}
-                    </p>
+                    <p className="metric mt-2 text-lg text-mist-100">{count}</p>
                     <p className="mt-1 text-2xs font-medium tracking-wide text-mist-500">
                       {level}
                     </p>
@@ -76,14 +83,34 @@ export default function AutomationsPage() {
               {items.length === 0 ? (
                 <Empty
                   title="No automations yet"
-                  hint="Open a detected workflow from Discovery and generate one."
+                  hint="An automation is generated from a detected workflow. Pick the highest-priority one and press Generate."
+                  action={
+                    <Link className="btn-primary" href="/">
+                      Go to Discovery
+                    </Link>
+                  }
                 />
               ) : (
                 <ul className="divide-y divide-ink-700">
                   {items.map((automation) => (
-                    <li key={automation.id} className="transition-colors hover:bg-ink-850/60">
-                      <Link href={`/automations/${automation.id}`} className="block px-4 py-4">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
+                    <li key={automation.id} className="row-interactive">
+                      <Link
+                        href={`/automations/${automation.id}`}
+                        className="flex gap-3 px-4 py-4"
+                      >
+                        <StateStripe
+                          state={
+                            automation.critical_mismatch_count > 0
+                              ? "bad"
+                              : automation.trust_level === "AUTONOMOUS" ||
+                                  automation.trust_level === "ASSIST"
+                                ? "good"
+                                : automation.shadow_run_count > 0
+                                  ? "warn"
+                                  : "idle"
+                          }
+                        />
+                        <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-4">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="text-sm font-medium text-mist-100">
@@ -116,7 +143,7 @@ export default function AutomationsPage() {
                           <div className="flex shrink-0 items-start gap-6">
                             <div className="w-32">
                               <p className="eyebrow">Confidence</p>
-                              <p className="tnum mt-1 text-lg font-semibold leading-none text-mist-100">
+                              <p className="metric mt-1 text-lg text-mist-100">
                                 {percent(automation.confidence, 1)}
                               </p>
                               <div className="mt-2">
@@ -130,7 +157,7 @@ export default function AutomationsPage() {
                             </div>
                             <div className="text-right">
                               <p className="eyebrow">Hours / yr</p>
-                              <p className="tnum mt-1 text-lg font-semibold leading-none text-accent-400">
+                              <p className="metric mt-1 text-lg text-accent-400">
                                 {hours(automation.annual_hours)}
                               </p>
                               <p className="tnum mt-1 text-2xs text-mist-500">

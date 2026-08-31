@@ -33,9 +33,37 @@ const config: Config = {
           400: "#60a5fa",
           300: "#93c5fd",
         },
-        good: { 500: "#10b981", 400: "#34d399" },
-        warn: { 500: "#f59e0b", 400: "#fbbf24" },
-        bad: { 500: "#ef4444", 400: "#f87171" },
+        good: { 600: "#059669", 500: "#10b981", 400: "#34d399", 300: "#6ee7b7" },
+        warn: { 600: "#d97706", 500: "#f59e0b", 400: "#fbbf24", 300: "#fcd34d" },
+        bad: { 600: "#dc2626", 500: "#ef4444", 400: "#f87171", 300: "#fca5a5" },
+        // A second data hue, so a chart with two series does not have to
+        // borrow the interactive accent for one of them.
+        cyan: { 600: "#0891b2", 500: "#06b6d4", 400: "#22d3ee" },
+      },
+      boxShadow: {
+        // Elevation on a near-black ground has to come from a lifted edge
+        // rather than a drop shadow, which is invisible at these values.
+        lift: "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.7)",
+        glow: "0 0 0 1px rgba(59,130,246,0.35), 0 0 20px -4px rgba(59,130,246,0.35)",
+      },
+      keyframes: {
+        shimmer: {
+          "0%": { backgroundPosition: "-160% 0" },
+          "100%": { backgroundPosition: "260% 0" },
+        },
+        "rise-in": {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "pulse-ring": {
+          "0%, 100%": { opacity: "0.45" },
+          "50%": { opacity: "1" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 1.6s ease-in-out infinite",
+        "rise-in": "rise-in 260ms cubic-bezier(0.16,1,0.3,1) both",
+        "pulse-ring": "pulse-ring 2.4s ease-in-out infinite",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],

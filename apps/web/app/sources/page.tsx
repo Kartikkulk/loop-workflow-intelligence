@@ -5,9 +5,9 @@ import {
   Badge,
   Empty,
   ErrorNote,
-  Loading,
   Meter,
   PageHeader,
+  PageSkeleton,
   Panel,
   Stat,
 } from "@/components/ui";
@@ -27,7 +27,7 @@ export default function SourcesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const redetect = useRedetect();
 
-  if (isLoading) return <Loading label="Reading observation sources" />;
+  if (isLoading) return <PageSkeleton rows={4} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
   if (!data) return null;
 

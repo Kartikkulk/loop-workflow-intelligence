@@ -7,7 +7,15 @@ import { TrustLadder, TrustBadge } from "@/components/trust-ladder";
 import { ShadowRunTable } from "@/components/shadow-run-table";
 import { ReplayPanel } from "@/components/replay-panel";
 import { FlowDefinition } from "@/components/flow-definition";
-import { Badge, ErrorNote, Loading, Meter, PageHeader, Panel, Stat } from "@/components/ui";
+import {
+  Badge,
+  ErrorNote,
+  Meter,
+  PageHeader,
+  PageSkeleton,
+  Panel,
+  Stat,
+} from "@/components/ui";
 import {
   useAutomation,
   useBreakSchema,
@@ -35,7 +43,7 @@ export default function AutomationDetailPage() {
   const seedExceptions = useSeedExceptions();
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (isLoading) return <Loading label="Loading automation" />;
+  if (isLoading) return <PageSkeleton rows={2} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
   if (!automation) return null;
 
@@ -126,7 +134,12 @@ export default function AutomationDetailPage() {
             label="Confidence"
             value={percent(trust.confidence, 1)}
             tone={trust.confidence >= trust.threshold ? "good" : "accent"}
-            hint={`Rolling average over the last ${trust.runs_required} runs`}
+            hint={
+              trust.runs_in_window < trust.runs_required
+                ? `${percent(trust.average_score, 0)} agreement, scaled by a window that is ` +
+                  `${trust.runs_in_window}/${trust.runs_required} full — one good run is not confidence`
+                : `Rolling agreement over the last ${trust.runs_required} runs`
+            }
           />
           <Stat
             label="Replay accuracy"
@@ -184,7 +197,11 @@ export default function AutomationDetailPage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <ReplayPanel automationId={id} />
+            <ReplayPanel
+              automationId={id}
+              storedAccuracy={automation.replay_accuracy}
+              storedTotal={automation.replay_total}
+            />
             <Panel
               title="Shadow run history"
               hint="Each run pairs what the automation predicted with what the human actually did, field by field."

@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Badge, Empty, ErrorNote, Loading, PageHeader, Panel, Stat } from "@/components/ui";
+import {
+  Badge,
+  Empty,
+  ErrorNote,
+  PageHeader,
+  PageSkeleton,
+  Panel,
+  Stat,
+} from "@/components/ui";
 import {
   useApplyPatch,
   useExceptions,
@@ -46,7 +54,7 @@ export default function ExceptionsPage() {
         )}
         {exceptions.error && <ErrorNote error={exceptions.error} />}
         {patches.error && <ErrorNote error={patches.error} />}
-        {(exceptions.isLoading || patches.isLoading) && <Loading />}
+        {(exceptions.isLoading || patches.isLoading) && <PageSkeleton rows={3} />}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Open exceptions" value={String(open.length)} tone={open.length ? "warn" : "good"} />

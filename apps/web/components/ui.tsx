@@ -46,12 +46,15 @@ export function Stat({
   unit,
   hint,
   tone = "default",
+  aside,
 }: {
   label: string;
   value: string;
   unit?: string;
   hint?: string;
   tone?: "default" | "good" | "warn" | "bad" | "accent";
+  /** Top-right slot — a sparkline or a badge, sized by the caller. */
+  aside?: React.ReactNode;
 }) {
   const toneClass = {
     default: "text-mist-100",
@@ -62,11 +65,14 @@ export function Stat({
   }[tone];
 
   return (
-    <div className="panel px-4 py-3.5">
-      <p className="eyebrow">{label}</p>
-      <p className={`tnum mt-2 text-2xl font-semibold leading-none ${toneClass}`}>
+    <div className="panel px-4 py-3.5 shadow-lift transition-colors duration-150 hover:border-ink-600">
+      <div className="flex items-start justify-between gap-2">
+        <p className="eyebrow">{label}</p>
+        {aside}
+      </div>
+      <p className={`metric mt-2 text-2xl ${toneClass}`}>
         {value}
-        {unit && <span className="ml-1 text-xs font-normal text-mist-500">{unit}</span>}
+        {unit && <span className="ml-1 text-xs font-normal tracking-normal text-mist-500">{unit}</span>}
       </p>
       {hint && <p className="mt-2 text-2xs leading-snug text-mist-500">{hint}</p>}
     </div>
@@ -165,7 +171,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel shadow-lift ${className}`}>
       {(title || actions) && (
         <div className="flex items-start justify-between gap-3 border-b border-ink-700 px-4 py-3">
           <div className="min-w-0">
@@ -180,18 +186,107 @@ export function Panel({
   );
 }
 
-export function Empty({ title, hint }: { title: string; hint?: string }) {
+export function Empty({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  /** The thing that fills this emptiness. An empty state without one is a dead end. */
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="px-4 py-10 text-center">
+    <div className="flex flex-col items-center px-4 py-12 text-center">
+      <span className="mb-3 h-8 w-8 rounded-full border border-dashed border-ink-600" aria-hidden />
       <p className="text-xs font-medium text-mist-300">{title}</p>
-      {hint && <p className="mx-auto mt-1.5 max-w-md text-2xs leading-relaxed text-mist-500">{hint}</p>}
+      {hint && (
+        <p className="mx-auto mt-1.5 max-w-md text-2xs leading-relaxed text-mist-500">{hint}</p>
+      )}
+      {action && <div className="mt-3.5">{action}</div>}
     </div>
   );
 }
 
+/**
+ * A loading placeholder sized to the content it replaces.
+ *
+ * The point is that nothing moves when data lands. A centred text spinner
+ * makes every screen flash and then reflow, which reads as slower than it is
+ * even when the request took 180ms.
+ */
+export function Skeleton({
+  className = "",
+  w,
+  h = 12,
+}: {
+  className?: string;
+  w?: number | string;
+  h?: number | string;
+}) {
+  return (
+    <span
+      className={`skeleton block ${className}`}
+      style={{ width: w, height: h }}
+      aria-hidden
+    />
+  );
+}
+
+/** Header + stat row + rows: the shape every list screen resolves into. */
+export function PageSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="space-y-6 px-8 pt-6" role="status" aria-label="Loading">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="panel px-4 py-3.5">
+            <Skeleton w={72} h={8} />
+            <Skeleton className="mt-3" w={96} h={24} />
+            <Skeleton className="mt-3" w="80%" h={8} />
+          </div>
+        ))}
+      </div>
+
+      <div className="panel">
+        <div className="border-b border-ink-700 px-4 py-3">
+          <Skeleton w={160} h={10} />
+          <Skeleton className="mt-2" w={280} h={8} />
+        </div>
+        <ul className="divide-y divide-ink-700">
+          {Array.from({ length: rows }).map((_, index) => (
+            <li key={index} className="flex items-start justify-between gap-6 px-4 py-4">
+              <div className="min-w-0 flex-1 space-y-2.5">
+                <Skeleton w={`${52 - index * 4}%`} h={14} />
+                <div className="flex gap-1.5">
+                  {Array.from({ length: 4 }).map((_, chip) => (
+                    <Skeleton key={chip} w={62} h={16} className="rounded" />
+                  ))}
+                </div>
+                <Skeleton w="34%" h={8} />
+              </div>
+              <div className="hidden shrink-0 gap-6 sm:flex">
+                {Array.from({ length: 3 }).map((_, cell) => (
+                  <div key={cell} className="space-y-2">
+                    <Skeleton w={54} h={8} />
+                    <Skeleton w={44} h={18} />
+                  </div>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Kept for narrow inline cases where a skeleton would be more noise than help. */
 export function Loading({ label = "Loading" }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-10 text-2xs text-mist-500">
+    <div
+      className="flex items-center gap-2 px-4 py-10 text-2xs text-mist-500"
+      role="status"
+    >
       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-500" />
       {label}…
     </div>

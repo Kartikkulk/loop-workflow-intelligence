@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, ErrorNote, Loading, PageHeader, Panel, Stat } from "@/components/ui";
+import { Badge, ErrorNote, PageHeader, PageSkeleton, Panel, Stat } from "@/components/ui";
 import { useResetDemo, useSystem } from "@/lib/api/queries";
 
 export default function SystemPage() {
@@ -9,7 +9,7 @@ export default function SystemPage() {
   const reset = useResetDemo();
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (isLoading) return <Loading label="Reading system status" />;
+  if (isLoading) return <PageSkeleton rows={4} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
   if (!data) return null;
 

@@ -13,7 +13,15 @@ import {
   YAxis,
 } from "recharts";
 import { TrustBadge } from "@/components/trust-ladder";
-import { Empty, ErrorNote, Loading, Meter, PageHeader, Panel, Stat } from "@/components/ui";
+import {
+  Empty,
+  ErrorNote,
+  Meter,
+  PageHeader,
+  PageSkeleton,
+  Panel,
+  Stat,
+} from "@/components/ui";
 import { useRoi } from "@/lib/api/queries";
 import { hours, percent } from "@/lib/format";
 import type { CoveragePoint } from "@/lib/api/types";
@@ -24,7 +32,7 @@ const GRID = "#1e232c";
 export default function RoiPage() {
   const { data, isLoading, error } = useRoi();
 
-  if (isLoading) return <Loading label="Computing impact" />;
+  if (isLoading) return <PageSkeleton rows={3} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
   if (!data) return null;
 

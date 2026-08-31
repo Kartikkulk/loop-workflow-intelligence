@@ -8,11 +8,12 @@ import {
   Badge,
   Empty,
   ErrorNote,
-  Loading,
   PageHeader,
+  PageSkeleton,
   Panel,
   Stat,
 } from "@/components/ui";
+import { ProportionBar, Sparkline, StateStripe, VariantBar } from "@/components/viz";
 import { IngestPanel } from "@/components/ingest-panel";
 import { useClusters } from "@/lib/api/queries";
 import { duration, hours, percent, teamLabel } from "@/lib/format";
@@ -22,6 +23,13 @@ export default function DiscoveryPage() {
   const { data, isLoading, error } = useClusters();
   const [showIngest, setShowIngest] = useState(false);
   const [showNotRecommended, setShowNotRecommended] = useState(false);
+
+  // One ruler for every bar on the screen: bars scaled per-row would rank
+  // nothing, which is the only thing a bar is for here.
+  const maxHours = Math.max(
+    1,
+    ...(data?.recommended ?? []).map((c) => c.annual_hours + c.interruption_tax_hours),
+  );
 
   return (
     <div className="pb-16">
@@ -40,7 +48,7 @@ export default function DiscoveryPage() {
         {showIngest && <IngestPanel onDone={() => setShowIngest(false)} />}
 
         {error && <ErrorNote error={error} />}
-        {isLoading && <Loading label="Mining workflows" />}
+        {isLoading && <PageSkeleton rows={5} />}
 
         {data && (
           <>
@@ -56,6 +64,14 @@ export default function DiscoveryPage() {
                 unit="hrs/yr"
                 tone="accent"
                 hint="Median duration × observed frequency × 48 weeks × people"
+                aside={
+                  <Sparkline
+                    points={data.recommended.map((c) => c.annual_hours).reverse()}
+                    tone="accent"
+                    width={64}
+                    height={20}
+                  />
+                }
               />
               <Stat
                 label="Interruption tax"
@@ -63,6 +79,14 @@ export default function DiscoveryPage() {
                 unit="hrs/yr"
                 tone="warn"
                 hint="Cost of context switching, invisible in a time-and-motion study"
+                aside={
+                  <Sparkline
+                    points={data.recommended.map((c) => c.interruption_tax_hours).reverse()}
+                    tone="warn"
+                    width={64}
+                    height={20}
+                  />
+                }
               />
               <Stat
                 label="Organisation-wide"
@@ -78,12 +102,26 @@ export default function DiscoveryPage() {
               {data.recommended.length === 0 ? (
                 <Empty
                   title="No automatable workflows yet"
-                  hint="Upload an activity log or describe a recurring task to get started."
+                  hint="LOOP needs activity to mine. Add a log, describe a task in your own words, or connect a browser to watch real work."
+                  action={
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <button className="btn-primary" onClick={() => setShowIngest(true)}>
+                        Add activity data
+                      </button>
+                      <Link className="btn-ghost" href="/sources">
+                        Connect a browser
+                      </Link>
+                    </div>
+                  }
                 />
               ) : (
                 <ul className="divide-y divide-ink-700">
                   {data.recommended.map((cluster) => (
-                    <ClusterRow key={cluster.id} cluster={cluster} />
+                    <ClusterRow
+                      key={cluster.id}
+                      cluster={cluster}
+                      maxHours={maxHours}
+                    />
                   ))}
                 </ul>
               )}
@@ -118,57 +156,102 @@ export default function DiscoveryPage() {
   );
 }
 
-function ClusterRow({ cluster }: { cluster: ClusterSummary }) {
+function ClusterRow({
+  cluster,
+  maxHours,
+}: {
+  cluster: ClusterSummary;
+  maxHours: number;
+}) {
+  const strong = cluster.automatability >= 0.6;
+  const variants = cluster.variance_breakdown;
+
   return (
-    <li className="group transition-colors hover:bg-ink-850/60">
-      <Link href={`/clusters/${cluster.id}`} className="block px-4 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-medium text-mist-100">{cluster.name}</h3>
-              {cluster.is_organisational && <Badge tone="accent">Organisational</Badge>}
-              {cluster.has_automation && <Badge tone="good">Automation built</Badge>}
+    <li className="row-interactive">
+      <Link href={`/clusters/${cluster.id}`} className="flex gap-3 px-4 py-4">
+        <StateStripe state={cluster.has_automation ? "good" : strong ? "warn" : "idle"} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-medium text-mist-100">{cluster.name}</h3>
+                {cluster.is_organisational && <Badge tone="accent">Organisational</Badge>}
+                {cluster.has_automation && <Badge tone="good">Automation built</Badge>}
+              </div>
+
+              <div className="mt-2.5">
+                <SignatureChips signature={cluster.signature} />
+              </div>
+
+              {/* The share of instances taking the dominant path. A cluster whose
+                  first segment fills the bar is one workflow; a tail of slivers
+                  is a workflow with real branching. */}
+              <div className="mt-3 max-w-sm">
+                <VariantBar
+                  shares={[
+                    variants.dominant_variant_share,
+                    ...Array.from(
+                      { length: Math.min(5, Math.max(0, variants.variant_count - 1)) },
+                      () =>
+                        (1 - variants.dominant_variant_share) /
+                        Math.min(5, Math.max(1, variants.variant_count - 1)),
+                    ),
+                  ]}
+                />
+                <p className="tnum mt-1.5 text-2xs text-mist-500">
+                  {percent(variants.dominant_variant_share)} take the same path ·{" "}
+                  {variants.variant_count} distinct orders
+                </p>
+              </div>
+
+              <div className="tnum mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
+                <span>{cluster.instance_count.toLocaleString()} instances</span>
+                <span>{duration(cluster.median_duration_ms)} median</span>
+                <span>{cluster.instances_per_user_per_week.toFixed(1)}×/person/week</span>
+                <span>{cluster.teams.map(teamLabel).join(", ")}</span>
+              </div>
             </div>
 
-            <div className="mt-2.5">
-              <SignatureChips signature={cluster.signature} />
-            </div>
+            <div className="flex shrink-0 items-start gap-8">
+              <div className="w-32">
+                <p className="eyebrow text-right">Hours / yr</p>
+                <p className="metric mt-1 text-right text-xl text-mist-100">
+                  {hours(cluster.annual_hours)}
+                </p>
+                <div className="mt-2">
+                  <ProportionBar
+                    value={cluster.annual_hours}
+                    secondary={cluster.interruption_tax_hours}
+                    max={maxHours}
+                    label={`${cluster.annual_hours} hours plus ${cluster.interruption_tax_hours} tax`}
+                  />
+                </div>
+                <p className="tnum mt-1.5 text-right text-2xs text-warn-400">
+                  +{hours(cluster.interruption_tax_hours)} tax
+                </p>
+              </div>
 
-            <div className="tnum mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
-              <span>{cluster.instance_count.toLocaleString()} instances</span>
-              <span>{duration(cluster.median_duration_ms)} median</span>
-              <span>{cluster.instances_per_user_per_week.toFixed(1)}×/person/week</span>
-              <span>
-                {cluster.teams.map(teamLabel).join(", ")}
-              </span>
-            </div>
-          </div>
+              <div className="w-20 text-right">
+                <p className="eyebrow">Automatable</p>
+                <p
+                  className={`metric mt-1 text-xl ${strong ? "text-good-400" : "text-warn-400"}`}
+                >
+                  {percent(cluster.automatability)}
+                </p>
+                <p className="tnum mt-2 text-2xs text-mist-500">
+                  effort {cluster.build_effort}/5
+                </p>
+              </div>
 
-          <div className="flex shrink-0 items-start gap-6">
-            <div className="text-right">
-              <p className="eyebrow">Hours / yr</p>
-              <p className="tnum mt-1 text-lg font-semibold leading-none text-mist-100">
-                {hours(cluster.annual_hours)}
-              </p>
-              <p className="tnum mt-1 text-2xs text-warn-400">
-                +{hours(cluster.interruption_tax_hours)} tax
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="eyebrow">Automatable</p>
-              <p
-                className={`tnum mt-1 text-lg font-semibold leading-none ${
-                  cluster.automatability >= 0.6 ? "text-good-400" : "text-warn-400"
-                }`}
-              >
-                {percent(cluster.automatability)}
-              </p>
-              <p className="tnum mt-1 text-2xs text-mist-500">effort {cluster.build_effort}/5</p>
-            </div>
-            <div className="w-24 text-right">
-              <p className="eyebrow">People</p>
-              <div className="mt-1.5 flex justify-end">
-                <AvatarRow userIds={cluster.user_ids} max={5} />
+              <div className="w-24 text-right">
+                <p className="eyebrow">People</p>
+                <div className="mt-1.5 flex justify-end">
+                  <AvatarRow userIds={cluster.user_ids} max={5} />
+                </div>
+                <p className="tnum mt-2 text-2xs text-mist-500">
+                  priority {cluster.priority.toFixed(0)}
+                </p>
               </div>
             </div>
           </div>

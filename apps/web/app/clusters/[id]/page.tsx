@@ -11,6 +11,7 @@ import {
   Gauge,
   Loading,
   PageHeader,
+  PageSkeleton,
   Panel,
   Stat,
 } from "@/components/ui";
@@ -27,7 +28,7 @@ export default function ClusterDetailPage() {
   const { data: sop, isLoading: sopLoading } = useSop(id, showSop);
   const generate = useGenerateAutomation();
 
-  if (isLoading) return <Loading label="Loading workflow" />;
+  if (isLoading) return <PageSkeleton rows={2} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
   if (!cluster) return null;
 

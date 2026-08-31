@@ -9,10 +9,20 @@ import { useReplay } from "@/lib/api/queries";
  * The backtest. Failures are expanded by default and never rounded away —
  * naming your own failure modes before a reviewer finds them is the point.
  */
-export function ReplayPanel({ automationId }: { automationId: string }) {
+export function ReplayPanel({
+  automationId,
+  storedAccuracy,
+  storedTotal,
+}: {
+  automationId: string;
+  /** A previously stored result, so a reload does not lose a real backtest. */
+  storedAccuracy?: number | null;
+  storedTotal?: number;
+}) {
   const [days, setDays] = useState(30);
   const replay = useReplay();
   const report = replay.data;
+  const hasStored = storedAccuracy !== null && storedAccuracy !== undefined;
 
   return (
     <Panel
@@ -41,11 +51,32 @@ export function ReplayPanel({ automationId }: { automationId: string }) {
         </div>
       }
     >
-      {!report && !replay.isPending && (
+      {!report && !replay.isPending && !hasStored && (
         <Empty
           title="No backtest yet"
           hint="Run one to see how this automation would have performed against the last 30 days of real activity."
         />
+      )}
+
+      {!report && !replay.isPending && hasStored && (
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2 px-4 py-4">
+          <div>
+            <p className="eyebrow">Last recorded accuracy</p>
+            <p
+              className={`metric mt-1 text-2xl ${
+                (storedAccuracy ?? 0) >= 0.9 ? "text-good-400" : "text-warn-400"
+              }`}
+            >
+              {percent(storedAccuracy ?? 0, 2)}
+            </p>
+          </div>
+          <p className="max-w-sm text-2xs leading-relaxed text-mist-500">
+            {storedTotal
+              ? `Measured over ${storedTotal.toLocaleString()} historical triggers. `
+              : ""}
+            Run it again to see the failure list and each disagreeing field.
+          </p>
+        </div>
       )}
 
       {report && (
