@@ -5,43 +5,23 @@ import { usePathname } from "next/navigation";
 import { useApprovalCount, useSystem } from "@/lib/api/queries";
 
 /**
- * The navigation is the product's story, in order.
+ * Five destinations, in the order someone actually uses them.
  *
- * Connect the tools you already use, let the agent watch them, see what it
- * found, approve what it proposes, and only then does anything run. Ordering
- * these by journey rather than by feature means the sidebar itself explains
- * how the product works to someone seeing it for the first time.
+ * Dashboard answers "what is going on" and links everywhere else. The rest is
+ * the journey: find the work, approve what is proposed, watch what runs, and
+ * add more to watch.
  */
-const STEPS = [
-  {
-    href: "/integrations",
-    step: "1",
-    label: "Integrations",
-    hint: "Connect your tools",
-  },
-  {
-    href: "/",
-    step: "2",
-    label: "Discovery",
-    hint: "What we found",
-  },
-  {
-    href: "/approvals",
-    step: "3",
-    label: "Approvals",
-    hint: "Needs your yes",
-  },
-  {
-    href: "/automations",
-    step: "4",
-    label: "Automations",
-    hint: "Running now",
-  },
+const LINKS = [
+  { href: "/", label: "Dashboard", hint: "What's happening" },
+  { href: "/discovery", label: "Discovery", hint: "Repetitive work found" },
+  { href: "/approvals", label: "Approvals", hint: "Needs your yes" },
+  { href: "/automations", label: "Automations", hint: "Running now" },
+  { href: "/sources", label: "Sources", hint: "Where data comes from" },
 ];
 
-const REST = [
-  { href: "/roi", label: "Impact", hint: "Effort reduced" },
-  { href: "/system", label: "System", hint: "Connectors and config" },
+const FOOTER_LINKS = [
+  { href: "/roi", label: "Impact" },
+  { href: "/system", label: "System" },
 ];
 
 export function Nav() {
@@ -65,72 +45,47 @@ export function Nav() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-3">
-        <p className="eyebrow px-3 pb-2">How it works</p>
-
-        <div className="relative">
-          {/* A rail joining the four steps, so they read as one sequence
-              rather than four unrelated destinations. */}
-          <span
-            className="absolute left-[1.32rem] top-3 bottom-3 w-px bg-ink-700"
-            aria-hidden
-          />
-
-          {STEPS.map((link) => {
-            const active = isActive(link.href);
-            const badge = link.href === "/approvals" ? pending : 0;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`relative flex items-center gap-2.5 rounded-md py-2 pl-3 pr-3 transition-colors ${
-                  active
-                    ? "bg-ink-800 text-mist-100"
-                    : "text-mist-400 hover:bg-ink-900 hover:text-mist-200"
-                }`}
-              >
-                <span
-                  className={`relative z-10 flex h-[1.15rem] w-[1.15rem] shrink-0 items-center justify-center rounded-full border text-[9px] font-semibold transition-colors ${
-                    active
-                      ? "border-accent-500 bg-accent-500 text-white"
-                      : "border-ink-600 bg-ink-950 text-mist-500"
-                  }`}
-                >
-                  {link.step}
-                </span>
-                <span className="flex min-w-0 flex-col">
-                  <span className="text-xs font-medium">{link.label}</span>
-                  <span className="truncate text-2xs text-mist-500">{link.hint}</span>
-                </span>
-                {badge > 0 && (
-                  <span className="tnum ml-auto rounded-full bg-warn-500 px-1.5 py-0.5 text-2xs font-semibold text-ink-950">
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-
-        <p className="eyebrow px-3 pb-2 pt-4">Reporting</p>
-        {REST.map((link) => {
+        {LINKS.map((link) => {
           const active = isActive(link.href);
+          const badge = link.href === "/approvals" ? pending : 0;
           return (
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center rounded-md px-3 py-2 transition-colors ${
+              className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${
                 active
                   ? "bg-ink-800 text-mist-100"
                   : "text-mist-400 hover:bg-ink-900 hover:text-mist-200"
               }`}
             >
-              <span className="flex flex-col">
+              <span className="flex min-w-0 flex-col">
                 <span className="text-xs font-medium">{link.label}</span>
-                <span className="text-2xs text-mist-500">{link.hint}</span>
+                <span className="truncate text-2xs text-mist-500">{link.hint}</span>
               </span>
+              {badge > 0 && (
+                <span className="tnum ml-auto rounded-full bg-warn-500 px-1.5 py-0.5 text-2xs font-semibold text-ink-950">
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}
+
+        <div className="mt-3 flex gap-1 border-t border-ink-800 px-3 pt-3">
+          {FOOTER_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`rounded px-2 py-1 text-2xs transition-colors ${
+                isActive(link.href)
+                  ? "bg-ink-800 text-mist-200"
+                  : "text-mist-500 hover:text-mist-300"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-2 border-t border-ink-700 px-5 py-4 text-2xs text-mist-500">

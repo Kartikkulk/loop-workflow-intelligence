@@ -122,8 +122,8 @@ export default function AutomationsPage() {
                         Review {proposed.length} waiting
                       </Link>
                     ) : (
-                      <Link className="btn-primary" href="/integrations">
-                        Connect your tools
+                      <Link className="btn-primary" href="/sources">
+                        Add a source
                       </Link>
                     )
                   }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Exceptions folded into Approvals — everything needing a decision is one screen. */
+/** Folded into Approvals — one screen for everything needing a decision. */
 export default function ExceptionsRedirect() {
   redirect("/approvals");
 }
