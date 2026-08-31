@@ -116,6 +116,25 @@ export function useRoi() {
   });
 }
 
+/**
+ * Everything currently waiting on a human decision, as one number.
+ *
+ * An automation that has not reached ASSIST is not running — it is proposed.
+ * Counting those alongside open exceptions and un-applied patches is what makes
+ * the sidebar badge mean "you have this many decisions to make".
+ */
+export function useApprovalCount(): number {
+  const automations = useAutomations();
+  const exceptions = useExceptions();
+  const patches = usePatches();
+
+  const proposed = (automations.data?.items ?? []).filter(
+    (a) => a.trust_level !== "ASSIST" && a.trust_level !== "AUTONOMOUS",
+  ).length;
+
+  return proposed + (exceptions.data?.open_count ?? 0) + (patches.data?.proposed_count ?? 0);
+}
+
 export function useDomains() {
   return useQuery({
     queryKey: keys.domains,

@@ -19,21 +19,33 @@ import { TRUST_LADDER } from "@/lib/api/types";
 export default function AutomationsPage() {
   const { data, isLoading, error } = useAutomations();
 
-  const items = data?.items ?? [];
+  const all = data?.items ?? [];
+  // Only ASSIST and AUTONOMOUS actually act. Anything below is a proposal, and
+  // showing it here would imply work is being automated when none is.
+  const items = all.filter(
+    (a) => a.trust_level === "ASSIST" || a.trust_level === "AUTONOMOUS",
+  );
+  const proposed = all.filter(
+    (a) => a.trust_level !== "ASSIST" && a.trust_level !== "AUTONOMOUS",
+  );
   const byLevel = TRUST_LADDER.map((level) => ({
     level,
-    count: items.filter((a) => a.trust_level === level).length,
+    count: all.filter((a) => a.trust_level === level).length,
   }));
-  const trusted = items.filter(
-    (a) => a.trust_level === "ASSIST" || a.trust_level === "AUTONOMOUS",
-  ).length;
 
   return (
     <div className="pb-16">
       <PageHeader
-        eyebrow="Automations"
-        title="Built automations"
-        subtitle="Each automation climbs the trust ladder by agreeing with a human often enough to earn the next rung. Nothing starts trusted, and a single critical mismatch sends it back down."
+        eyebrow="Step 4 of 4"
+        title="Running for you now"
+        subtitle="Work that has been approved and is actually being done. Each of these earned it by agreeing with a person often enough — and a single serious disagreement sends it straight back to Approvals."
+        actions={
+          proposed.length > 0 ? (
+            <Link className="btn-ghost" href="/approvals">
+              {proposed.length} waiting for approval
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="space-y-6 px-8 pt-6">
@@ -43,27 +55,40 @@ export default function AutomationsPage() {
         {data && (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="Automations" value={String(items.length)} />
               <Stat
-                label="Earned trust"
-                value={String(trusted)}
-                tone={trusted > 0 ? "good" : "default"}
-                hint="At ASSIST or above — running with or without a human in the loop"
+                label="Running now"
+                value={String(items.length)}
+                tone={items.length > 0 ? "good" : "default"}
+                hint={
+                  items.length > 0
+                    ? "Approved and doing the work"
+                    : "Nothing has been approved to run yet"
+                }
               />
               <Stat
-                label="Hours addressed"
+                label="Fully unattended"
+                value={String(all.filter((a) => a.trust_level === "AUTONOMOUS").length)}
+                hint="Runs without anyone confirming each step"
+              />
+              <Stat
+                label="Hours being handled"
                 value={hours(items.reduce((sum, a) => sum + a.annual_hours, 0))}
                 unit="hrs/yr"
                 tone="accent"
+                hint="Work these automations are covering"
               />
               <Stat
-                label="Shadow runs"
-                value={String(items.reduce((sum, a) => sum + a.shadow_run_count, 0))}
-                hint="Predictions compared against real human work"
+                label="Awaiting approval"
+                value={String(proposed.length)}
+                tone={proposed.length > 0 ? "warn" : "default"}
+                hint="Built, tested, not yet approved to act"
               />
             </div>
 
-            <Panel title="Distribution across the ladder">
+            <Panel
+              title="How far each has earned"
+              hint="Trust is granted a rung at a time, by measured agreement — never all at once."
+            >
               <div className="flex items-stretch gap-1.5 px-4 py-4">
                 {byLevel.map(({ level, count }) => (
                   <div key={level} className="min-w-0 flex-1">
@@ -79,15 +104,28 @@ export default function AutomationsPage() {
               </div>
             </Panel>
 
-            <Panel title="All automations">
+            <Panel
+              title="Running automations"
+              hint="Open one to see its trial runs, its backtest, and every field it agreed or disagreed on."
+            >
               {items.length === 0 ? (
                 <Empty
-                  title="No automations yet"
-                  hint="An automation is generated from a detected workflow. Pick the highest-priority one and press Generate."
+                  title="Nothing is running yet"
+                  hint={
+                    proposed.length > 0
+                      ? `${proposed.length} workflow${proposed.length === 1 ? " is" : "s are"} built and waiting for you to approve. Nothing acts until you do.`
+                      : "Workflows appear here once you approve them. Start by connecting the tools your team uses."
+                  }
                   action={
-                    <Link className="btn-primary" href="/">
-                      Go to Discovery
-                    </Link>
+                    proposed.length > 0 ? (
+                      <Link className="btn-primary" href="/approvals">
+                        Review {proposed.length} waiting
+                      </Link>
+                    ) : (
+                      <Link className="btn-primary" href="/integrations">
+                        Connect your tools
+                      </Link>
+                    )
                   }
                 />
               ) : (

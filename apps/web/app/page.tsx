@@ -34,9 +34,9 @@ export default function DiscoveryPage() {
   return (
     <div className="pb-16">
       <PageHeader
-        eyebrow="Discovery"
-        title="Detected workflows"
-        subtitle="Repetitive work mined from the activity log, ranked by what automating it would return. Every number below is measured from observed events — nothing here is configured by hand."
+        eyebrow="Step 2 of 4"
+        title="What we found in your work"
+        subtitle="Repetitive work LOOP spotted in the applications you connected, ranked by what handing it over would give back. Every number is measured from real activity — nothing here was configured by hand."
         actions={
           <button className="btn-ghost" onClick={() => setShowIngest((v) => !v)}>
             {showIngest ? "Hide" : "Add activity data"}
@@ -108,7 +108,7 @@ export default function DiscoveryPage() {
                       <button className="btn-primary" onClick={() => setShowIngest(true)}>
                         Add activity data
                       </button>
-                      <Link className="btn-ghost" href="/sources">
+                      <Link className="btn-ghost" href="/integrations">
                         Connect a browser
                       </Link>
                     </div>

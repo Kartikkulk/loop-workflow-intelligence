@@ -2,24 +2,55 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useExceptions, usePatches, useSystem } from "@/lib/api/queries";
+import { useApprovalCount, useSystem } from "@/lib/api/queries";
 
-const LINKS = [
-  { href: "/", label: "Discovery", hint: "Detected workflows" },
-  { href: "/automations", label: "Automations", hint: "Trust ladder" },
-  { href: "/exceptions", label: "Review queue", hint: "Exceptions and patches" },
-  { href: "/roi", label: "Impact", hint: "Hours and coverage" },
-  { href: "/sources", label: "Observation", hint: "What LOOP can see" },
+/**
+ * The navigation is the product's story, in order.
+ *
+ * Connect the tools you already use, let the agent watch them, see what it
+ * found, approve what it proposes, and only then does anything run. Ordering
+ * these by journey rather than by feature means the sidebar itself explains
+ * how the product works to someone seeing it for the first time.
+ */
+const STEPS = [
+  {
+    href: "/integrations",
+    step: "1",
+    label: "Integrations",
+    hint: "Connect your tools",
+  },
+  {
+    href: "/",
+    step: "2",
+    label: "Discovery",
+    hint: "What we found",
+  },
+  {
+    href: "/approvals",
+    step: "3",
+    label: "Approvals",
+    hint: "Needs your yes",
+  },
+  {
+    href: "/automations",
+    step: "4",
+    label: "Automations",
+    hint: "Running now",
+  },
+];
+
+const REST = [
+  { href: "/roi", label: "Impact", hint: "Effort reduced" },
   { href: "/system", label: "System", hint: "Connectors and config" },
 ];
 
 export function Nav() {
   const pathname = usePathname();
-  const { data: exceptions } = useExceptions();
-  const { data: patches } = usePatches();
   const { data: system } = useSystem();
+  const pending = useApprovalCount();
 
-  const pending = (exceptions?.open_count ?? 0) + (patches?.proposed_count ?? 0);
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <nav className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-ink-700 bg-ink-950">
@@ -29,22 +60,65 @@ export function Nav() {
             <LoopMark />
             <span className="text-sm font-semibold tracking-tight text-mist-100">LOOP</span>
           </div>
-          <p className="mt-1.5 text-2xs leading-snug text-mist-500">
-            Workflow intelligence
-          </p>
+          <p className="mt-1.5 text-2xs leading-snug text-mist-500">Workflow intelligence</p>
         </Link>
       </div>
 
-      <div className="flex-1 space-y-0.5 px-2 py-3">
-        {LINKS.map((link) => {
-          const active =
-            link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
-          const badge = link.href === "/exceptions" ? pending : 0;
+      <div className="flex-1 overflow-y-auto px-2 py-3">
+        <p className="eyebrow px-3 pb-2">How it works</p>
+
+        <div className="relative">
+          {/* A rail joining the four steps, so they read as one sequence
+              rather than four unrelated destinations. */}
+          <span
+            className="absolute left-[1.32rem] top-3 bottom-3 w-px bg-ink-700"
+            aria-hidden
+          />
+
+          {STEPS.map((link) => {
+            const active = isActive(link.href);
+            const badge = link.href === "/approvals" ? pending : 0;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`relative flex items-center gap-2.5 rounded-md py-2 pl-3 pr-3 transition-colors ${
+                  active
+                    ? "bg-ink-800 text-mist-100"
+                    : "text-mist-400 hover:bg-ink-900 hover:text-mist-200"
+                }`}
+              >
+                <span
+                  className={`relative z-10 flex h-[1.15rem] w-[1.15rem] shrink-0 items-center justify-center rounded-full border text-[9px] font-semibold transition-colors ${
+                    active
+                      ? "border-accent-500 bg-accent-500 text-white"
+                      : "border-ink-600 bg-ink-950 text-mist-500"
+                  }`}
+                >
+                  {link.step}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-xs font-medium">{link.label}</span>
+                  <span className="truncate text-2xs text-mist-500">{link.hint}</span>
+                </span>
+                {badge > 0 && (
+                  <span className="tnum ml-auto rounded-full bg-warn-500 px-1.5 py-0.5 text-2xs font-semibold text-ink-950">
+                    {badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+
+        <p className="eyebrow px-3 pb-2 pt-4">Reporting</p>
+        {REST.map((link) => {
+          const active = isActive(link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
-              className={`group flex items-center justify-between rounded-md px-3 py-2 transition-colors ${
+              className={`flex items-center rounded-md px-3 py-2 transition-colors ${
                 active
                   ? "bg-ink-800 text-mist-100"
                   : "text-mist-400 hover:bg-ink-900 hover:text-mist-200"
@@ -54,24 +128,18 @@ export function Nav() {
                 <span className="text-xs font-medium">{link.label}</span>
                 <span className="text-2xs text-mist-500">{link.hint}</span>
               </span>
-              {badge > 0 && (
-                <span className="tnum rounded-full bg-accent-600 px-1.5 py-0.5 text-2xs font-semibold text-white">
-                  {badge}
-                </span>
-              )}
             </Link>
           );
         })}
       </div>
 
       <div className="space-y-2 border-t border-ink-700 px-5 py-4 text-2xs text-mist-500">
-        <Row label="Events" value={(system?.event_count ?? 0).toLocaleString()} />
+        <Row label="Events seen" value={(system?.event_count ?? 0).toLocaleString()} />
         <Row label="Workflows" value={String(system?.cluster_count ?? 0)} />
         <Row
-          label="Connectors"
-          value={system ? (system.mock_connectors ? "mock" : "live") : "—"}
+          label="Side effects"
+          value={system ? (system.mock_connectors ? "mocked" : "live") : "—"}
         />
-        <Row label="AI" value={system?.llm_available ? "Claude" : "heuristic"} />
       </div>
     </nav>
   );

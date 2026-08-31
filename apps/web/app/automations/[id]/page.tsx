@@ -266,12 +266,12 @@ export default function AutomationDetailPage() {
                 <QueueRow
                   label="Open exceptions"
                   value={automation.open_exception_count}
-                  href="/exceptions"
+                  href="/approvals"
                 />
                 <QueueRow
                   label="Pending patches"
                   value={automation.pending_patch_count}
-                  href="/exceptions"
+                  href="/approvals"
                 />
                 {automation.rules.length > 0 && (
                   <div className="border-t border-ink-800 pt-3">
