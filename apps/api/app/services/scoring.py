@@ -201,11 +201,33 @@ def _heuristic_variance(
     """Deterministic judgement/effort estimate used when no LLM key is set."""
     judgement = min(1.0, text_ratio * 1.4)
     effort = max(1, min(5, 1 + steps // 3 + (1 if branches > 2 else 0)))
-    reasoning = (
-        f"step order varies across {entropy:.0%} of the theoretical maximum, "
-        f"{branches} branch point(s) observed, "
-        f"{text_ratio:.0%} of steps carry substantial free text"
-    )
+
+    # Appended to a framing sentence that already states the entropy, branch
+    # count and judgement score, so restating those made the published reasoning
+    # stutter. Describe the *character* of the work instead.
+    #
+    # Each phrasing must also stay factual rather than carrying a verdict: the
+    # same sentence is appended to both a "recommended" and a "do not automate"
+    # framing, and an editorialising clause ended up arguing against the very
+    # recommendation it was attached to.
+    if text_ratio > 0.35:
+        reasoning = (
+            f"{text_ratio:.0%} of the observed steps carry substantial free text, so part "
+            "of the outcome depends on what was written rather than on which fields were "
+            "filled."
+        )
+    elif branches > 3:
+        reasoning = (
+            f"{branches} step positions vary between instances, and each would need its "
+            "own rule."
+        )
+    elif entropy > 0.6:
+        reasoning = "No single step order dominates the cluster."
+    else:
+        reasoning = (
+            "The steps repeat consistently, and what changes between instances is the "
+            "kind of value a rule can supply."
+        )
     return judgement, effort, reasoning
 
 
