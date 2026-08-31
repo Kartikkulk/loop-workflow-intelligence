@@ -1,0 +1,20 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    The LOOP mark, matching the one in the sidebar: a closed loop with the arc
+    that completes it picked out, and the endpoint marked.
+
+    Drawn on its own dark ground rather than transparent, because a browser tab
+    is usually light and a thin blue ring on transparent disappears there. Sized
+    for 16px: the stroke is deliberately heavier than the in-app mark, which has
+    18px of room rather than 16.
+  -->
+  <rect width="32" height="32" rx="7" fill="#0C0E12"/>
+  <circle cx="16" cy="16" r="9" stroke="#2A3140" stroke-width="2.75"/>
+  <path
+    d="M16 7a9 9 0 0 1 9 9"
+    stroke="#3B82F6"
+    stroke-width="2.75"
+    stroke-linecap="round"
+  />
+  <circle cx="25" cy="16" r="2.75" fill="#60A5FA"/>
+</svg>
