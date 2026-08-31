@@ -168,11 +168,15 @@ class ToolStatus(BaseModel):
 
 
 class DomainOut(BaseModel):
-    """A team, the work they repeat, and the tools that work happens in."""
+    """A team, the work they repeat, and the tools that work happens in.
+
+    Deliberately carries no developer name. Who on the project owns a domain
+    pack is repository metadata; putting it on screen makes the product look
+    like a status report about the team rather than about the customer's work.
+    """
 
     key: str
     label: str
-    owner: str
     summary: str
     team: str
     people: int
@@ -182,6 +186,19 @@ class DomainOut(BaseModel):
     is_template: bool
     #: Share of this domain's tools that have produced observed activity.
     tool_coverage: float
+
+    # ── what automating this domain would give back ─────────────────────
+    #: Hours per year currently spent on this domain's repetitive work.
+    annual_hours: float
+    #: Hours per year lost to context switching on top of that.
+    interruption_hours: float
+    #: Hours per year that could plausibly be handed over — task time plus
+    #: interruption tax, scaled by how automatable the work actually is.
+    reclaimable_hours: float
+    #: Share of this domain's total burden that is reclaimable.
+    effort_reduction: float
+    #: True when the detector recommends against automating this domain.
+    do_not_automate: bool
 
 
 class DomainList(BaseModel):

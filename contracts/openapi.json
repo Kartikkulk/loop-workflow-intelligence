@@ -1090,8 +1090,24 @@
         "type": "object"
       },
       "DomainOut": {
-        "description": "A team, the work they repeat, and the tools that work happens in.",
+        "description": "A team, the work they repeat, and the tools that work happens in.\n\nDeliberately carries no developer name. Who on the project owns a domain\npack is repository metadata; putting it on screen makes the product look\nlike a status report about the team rather than about the customer's work.",
         "properties": {
+          "annual_hours": {
+            "title": "Annual Hours",
+            "type": "number"
+          },
+          "do_not_automate": {
+            "title": "Do Not Automate",
+            "type": "boolean"
+          },
+          "effort_reduction": {
+            "title": "Effort Reduction",
+            "type": "number"
+          },
+          "interruption_hours": {
+            "title": "Interruption Hours",
+            "type": "number"
+          },
           "is_template": {
             "title": "Is Template",
             "type": "boolean"
@@ -1104,13 +1120,13 @@
             "title": "Label",
             "type": "string"
           },
-          "owner": {
-            "title": "Owner",
-            "type": "string"
-          },
           "people": {
             "title": "People",
             "type": "integer"
+          },
+          "reclaimable_hours": {
+            "title": "Reclaimable Hours",
+            "type": "number"
           },
           "step_count": {
             "title": "Step Count",
@@ -1143,7 +1159,6 @@
         "required": [
           "key",
           "label",
-          "owner",
           "summary",
           "team",
           "people",
@@ -1151,7 +1166,12 @@
           "step_count",
           "tools",
           "is_template",
-          "tool_coverage"
+          "tool_coverage",
+          "annual_hours",
+          "interruption_hours",
+          "reclaimable_hours",
+          "effort_reduction",
+          "do_not_automate"
         ],
         "title": "DomainOut",
         "type": "object"

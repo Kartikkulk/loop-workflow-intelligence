@@ -393,7 +393,6 @@ export interface ToolStatus {
 export interface Domain {
   key: string;
   label: string;
-  owner: string;
   summary: string;
   team: string;
   people: number;
@@ -402,6 +401,11 @@ export interface Domain {
   tools: ToolStatus[];
   is_template: boolean;
   tool_coverage: number;
+  annual_hours: number;
+  interruption_hours: number;
+  reclaimable_hours: number;
+  effort_reduction: number;
+  do_not_automate: boolean;
 }
 
 export interface DomainList {

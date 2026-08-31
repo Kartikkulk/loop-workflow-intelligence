@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # LLM
     anthropic_api_key: str = ""
-    llm_model: str = "claude-sonnet-5"
+    llm_model: str = "claude-opus-5"
     llm_cache: bool = True
     llm_max_retries: int = 3
 

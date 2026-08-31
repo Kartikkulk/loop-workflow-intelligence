@@ -136,30 +136,33 @@ export default function SourcesPage() {
 
         {domains && (
           <Panel
-            title="Tools each team needs watched"
-            hint="A team whose tools produce no activity is a team LOOP is blind to, however good the detection is."
+            title="Integrations"
+            hint="Which applications each area of the business runs on, and whether LOOP is currently seeing activity from them."
             actions={
               domains.unwatched_tools.length > 0 ? (
-                <Badge tone="warn">{domains.unwatched_tools.length} not yet seen</Badge>
+                <Badge tone="warn">{domains.unwatched_tools.length} not connected</Badge>
               ) : (
-                <Badge tone="good">All tools seen</Badge>
+                <Badge tone="good">All connected</Badge>
               )
             }
           >
             <ul className="divide-y divide-ink-700">
               {domains.items.map((domain) => (
-                <li key={domain.key} className="px-4 py-3.5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                <li key={domain.key} className="px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-xs font-medium text-mist-100">{domain.label}</h3>
-                        <span className="text-2xs text-mist-500">{domain.owner}</span>
-                        {domain.is_template && <Badge tone="warn">Template</Badge>}
+                        <span className="tnum text-2xs text-mist-500">
+                          {domain.people} people
+                        </span>
+                        {domain.is_template && <Badge tone="warn">Not yet researched</Badge>}
                       </div>
                       <p className="mt-1 max-w-2xl text-2xs leading-relaxed text-mist-500">
                         {domain.summary}
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
                         {domain.tools.map((tool) => (
                           <span
                             key={tool.app}
@@ -170,8 +173,8 @@ export default function SourcesPage() {
                             }`}
                             title={
                               tool.observed
-                                ? `${tool.events.toLocaleString()} events observed`
-                                : "no activity seen from this tool yet"
+                                ? `connected · ${tool.events.toLocaleString()} events seen`
+                                : "no activity seen from this application yet"
                             }
                           >
                             <span
@@ -184,14 +187,33 @@ export default function SourcesPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="w-24 shrink-0 text-right">
-                      <p className="eyebrow">Tools seen</p>
-                      <p className="metric mt-1 text-base text-mist-100">
-                        {percent(domain.tool_coverage)}
-                      </p>
-                      <p className="tnum mt-1 text-2xs text-mist-500">
-                        {domain.people} people
-                      </p>
+
+                    <div className="w-36 shrink-0">
+                      <p className="eyebrow text-right">Effort reduction</p>
+                      {domain.do_not_automate ? (
+                        <>
+                          <p className="metric mt-1 text-right text-base text-mist-500">—</p>
+                          <p className="mt-1.5 text-right text-2xs leading-snug text-bad-400">
+                            Too variable to automate
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="metric mt-1 text-right text-xl text-good-400">
+                            {percent(domain.effort_reduction)}
+                          </p>
+                          <div className="mt-2">
+                            <Meter value={domain.effort_reduction} tone="good" />
+                          </div>
+                          <p className="tnum mt-1.5 text-right text-2xs text-mist-500">
+                            {Math.round(domain.reclaimable_hours).toLocaleString()} of{" "}
+                            {Math.round(
+                              domain.annual_hours + domain.interruption_hours,
+                            ).toLocaleString()}{" "}
+                            hrs/yr
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </li>

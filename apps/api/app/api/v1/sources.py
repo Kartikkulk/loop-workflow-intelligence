@@ -17,6 +17,7 @@ from app.db.session import get_session
 from app.domains import DOMAINS
 from app.llm.client import llm
 from app.llm.tools import ACTIONS, APPS, READ_FRAMES
+from app.models.cluster import Cluster
 from app.models.event import Event
 from app.models.source import CaptureScope, Source, SourceKind, SourceStatus
 from app.schemas.sources import (
@@ -596,6 +597,14 @@ async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainLi
     )
     events_by_app = {app: count for app, count in counted.all()}
 
+    # What detection actually found for each domain, so the effort figures come
+    # from measurement rather than from the domain file's own claims.
+    detected = await session.execute(select(Cluster))
+    clusters_by_team: dict[str, list[Cluster]] = {}
+    for cluster in detected.scalars().all():
+        for team in cluster.teams or []:
+            clusters_by_team.setdefault(team, []).append(cluster)
+
     items: list[DomainOut] = []
     unwatched: set[str] = set()
 
@@ -606,13 +615,26 @@ async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainLi
             if events == 0:
                 unwatched.add(app)
             tools.append(ToolStatus(app=app, observed=events > 0, events=events))
-
         watched = sum(1 for t in tools if t.observed)
+
+        found = clusters_by_team.get(domain.team, [])
+        annual = sum(c.annual_hours for c in found)
+        interruption = sum(c.interruption_tax_hours for c in found)
+        # Reclaimable is scaled by automatability, not the raw total. Claiming
+        # every hour back would be the same overstatement the trust ladder
+        # exists to avoid — a workflow scored 0.6 automatable gives back
+        # roughly 60% of its burden, not all of it.
+        reclaimable = sum(
+            (c.annual_hours + c.interruption_tax_hours) * c.automatability
+            for c in found
+            if not c.do_not_automate
+        )
+        burden = annual + interruption
+
         items.append(
             DomainOut(
                 key=domain.key,
                 label=domain.label,
-                owner=domain.owner,
                 summary=domain.summary,
                 team=domain.team,
                 people=len(domain.people),
@@ -621,6 +643,11 @@ async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainLi
                 tools=tools,
                 is_template=domain.is_template,
                 tool_coverage=round(watched / len(tools), 3) if tools else 0.0,
+                annual_hours=round(annual, 1),
+                interruption_hours=round(interruption, 1),
+                reclaimable_hours=round(reclaimable, 1),
+                effort_reduction=round(reclaimable / burden, 3) if burden else 0.0,
+                do_not_automate=bool(found) and all(c.do_not_automate for c in found),
             )
         )
 

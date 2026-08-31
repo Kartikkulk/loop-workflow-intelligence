@@ -22,7 +22,7 @@ import {
   Panel,
   Stat,
 } from "@/components/ui";
-import { useRoi } from "@/lib/api/queries";
+import { useDomains, useRoi } from "@/lib/api/queries";
 import { hours, percent } from "@/lib/format";
 import type { CoveragePoint } from "@/lib/api/types";
 
@@ -31,6 +31,7 @@ const GRID = "#1e232c";
 
 export default function RoiPage() {
   const { data, isLoading, error } = useRoi();
+  const { data: domains } = useDomains();
 
   if (isLoading) return <PageSkeleton rows={3} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
@@ -258,6 +259,70 @@ export default function RoiPage() {
             </div>
           )}
         </Panel>
+
+        {domains && domains.items.length > 0 && (
+          <Panel
+            title="Effort reduction by area"
+            hint="Hours the business could hand over, against the hours it currently spends. Scaled by how automatable the work actually is — not the raw total."
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-ink-700 text-left">
+                    <th className="px-4 py-2 font-medium text-mist-500">Area</th>
+                    <th className="px-4 py-2 text-right font-medium text-mist-500">
+                      Spent now
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-mist-500">
+                      Of which interruption
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-mist-500">
+                      Reclaimable
+                    </th>
+                    <th className="px-4 py-2 font-medium text-mist-500">Effort reduction</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-800">
+                  {[...domains.items]
+                    .sort((a, b) => b.reclaimable_hours - a.reclaimable_hours)
+                    .map((domain) => (
+                      <tr key={domain.key}>
+                        <td className="px-4 py-2.5 text-mist-200">
+                          {domain.label}
+                          {domain.is_template && (
+                            <span className="ml-2 text-2xs text-warn-400">not researched</span>
+                          )}
+                        </td>
+                        <td className="tnum px-4 py-2.5 text-right text-mist-300">
+                          {hours(domain.annual_hours + domain.interruption_hours)}
+                        </td>
+                        <td className="tnum px-4 py-2.5 text-right text-warn-400">
+                          {hours(domain.interruption_hours)}
+                        </td>
+                        <td className="tnum px-4 py-2.5 text-right text-good-400">
+                          {domain.do_not_automate ? "—" : hours(domain.reclaimable_hours)}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {domain.do_not_automate ? (
+                            <span className="text-2xs text-bad-400">
+                              Too variable — kept human
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Meter value={domain.effort_reduction} tone="good" />
+                              <span className="tnum w-9 shrink-0 text-right text-2xs text-mist-300">
+                                {percent(domain.effort_reduction)}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        )}
 
         <Panel title="Detection summary">
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-3">
