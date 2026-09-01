@@ -1,8 +1,9 @@
 # Ownership. GitHub auto-requests a review from the owner of every path a PR
 # touches, so a PR that crosses a boundary is visibly crossing it.
 #
-# Replace the placeholder handles with real GitHub usernames — CODEOWNERS is
-# silently inert until the handles resolve.
+# A handle that does not resolve is skipped in silence, so every name here has
+# to be a real collaborator with write access — otherwise the file looks like
+# it is protecting a path while doing nothing at all.
 
 # Core platform. Nobody else edits these.
 *                                   @Kartikkulk
@@ -14,11 +15,13 @@
 /contracts/                         @Kartikkulk
 
 # ── domain packs · one file each, no core changes needed ──────────────────
-/apps/api/app/domains/finance.py            @ANIRUDH
-/apps/api/app/domains/customer_support.py   @ANIRUDH
-/apps/api/app/domains/sales.py              @VIJAY
-/apps/api/app/domains/hr.py                 @VIJAY
+/apps/api/app/domains/finance.py            @AnirudhZalki
+/apps/api/app/domains/customer_support.py   @AnirudhZalki
+/apps/api/app/domains/sales.py              @Vijayavardhan-sarasambekar
+/apps/api/app/domains/hr.py                 @Vijayavardhan-sarasambekar
 
 # ── browser collectors · one folder each ──────────────────────────────────
-/collectors/chrome/                 @ANUSHREE
-/collectors/edge/                   @GOURI
+# Anushree's handle is still unknown, so this path deliberately has no owner
+# rather than a name that would resolve to nobody and quietly review nothing.
+/collectors/chrome/
+/collectors/edge/                   @Gouri066
