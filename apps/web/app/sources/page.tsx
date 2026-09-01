@@ -178,14 +178,14 @@ export default function SourcesPage() {
           <SourceCard
             title="Screen recording"
             blurb="Frames from a recorded session, read by a vision model."
-            detail="For systems with no API and no web interface. Needs an ANTHROPIC_API_KEY — it is the one input with no offline fallback, so it is disabled rather than faked when no key is set."
-            badge={<Badge tone="warn">Needs an API key</Badge>}
+            detail="For systems with no API and no web interface. Needs a local Ollama vision model; it is the one input with no offline fallback, so it is disabled rather than faked when no model is configured."
+            badge={<Badge tone="warn">Needs vision model</Badge>}
             open={open === "recording"}
             onToggle={() => setOpen(open === "recording" ? null : "recording")}
           >
             <p className="px-4 py-4 text-2xs leading-relaxed text-mist-400">
-              Set <span className="mono">ANTHROPIC_API_KEY</span> in{" "}
-              <span className="mono">.env</span> and restart the API, then post frames to{" "}
+              Pull the configured <span className="mono">LOOP_OLLAMA_VISION_MODEL</span>{" "}
+              and restart the API, then post frames to{" "}
               <span className="mono">POST /api/v1/ingest/recording</span>. Frames are read and
               discarded — only the application, the action and the kind of object are kept.
             </p>

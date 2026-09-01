@@ -466,16 +466,19 @@ async def ingest_recording(
     transcribing any visible text, so a recording does not become a durable copy
     of whatever was on screen.
     """
-    if not llm.available:
+    if not llm.vision_available:
         raise HTTPException(
             409,
             {
                 "message": "screen-recording ingestion needs a vision model",
                 "reason": (
-                    "No ANTHROPIC_API_KEY is configured. Every other feature has a "
-                    "deterministic fallback; reading a frame cannot have one."
+                    "No local Ollama vision model is configured. Every other feature "
+                    "has a deterministic fallback; reading a frame cannot have one."
                 ),
-                "hint": "Use the browser extension, or describe the task in prose.",
+                "hint": (
+                    "Use the browser extension, describe the task in prose, or pull "
+                    "the configured LOOP_OLLAMA_VISION_MODEL."
+                ),
             },
         )
 

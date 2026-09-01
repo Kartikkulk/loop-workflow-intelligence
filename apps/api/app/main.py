@@ -47,7 +47,9 @@ async def lifespan(app: FastAPI):
     logger.info(
         "LOOP api ready — db=%s llm=%s connectors=%s",
         settings.database_url.split("://")[0],
-        settings.llm_model if llm.available else "deterministic fallback",
+        f"{settings.llm_provider}:{settings.llm_model}"
+        if llm.available
+        else "deterministic fallback",
         "mock" if settings.enable_mock_connectors else "live",
     )
     yield
@@ -99,7 +101,11 @@ async def health() -> Health:
     return Health(
         status="ok" if database == "ok" else "degraded",
         database=database,
-        llm=settings.llm_model if llm.available else "deterministic fallback (no API key)",
+        llm=(
+            f"{settings.llm_provider}:{settings.llm_model}"
+            if llm.available
+            else "deterministic fallback (no local model)"
+        ),
         connectors="mock" if settings.enable_mock_connectors else "live",
         version=VERSION,
     )
@@ -107,10 +113,10 @@ async def health() -> Health:
 
 @app.get("/api/v1/llm-usage", response_model=LlmUsage, tags=["meta"])
 async def llm_usage() -> LlmUsage:
-    """Running LLM cost. Visible during a demo so the spend is never a surprise."""
+    """Running LLM usage. Local Ollama models report zero hosted spend."""
     return LlmUsage(
         available=llm.available,
-        model=settings.llm_model if llm.available else "none",
+        model=f"{settings.llm_provider}:{settings.llm_model}" if llm.available else "none",
         calls=llm.call_count,
         fallbacks=llm.fallback_count,
         input_tokens=llm.total_input_tokens,

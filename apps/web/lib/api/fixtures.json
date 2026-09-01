@@ -1606,7 +1606,7 @@
         ],
         "setup": "Upload frames from a consented recording session.",
         "summary": "Frames from a recorded session, read by a vision model.",
-        "unavailable_reason": "Reading a frame needs a vision model, and no ANTHROPIC_API_KEY is configured. Every other feature has a deterministic fallback; this one cannot, so it is disabled rather than faked."
+        "unavailable_reason": "Reading a frame needs a local vision model. Set LOOP_OLLAMA_VISION_MODEL after pulling a vision-capable Ollama model. Every other feature has a deterministic fallback; this one cannot, so it is disabled rather than faked."
       }
     ],
     "coverage": {
@@ -1789,7 +1789,7 @@
   "/health": {
     "connectors": "mock",
     "database": "ok",
-    "llm": "deterministic fallback (no API key)",
+    "llm": "deterministic fallback (no local model)",
     "status": "ok",
     "version": "0.1.0"
   }

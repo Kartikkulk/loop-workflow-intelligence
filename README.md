@@ -139,7 +139,7 @@ A platform that can only be *fed* logs is a report generator. LOOP can also
 | **Browser extension** | **~70%** | **~2 min/person** | **low** | **✅** |
 | Connect an app account (OAuth) | ~45% | hours + admin | medium | interfaces declared |
 | Desktop agent | ~95% | days + IT rollout | high | not built |
-| Screen recording | ~100% | doesn't scale | very high | needs an API key |
+| Screen recording | ~100% | doesn't scale | very high | needs local vision model |
 
 Coverage figures **do not add up** — the tiers overlap heavily, so the console
 reports the best connected tier rather than the sum.
@@ -200,17 +200,26 @@ Then open <http://localhost:3000>.
 docker compose up --build     # Postgres + API + console, seeded on first boot
 ```
 
-### Running with Claude
+### Running with a free local LLM
 
 Every AI-backed feature has a deterministic fallback, so the entire product —
 including flow generation, SOP writing, variance scoring, drift remapping and
-rule proposal — works with no API key at all. Set one to get richer output:
+rule proposal — works without a model at all. For richer wording without paying
+for hosted tokens, run an open-source model locally through Ollama:
 
 ```bash
-echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env
+brew install ollama
+ollama serve
+ollama pull qwen2.5:7b-instruct
 ```
 
-The console's **System** page shows which path is active and the running spend.
+For screen-recording frame ingestion, also pull the optional vision model:
+
+```bash
+ollama pull gemma3:4b
+```
+
+The console's **System** page shows whether the local LLM path is configured.
 
 ---
 
@@ -247,7 +256,7 @@ flowchart TB
     DNA_FLAG -->|no| GEN
 
     subgraph Gen["F4 · Generation"]
-        GEN[Flow definition<br/>via Anthropic tool use] --> AUTO[(Automations)]
+        GEN[Flow definition<br/>via local structured output] --> AUTO[(Automations)]
         GEN --> SOP[SOP markdown]
     end
 
@@ -483,9 +492,9 @@ Stated plainly, because a reviewer will find them anyway.
   stripped, and path segments that look like free text or an email are redacted,
   but a URL like `/reports/Q3-Acme-Holdings` would survive because the path is
   what makes an app and object type inferable at all.
-- **Screen-recording ingestion needs an API key.** It is the one feature with no
-  deterministic fallback, and it is disabled rather than faked when no key is
-  set.
+- **Screen-recording ingestion needs a local vision model.** It is the one
+  feature with no deterministic fallback, and it is disabled rather than faked
+  when no model is configured.
 - **The demo data is synthetic.** It is deliberately structured — optional steps
   at 30%, occasional reordering, real anomalies, a genuine schema change at day
   60 — but it is not a real company's log. The one thing it does not simulate is
@@ -539,9 +548,9 @@ apps/api/                     FastAPI backend
     api/v1/                   route modules
     connectors/               Connector protocol, real + mock implementations
     llm/
-      client.py               retry, cost log, prompt cache, fallback contract
+      client.py               Ollama client, prompt cache, fallback contract
       prompts/*.md            every prompt, on disk, never in an f-string
-      tools.py                Anthropic tool schemas = structured-output contracts
+      tools.py                JSON schemas = structured-output contracts
     models/                   SQLAlchemy 2.0 models
     schemas/                  Pydantic v2 request/response
     services/

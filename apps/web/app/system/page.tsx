@@ -101,7 +101,7 @@ export default function SystemPage() {
         </Panel>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Panel title="Language model" hint="Used for structured generation via tool use.">
+          <Panel title="Language model" hint="Used for local structured generation.">
             <dl className="divide-y divide-ink-800">
               <Row label="Status" value={data.llm_available ? "connected" : "not configured"} />
               <Row label="Model" value={data.llm_model} />
@@ -109,10 +109,10 @@ export default function SystemPage() {
               <Row
                 label="Deterministic fallbacks"
                 value={String(data.llm_fallbacks)}
-                hint="Every AI feature has a heuristic fallback, so the product runs with no API key"
+                hint="Every text AI feature has a heuristic fallback, so the product runs without Ollama"
               />
               <Row
-                label="Estimated spend"
+                label="Estimated model spend"
                 value={`$${data.llm_estimated_cost_usd.toFixed(4)}`}
               />
             </dl>

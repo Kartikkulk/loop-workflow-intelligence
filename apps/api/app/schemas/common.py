@@ -21,7 +21,7 @@ class Message(BaseModel):
 
 
 class LlmUsage(BaseModel):
-    """Running LLM cost, surfaced so the operator can see it during a demo."""
+    """Running LLM usage, surfaced so the operator can see it during a demo."""
 
     available: bool
     model: str
@@ -29,4 +29,4 @@ class LlmUsage(BaseModel):
     fallbacks: int
     input_tokens: int
     output_tokens: int
-    estimated_cost_usd: float = Field(description="Approximate, based on list pricing.")
+    estimated_cost_usd: float = Field(description="Always 0 for local Ollama models.")

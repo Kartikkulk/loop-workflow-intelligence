@@ -9,7 +9,6 @@ python-multipart>=0.0.12
 rapidfuzz>=3.10
 scikit-learn>=1.5
 numpy>=1.26
-anthropic>=0.40
 sse-starlette>=2.1
 
 [dev]

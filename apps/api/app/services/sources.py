@@ -161,15 +161,16 @@ CAPABILITIES: list[SourceCapability] = [
         invasiveness="very high — captures everything on screen",
         coverage_estimate=1.00,
         # The only tier with no deterministic fallback: reading a frame requires
-        # a vision model, so this one genuinely cannot run without a key.
-        available=settings.has_llm,
+        # a vision model, so this one genuinely cannot run without one.
+        available=settings.has_vision_llm,
         unavailable_reason=(
             ""
-            if settings.has_llm
+            if settings.has_vision_llm
             else (
-                "Reading a frame needs a vision model, and no ANTHROPIC_API_KEY is "
-                "configured. Every other feature has a deterministic fallback; this "
-                "one cannot, so it is disabled rather than faked."
+                "Reading a frame needs a local vision model. Set "
+                "LOOP_OLLAMA_VISION_MODEL after pulling a vision-capable Ollama model. "
+                "Every other feature has a deterministic fallback; this one cannot, "
+                "so it is disabled rather than faked."
             )
         ),
     ),

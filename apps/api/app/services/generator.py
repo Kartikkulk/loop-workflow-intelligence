@@ -1,9 +1,10 @@
 """F4 — turn a detected cluster into a runnable flow definition and an SOP.
 
-The flow definition is produced through Anthropic tool use, so the shape is
-guaranteed by the schema rather than by parsing prose. The deterministic
-fallback below produces a genuinely runnable flow from the observed signature
-alone, which is what lets the entire product be demonstrated without an API key.
+The flow definition can be produced through local LLM structured output, so the
+shape is governed by a JSON schema rather than by parsing prose. The
+deterministic fallback below produces a genuinely runnable flow from the
+observed signature alone, which is what lets the entire product be demonstrated
+without a running model.
 """
 
 from __future__ import annotations

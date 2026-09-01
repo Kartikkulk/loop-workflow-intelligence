@@ -321,7 +321,11 @@ async def system_status(session: AsyncSession = Depends(get_session)) -> SystemS
         mock_connectors=settings.enable_mock_connectors,
         connectors=[ConnectorOut(**c) for c in connector_inventory()],
         llm_available=llm.available,
-        llm_model=settings.llm_model if llm.available else "none (deterministic fallback)",
+        llm_model=(
+            f"{settings.llm_provider}:{settings.llm_model}"
+            if llm.available
+            else "none (deterministic fallback)"
+        ),
         llm_calls=llm.call_count,
         llm_fallbacks=llm.fallback_count,
         llm_estimated_cost_usd=round(llm.estimated_cost_usd, 4),

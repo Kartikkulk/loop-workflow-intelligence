@@ -1,4 +1,4 @@
-"""Anthropic tool-use schemas. These are the structured-output contracts."""
+"""Structured-output schemas used by the local LLM client."""
 
 from typing import Any
 

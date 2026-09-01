@@ -18,8 +18,10 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    anthropic_api_key: str = ""
-    llm_model: str = "claude-opus-5"
+    llm_provider: str = "ollama"
+    llm_model: str = "qwen2.5:7b-instruct"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_vision_model: str = ""
     llm_cache: bool = True
     llm_max_retries: int = 3
 
@@ -76,12 +78,19 @@ class Settings(BaseSettings):
 
     @property
     def has_llm(self) -> bool:
-        """True when a real Anthropic key is configured.
+        """True when an LLM provider is configured.
 
-        When false every LLM-backed service falls back to a deterministic
-        heuristic, so the product remains fully demonstrable offline.
+        The default provider is local Ollama. If Ollama is not running, every
+        text LLM feature still falls back to deterministic heuristics.
         """
-        return bool(self.anthropic_api_key.strip())
+        return self.llm_provider.strip().lower() == "ollama" and bool(self.llm_model.strip())
+
+    @property
+    def has_vision_llm(self) -> bool:
+        """True when a local vision-capable Ollama model is configured."""
+        return self.llm_provider.strip().lower() == "ollama" and bool(
+            self.ollama_vision_model.strip()
+        )
 
 
 @lru_cache

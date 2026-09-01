@@ -14,7 +14,6 @@ Requires-Dist: python-multipart>=0.0.12
 Requires-Dist: rapidfuzz>=3.10
 Requires-Dist: scikit-learn>=1.5
 Requires-Dist: numpy>=1.26
-Requires-Dist: anthropic>=0.40
 Requires-Dist: sse-starlette>=2.1
 Provides-Extra: postgres
 Requires-Dist: asyncpg>=0.30; extra == "postgres"

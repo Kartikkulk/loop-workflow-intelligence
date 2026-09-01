@@ -1,8 +1,8 @@
-"""Anthropic wrapper: retry with backoff, cost logging, prompt-hash cache.
+"""Local LLM wrapper: retry with backoff, prompt-hash cache, safe fallback.
 
-Every call site must supply a `fallback` callable. When no API key is set — or
-the API fails after all retries — the fallback runs instead. This keeps the
-whole product demonstrable offline and means a network problem on stage
+Every call site must supply a `fallback` callable. When the local model is not
+running — or the API fails after all retries — the fallback runs instead. This
+keeps the whole product demonstrable offline and means a runtime problem on stage
 degrades output quality rather than breaking the demo.
 """
 
@@ -12,6 +12,8 @@ import asyncio
 import hashlib
 import json
 import logging
+import urllib.error
+import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -22,18 +24,17 @@ logger = logging.getLogger("loop.llm")
 
 _PROMPT_DIR = Path(__file__).parent / "prompts"
 
-# Approximate USD per million tokens for the default model, used only to give
-# the operator a running cost figure in the log.
-_COST_IN_PER_MTOK = 3.0
-_COST_OUT_PER_MTOK = 15.0
+_JSON_INSTRUCTION = (
+    "Return only a JSON object that matches the provided schema. "
+    "Do not include markdown, commentary, or extra keys."
+)
 
 
 class LLMClient:
-    """Thin, dependency-injectable Anthropic client."""
+    """Thin, dependency-injectable local LLM client."""
 
     def __init__(self) -> None:
         self._cache: dict[str, dict[str, Any]] = {}
-        self._client: Any = None
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.call_count = 0
@@ -43,19 +44,43 @@ class LLMClient:
     def available(self) -> bool:
         return settings.has_llm
 
-    def _ensure_client(self) -> Any:
-        if self._client is None:
-            from anthropic import AsyncAnthropic
-
-            self._client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-        return self._client
+    @property
+    def vision_available(self) -> bool:
+        return settings.has_vision_llm
 
     @property
     def estimated_cost_usd(self) -> float:
-        return (
-            self.total_input_tokens / 1_000_000 * _COST_IN_PER_MTOK
-            + self.total_output_tokens / 1_000_000 * _COST_OUT_PER_MTOK
+        return 0.0
+
+    @staticmethod
+    def _ollama_chat(payload: dict[str, Any]) -> dict[str, Any]:
+        url = settings.ollama_base_url.rstrip("/") + "/api/chat"
+        body = json.dumps(payload).encode()
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                return json.loads(response.read().decode())
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode(errors="replace")
+            raise RuntimeError(f"ollama returned HTTP {exc.code}: {detail}") from exc
+
+    async def _chat(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await asyncio.to_thread(self._ollama_chat, payload)
+
+    def _record_usage(self, response: dict[str, Any]) -> None:
+        self.call_count += 1
+        self.total_input_tokens += int(response.get("prompt_eval_count") or 0)
+        self.total_output_tokens += int(response.get("eval_count") or 0)
+
+    @staticmethod
+    def _message_text(response: dict[str, Any]) -> str:
+        message = response.get("message") or {}
+        return str(message.get("content") or "")
 
     @staticmethod
     def load_prompt(template: str, /, **kwargs: Any) -> str:
@@ -81,11 +106,10 @@ class LLMClient:
         fallback: Callable[[], dict[str, Any]],
         max_tokens: int = 2048,
     ) -> dict[str, Any]:
-        """Get a structured object out of the model via forced tool use.
+        """Get a structured object out of the model via JSON-schema output.
 
-        Never parses JSON out of free-form text: the tool schema is the
-        contract, so a malformed response is impossible rather than merely
-        unlikely.
+        Ollama receives the same schema the old tool-use path used. The model's
+        response is still parsed defensively, and any failure falls back.
         """
         cache_key = hashlib.sha256(
             (prompt + json.dumps(tool, sort_keys=True)).encode()
@@ -103,31 +127,38 @@ class LLMClient:
         last_error: Exception | None = None
         for attempt in range(settings.llm_max_retries):
             try:
-                client = self._ensure_client()
-                response = await client.messages.create(
-                    model=settings.llm_model,
-                    max_tokens=max_tokens,
-                    tools=[tool],
-                    tool_choice={"type": "tool", "name": tool["name"]},
-                    messages=[{"role": "user", "content": prompt}],
+                schema = dict(tool["input_schema"])
+                response = await self._chat(
+                    {
+                        "model": settings.llm_model,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": (
+                                    f"{prompt}\n\n{_JSON_INSTRUCTION}\n\n"
+                                    f"Schema:\n{json.dumps(schema, indent=2)}"
+                                ),
+                            }
+                        ],
+                        "stream": False,
+                        "format": schema,
+                        "options": {"temperature": 0, "num_predict": max_tokens},
+                    }
                 )
-                self.call_count += 1
-                self.total_input_tokens += response.usage.input_tokens
-                self.total_output_tokens += response.usage.output_tokens
+                self._record_usage(response)
                 logger.info(
-                    "llm call ok tool=%s in=%d out=%d running_cost=$%.4f",
+                    "llm call ok provider=ollama model=%s tool=%s in=%d out=%d",
+                    settings.llm_model,
                     tool["name"],
-                    response.usage.input_tokens,
-                    response.usage.output_tokens,
-                    self.estimated_cost_usd,
+                    int(response.get("prompt_eval_count") or 0),
+                    int(response.get("eval_count") or 0),
                 )
-                for block in response.content:
-                    if getattr(block, "type", None) == "tool_use":
-                        result = dict(block.input)
-                        if settings.llm_cache:
-                            self._cache[cache_key] = result
-                        return result
-                raise ValueError("model returned no tool_use block")
+                result = json.loads(self._message_text(response))
+                if not isinstance(result, dict):
+                    raise ValueError("model returned a non-object JSON value")
+                if settings.llm_cache:
+                    self._cache[cache_key] = result
+                return result
             except Exception as exc:  # noqa: BLE001 — any failure must degrade, not crash
                 last_error = exc
                 backoff = 2**attempt
@@ -161,26 +192,46 @@ class LLMClient:
         Not cached: the cache key would have to include megabytes of base64, and
         the same frames are never submitted twice in a demo anyway.
         """
-        if not self.available:
+        if not self.vision_available:
             self.fallback_count += 1
             return fallback()
 
         try:
-            client = self._ensure_client()
-            response = await client.messages.create(
-                model=settings.llm_model,
-                max_tokens=max_tokens,
-                tools=[tool],
-                tool_choice={"type": "tool", "name": tool["name"]},
-                messages=[{"role": "user", "content": content}],
+            text_parts: list[str] = []
+            images: list[str] = []
+            for block in content:
+                if block.get("type") == "text":
+                    text_parts.append(str(block.get("text") or ""))
+                elif block.get("type") == "image":
+                    source = block.get("source") or {}
+                    data = str(source.get("data") or "")
+                    if data:
+                        images.append(data)
+            schema = dict(tool["input_schema"])
+            response = await self._chat(
+                {
+                    "model": settings.ollama_vision_model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": (
+                                "\n\n".join(text_parts)
+                                + f"\n\n{_JSON_INSTRUCTION}\n\n"
+                                + f"Schema:\n{json.dumps(schema, indent=2)}"
+                            ),
+                            "images": images,
+                        }
+                    ],
+                    "stream": False,
+                    "format": schema,
+                    "options": {"temperature": 0, "num_predict": max_tokens},
+                }
             )
-            self.call_count += 1
-            self.total_input_tokens += response.usage.input_tokens
-            self.total_output_tokens += response.usage.output_tokens
-            for block in response.content:
-                if getattr(block, "type", None) == "tool_use":
-                    return dict(block.input)
-            raise ValueError("model returned no tool_use block")
+            self._record_usage(response)
+            result = json.loads(self._message_text(response))
+            if not isinstance(result, dict):
+                raise ValueError("model returned a non-object JSON value")
+            return result
         except Exception as exc:  # noqa: BLE001 — degrade, never crash
             logger.error("multimodal call failed: %s — using fallback", exc)
             self.fallback_count += 1
@@ -199,16 +250,16 @@ class LLMClient:
             return fallback()
 
         try:
-            client = self._ensure_client()
-            response = await client.messages.create(
-                model=settings.llm_model,
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}],
+            response = await self._chat(
+                {
+                    "model": settings.llm_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": False,
+                    "options": {"temperature": 0.2, "num_predict": max_tokens},
+                }
             )
-            self.call_count += 1
-            self.total_input_tokens += response.usage.input_tokens
-            self.total_output_tokens += response.usage.output_tokens
-            out = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+            self._record_usage(response)
+            out = self._message_text(response)
             if settings.llm_cache:
                 self._cache[cache_key] = {"text": out}
             return out

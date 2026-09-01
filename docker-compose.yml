@@ -24,8 +24,11 @@ services:
     environment:
       LOOP_DATABASE_URL: postgresql+asyncpg://loop:loop@postgres:5432/loop
       LOOP_ENABLE_MOCK_CONNECTORS: "true"
-      # Optional: pass a key through to enable the LLM-backed paths.
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Optional: point this at an Ollama server reachable from the container.
+      LOOP_LLM_PROVIDER: ollama
+      LOOP_LLM_MODEL: ${LOOP_LLM_MODEL:-qwen2.5:7b-instruct}
+      LOOP_OLLAMA_BASE_URL: ${LOOP_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      LOOP_OLLAMA_VISION_MODEL: ${LOOP_OLLAMA_VISION_MODEL:-}
     ports:
       - "8000:8000"
     depends_on:

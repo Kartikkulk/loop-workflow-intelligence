@@ -27,8 +27,6 @@ FRONTEND_KEYS = {"NEXT_PUBLIC_API_BASE", "NEXT_PUBLIC_API_MOCK"}
 
 def env_key(field_name: str) -> str:
     """The environment variable a Settings field reads from."""
-    if field_name == "anthropic_api_key":
-        return "ANTHROPIC_API_KEY"
     return f"LOOP_{field_name.upper()}"
 
 
@@ -92,8 +90,8 @@ def test_no_real_secret_committed():
     text = ENV_EXAMPLE.read_text(encoding="utf-8")
     assert not re.search(
         r"sk-ant-[A-Za-z0-9_-]{10,}", text
-    ), "a real Anthropic key is in .env.example"
-    assert re.search(r"^ANTHROPIC_API_KEY=\s*$", text, re.M), "ANTHROPIC_API_KEY must be left empty"
+    ), "a real hosted-model key is in .env.example"
+    assert "ANTHROPIC_API_KEY" not in text
 
 
 def test_the_dangerous_defaults_are_flagged():
