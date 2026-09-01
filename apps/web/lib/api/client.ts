@@ -131,6 +131,11 @@ export const http = {
     request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
   postForm: <T>(path: string, form: FormData) =>
     request<T>(path, { method: "POST", body: form }),
+  put: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "PUT",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "PATCH",

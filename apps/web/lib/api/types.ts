@@ -430,3 +430,53 @@ export interface ToolInventory {
   connected: number;
   items: MonitorableTool[];
 }
+
+/* ── Connecting your own accounts ─────────────────────────────────────────── */
+
+/**
+ * One sign-in button on the Sources page.
+ *
+ * Note what is missing: there is no `client_secret`. The API never sends one
+ * back, so no component can render one and no screenshot can leak one.
+ */
+export interface Provider {
+  key: string;
+  label: string;
+  /** What LOOP reads once connected, in plain words. */
+  reads: string;
+  scopes: string[];
+  /** True once this person has supplied their own client id and secret. */
+  configured: boolean;
+  setup_url: string;
+  setup_steps: string[];
+  /** The exact value to paste into the provider's redirect-URI field. */
+  redirect_uri: string;
+  client_id_env: string;
+  client_secret_env: string;
+  /** Truncated, so the person can tell which app it is. */
+  client_id_hint: string;
+  has_secret: boolean;
+  connected: boolean;
+  account_label: string;
+  last_sync_at: string | null;
+  events_imported: number;
+  last_error: string | null;
+}
+
+export interface ProviderList {
+  items: Provider[];
+  connected_count: number;
+}
+
+export interface SyncResult {
+  provider: string;
+  /** Negative when disconnecting: that many events were deleted. */
+  events_imported: number;
+  total_events: number;
+  clusters_found: number;
+  message: string;
+}
+
+export interface StartOut {
+  authorize_url: string;
+}

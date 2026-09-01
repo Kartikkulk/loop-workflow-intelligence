@@ -19,6 +19,7 @@ import type {
   ExceptionList,
   IngestResult,
   PatchList,
+  ProviderList,
   PromoteResult,
   ReplayReport,
   RegisterSourceResult,
@@ -28,6 +29,8 @@ import type {
   ToolInventory,
   SimulateResult,
   Sop,
+  StartOut,
+  SyncResult,
   SystemStatus,
 } from "./types";
 
@@ -45,6 +48,7 @@ export const keys = {
   sources: ["sources"] as const,
   domains: ["domains"] as const,
   tools: ["tools"] as const,
+  providers: ["providers"] as const,
 };
 
 type Options<T> = Omit<UseQueryOptions<T>, "queryKey" | "queryFn">;
@@ -398,5 +402,82 @@ export function useUploadLog() {
       return http.postForm<IngestResult>("/api/v1/ingest/upload", form);
     },
     onSuccess: refresh,
+  });
+}
+
+
+/* ── Connecting your own accounts ─────────────────────────────────────────── */
+
+export function useProviders() {
+  return useQuery({
+    queryKey: keys.providers,
+    queryFn: () => http.get<ProviderList>("/api/v1/connect/providers"),
+  });
+}
+
+/** Save the client id and secret from this person's own OAuth app. */
+export function useSaveCredentials() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      provider,
+      ...body
+    }: {
+      provider: string;
+      client_id: string;
+      client_secret: string;
+    }) => http.put<ProviderList>(`/api/v1/connect/${provider}/credentials`, body),
+    onSuccess: (data) => client.setQueryData(keys.providers, data),
+  });
+}
+
+export function useForgetCredentials() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ provider }: { provider: string }) =>
+      http.del<ProviderList>(`/api/v1/connect/${provider}/credentials`),
+    onSuccess: (data) => {
+      client.setQueryData(keys.providers, data);
+      void client.invalidateQueries({ queryKey: keys.clusters });
+      void client.invalidateQueries({ queryKey: keys.system });
+    },
+  });
+}
+
+/**
+ * Ask the API for the provider's sign-in URL, then leave for it.
+ *
+ * The redirect happens here rather than server-side because the browser has to
+ * arrive at the provider as a top-level navigation — a fetch that followed the
+ * redirect would land the sign-in page inside a JSON response.
+ */
+export function useStartConnect() {
+  return useMutation({
+    mutationFn: async ({ provider }: { provider: string }) => {
+      const { authorize_url } = await http.get<StartOut>(
+        `/api/v1/connect/${provider}/start`,
+      );
+      window.location.href = authorize_url;
+      return authorize_url;
+    },
+  });
+}
+
+/** Read the account, store what it did, and re-run detection over everything. */
+export function useSyncProvider() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ provider }: { provider: string }) =>
+      http.post<SyncResult>(`/api/v1/connect/${provider}/sync`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useDisconnect() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ provider }: { provider: string }) =>
+      http.del<SyncResult>(`/api/v1/connect/${provider}`),
+    onSuccess: () => client.invalidateQueries(),
   });
 }

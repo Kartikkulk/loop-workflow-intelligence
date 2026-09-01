@@ -124,10 +124,21 @@ def canonical_action(raw: str) -> str:
     return key or "read"
 
 
+def as_utc(moment: datetime) -> datetime:
+    """Read a stored timestamp as UTC.
+
+    SQLite has no timezone type, so a datetime written as aware comes back
+    naive — and comparing one of those against `datetime.now(UTC)` raises
+    rather than returning a wrong answer. Anywhere a persisted timestamp meets
+    the current time, it goes through here first.
+    """
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
 def parse_timestamp(raw: str | datetime) -> datetime:
     """Parse a timestamp from any of the shapes real logs use. Always returns UTC."""
     if isinstance(raw, datetime):
-        return raw if raw.tzinfo else raw.replace(tzinfo=UTC)
+        return as_utc(raw)
     text = str(raw).strip()
     if not text:
         raise NormalisationError("missing timestamp")
@@ -144,7 +155,7 @@ def parse_timestamp(raw: str | datetime) -> datetime:
                 continue
         else:
             raise NormalisationError(f"unparseable timestamp: {raw!r}") from None
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    return as_utc(parsed)
 
 
 def _duration_ms(row: dict) -> int:

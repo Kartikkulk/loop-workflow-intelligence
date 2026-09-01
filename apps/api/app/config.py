@@ -52,6 +52,24 @@ class Settings(BaseSettings):
     patch_auto_apply_confidence: float = 0.9
     exception_rule_min_samples: int = 3
 
+    # Where the two halves of LOOP live. Used to build the OAuth redirect URI
+    # and to send the browser back to the console after a provider callback.
+    api_base_url: str = "http://localhost:8000"
+    console_url: str = "http://localhost:3000"
+
+    # Personal OAuth app registrations. Empty by default and expected to stay
+    # that way: the normal path is to type them into the Sources page, which
+    # stores them in the local database. These exist for anyone who would
+    # rather keep them in a .env file.
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    ms_client_id: str = ""
+    ms_client_secret: str = ""
+    atlassian_client_id: str = ""
+    atlassian_client_secret: str = ""
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+
     # Seed
     seed: int = 42
     seed_days: int = 90

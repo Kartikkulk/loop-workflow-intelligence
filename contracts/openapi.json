@@ -1812,6 +1812,139 @@
         "title": "PromoteResult",
         "type": "object"
       },
+      "ProviderList": {
+        "properties": {
+          "connected_count": {
+            "title": "Connected Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "connected_count"
+        ],
+        "title": "ProviderList",
+        "type": "object"
+      },
+      "ProviderOut": {
+        "description": "One sign-in button, and everything the page needs to draw it.",
+        "properties": {
+          "account_label": {
+            "default": "",
+            "title": "Account Label",
+            "type": "string"
+          },
+          "client_id_env": {
+            "title": "Client Id Env",
+            "type": "string"
+          },
+          "client_id_hint": {
+            "default": "",
+            "title": "Client Id Hint",
+            "type": "string"
+          },
+          "client_secret_env": {
+            "title": "Client Secret Env",
+            "type": "string"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "connected": {
+            "default": false,
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "events_imported": {
+            "default": 0,
+            "title": "Events Imported",
+            "type": "integer"
+          },
+          "has_secret": {
+            "default": false,
+            "title": "Has Secret",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "reads": {
+            "title": "Reads",
+            "type": "string"
+          },
+          "redirect_uri": {
+            "title": "Redirect Uri",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "setup_steps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Setup Steps",
+            "type": "array"
+          },
+          "setup_url": {
+            "title": "Setup Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "reads",
+          "scopes",
+          "configured",
+          "setup_url",
+          "setup_steps",
+          "redirect_uri",
+          "client_id_env",
+          "client_secret_env"
+        ],
+        "title": "ProviderOut",
+        "type": "object"
+      },
       "RawSignalIn": {
         "description": "One observation from a collector.\n\nDeliberately close to raw. Interpretation happens server-side so the rules\ncan improve without reinstalling anything.",
         "properties": {
@@ -2370,6 +2503,29 @@
         "title": "RuleOut",
         "type": "object"
       },
+      "SaveCredentialsRequest": {
+        "description": "The two values the provider gave the person when they registered an app.",
+        "properties": {
+          "client_id": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_secret": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Client Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_secret"
+        ],
+        "title": "SaveCredentialsRequest",
+        "type": "object"
+      },
       "ShadowRunList": {
         "properties": {
           "items": {
@@ -2666,6 +2822,20 @@
         "title": "SourceOut",
         "type": "object"
       },
+      "StartOut": {
+        "description": "Where to send the browser to sign in.",
+        "properties": {
+          "authorize_url": {
+            "title": "Authorize Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url"
+        ],
+        "title": "StartOut",
+        "type": "object"
+      },
       "StepNode": {
         "properties": {
           "action": {
@@ -2757,6 +2927,40 @@
           "connector"
         ],
         "title": "StepOut",
+        "type": "object"
+      },
+      "SyncResult": {
+        "description": "What one sync pulled in, and what detection made of it.",
+        "properties": {
+          "clusters_found": {
+            "title": "Clusters Found",
+            "type": "integer"
+          },
+          "events_imported": {
+            "title": "Events Imported",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "total_events": {
+            "title": "Total Events",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "events_imported",
+          "total_events",
+          "clusters_found",
+          "message"
+        ],
+        "title": "SyncResult",
         "type": "object"
       },
       "SystemStatus": {
@@ -3736,6 +3940,251 @@
         "summary": "Collect Events",
         "tags": [
           "sources"
+        ]
+      }
+    },
+    "/api/v1/connect/providers": {
+      "get": {
+        "description": "Every account LOOP can read, with its current state.",
+        "operationId": "list_providers_api_v1_connect_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Providers",
+        "tags": [
+          "connect"
+        ]
+      }
+    },
+    "/api/v1/connect/{provider_key}": {
+      "delete": {
+        "description": "Disconnect an account and delete every event it contributed.\n\nDeliberately destructive. A person who disconnects an account has withdrawn\nconsent, and leaving the events behind would mean LOOP kept a record of\ntheir inbox after being told to stop reading it. Detection is re-run so the\nfindings reflect only what remains.",
+        "operationId": "disconnect_api_v1_connect__provider_key__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_key",
+            "required": true,
+            "schema": {
+              "title": "Provider Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disconnect",
+        "tags": [
+          "connect"
+        ]
+      }
+    },
+    "/api/v1/connect/{provider_key}/credentials": {
+      "delete": {
+        "description": "Forget the app registration \u2014 and disconnect, since it can no longer refresh.",
+        "operationId": "forget_credentials_api_v1_connect__provider_key__credentials_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_key",
+            "required": true,
+            "schema": {
+              "title": "Provider Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forget Credentials",
+        "tags": [
+          "connect"
+        ]
+      },
+      "put": {
+        "description": "Store the client id and secret from the person's own OAuth app.\n\nThese arrive over the local loopback connection and go straight into the\nlocal database. They are not returned by this endpoint or any other.",
+        "operationId": "save_credentials_api_v1_connect__provider_key__credentials_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_key",
+            "required": true,
+            "schema": {
+              "title": "Provider Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCredentialsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Credentials",
+        "tags": [
+          "connect"
+        ]
+      }
+    },
+    "/api/v1/connect/{provider_key}/start": {
+      "get": {
+        "description": "Build the provider's sign-in URL for the browser to follow.",
+        "operationId": "start_api_v1_connect__provider_key__start_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_key",
+            "required": true,
+            "schema": {
+              "title": "Provider Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start",
+        "tags": [
+          "connect"
+        ]
+      }
+    },
+    "/api/v1/connect/{provider_key}/sync": {
+      "post": {
+        "description": "Pull recent activity, store it as events, then re-run detection.\n\nDetection runs here rather than on a button elsewhere because of what the\nperson actually asked for: connect an account and have LOOP notice the\nrepetitive parts. Making them press a second button to find that out would\nbe making them do the work the tool exists to do.",
+        "operationId": "sync_api_v1_connect__provider_key__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_key",
+            "required": true,
+            "schema": {
+              "title": "Provider Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync",
+        "tags": [
+          "connect"
         ]
       }
     },

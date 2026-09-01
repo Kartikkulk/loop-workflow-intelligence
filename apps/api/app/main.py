@@ -9,7 +9,15 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.v1 import automations, clusters, demo, governance, ingest, sources
+from app.api.v1 import (
+    automations,
+    clusters,
+    connect,
+    demo,
+    governance,
+    ingest,
+    sources,
+)
 from app.config import settings
 from app.db.session import SessionLocal, engine, init_db
 from app.llm.client import llm
@@ -33,6 +41,9 @@ async def lifespan(app: FastAPI):
 
         await seed_registries(session)
         await session.commit()
+
+        # Credentials the person typed into the Sources page in an earlier run.
+        await connect.reload_credentials(session)
     logger.info(
         "LOOP api ready — db=%s llm=%s connectors=%s",
         settings.database_url.split("://")[0],
@@ -68,6 +79,7 @@ v1.include_router(ingest.router)
 v1.include_router(clusters.router)
 v1.include_router(automations.router)
 v1.include_router(sources.router)
+v1.include_router(connect.router)
 v1.include_router(governance.router)
 v1.include_router(demo.router)
 app.include_router(v1)

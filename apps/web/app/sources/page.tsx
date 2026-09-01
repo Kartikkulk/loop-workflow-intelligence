@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ConnectAccounts } from "@/components/connect-accounts";
 import {
   Badge,
   ErrorNote,
@@ -11,15 +12,15 @@ import {
 } from "@/components/ui";
 import {
   useDescribeWorkflow,
+  useProviders,
   useRedetect,
   useRevokeSource,
   useSources,
-  useTools,
   useUpdateSource,
   useUploadLog,
 } from "@/lib/api/queries";
 import { relativeTime } from "@/lib/format";
-import type { MonitorableTool, ObservationSource } from "@/lib/api/types";
+import type { ObservationSource } from "@/lib/api/types";
 
 const EXAMPLE_DESCRIPTION =
   "Every Monday I download the vendor ageing report, filter for rows more than 30 days overdue, update the summary tab, and email it to the finance leads.";
@@ -38,10 +39,33 @@ const EXAMPLE_DESCRIPTION =
  */
 export default function SourcesPage() {
   const { data, isLoading, error } = useSources();
-  const { data: tools } = useTools();
+  const { data: providers } = useProviders();
   const redetect = useRedetect();
   const [notice, setNotice] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+
+  // A provider sends the browser back here with the outcome in the query
+  // string. Report it, open the panel it belongs to, then strip the parameters
+  // so a refresh does not replay a stale message.
+  //
+  // Read straight from the URL rather than through `useSearchParams`, which
+  // would force this whole page behind a Suspense boundary for one line of
+  // post-redirect housekeeping.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const returned = params.get("connected");
+    if (!returned) return;
+
+    const failure = params.get("error");
+    const account = params.get("account");
+    setOpen("accounts");
+    setNotice(
+      failure
+        ? `Could not connect ${returned}: ${failure}`
+        : `${account || returned} connected. Press “Read my activity” and LOOP will start looking for the parts you repeat.`,
+    );
+    window.history.replaceState(null, "", "/sources");
+  }, []);
 
   if (isLoading) return <PageSkeleton rows={3} />;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
@@ -94,29 +118,30 @@ export default function SourcesPage() {
             hint="Recognised automatically from the activity"
           />
           <Stat
-            label="Sources connected"
-            value={String(connected.length)}
-            tone={connected.length > 0 ? "good" : "default"}
+            label="Connected"
+            value={String(connected.length + (providers?.connected_count ?? 0))}
+            hint="Accounts you signed in to, plus collectors reporting in"
+            tone={connected.length + (providers?.connected_count ?? 0) > 0 ? "good" : "default"}
           />
         </div>
 
         {/* ── the four ways in ─────────────────────────────────────── */}
         <div className="grid gap-3 lg:grid-cols-2">
           <SourceCard
-            title="Connect a tool"
-            blurb="Read the activity log out of an application your team already uses."
-            detail="LOOP pulls what already happened — who did what, where — straight from the tool. No install on anyone's machine."
+            title="Connect your accounts"
+            blurb="Sign in to the tools you already work in, and LOOP reads what you did."
+            detail="Your own accounts, read-only, nobody else's. Gmail and Outlook are read as metadata — who and when, never the message. Disconnecting deletes the tokens and every event they produced."
             badge={
-              tools && tools.connected > 0 ? (
-                <Badge tone="good">{tools.connected} connected</Badge>
+              providers && providers.connected_count > 0 ? (
+                <Badge tone="good">{providers.connected_count} connected</Badge>
               ) : (
-                <Badge tone="warn">Needs credentials</Badge>
+                <Badge tone="accent">Start here</Badge>
               )
             }
-            open={open === "tools"}
-            onToggle={() => setOpen(open === "tools" ? null : "tools")}
+            open={open === "accounts"}
+            onToggle={() => setOpen(open === "accounts" ? null : "accounts")}
           >
-            <ToolsPanel tools={tools?.items ?? []} />
+            <ConnectAccounts onNotice={setNotice} />
           </SourceCard>
 
           <SourceCard
@@ -226,47 +251,6 @@ function SourceCard({
       </button>
       {open && <div className="border-t border-ink-700">{children}</div>}
     </section>
-  );
-}
-
-function ToolsPanel({ tools }: { tools: MonitorableTool[] }) {
-  if (tools.length === 0) {
-    return <p className="px-4 py-4 text-2xs text-mist-500">Loading…</p>;
-  }
-  return (
-    <div>
-      <ul className="divide-y divide-ink-800">
-        {tools.map((tool) => (
-          <li key={tool.key} className="flex items-start justify-between gap-4 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-mist-100">{tool.label}</span>
-                {tool.needs_admin && <Badge tone="warn">Admin consent</Badge>}
-              </div>
-              <p className="mt-1 text-2xs leading-relaxed text-mist-400">{tool.reads}</p>
-              <p className="mono mt-1">{tool.api}</p>
-            </div>
-            <div className="shrink-0 text-right">
-              {tool.connected ? (
-                <Badge tone="good">Connected</Badge>
-              ) : (
-                <>
-                  <span className="text-2xs text-mist-500">Not connected</span>
-                  <p className="mono mt-1 max-w-[11rem] text-right leading-snug">
-                    {tool.missing_credentials.join(" · ")}
-                  </p>
-                </>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="border-t border-ink-800 px-4 py-3 text-2xs leading-relaxed text-mist-500">
-        Add the credentials a tool needs to <span className="mono">.env</span> and restart the
-        API. A tool shows as connected only when every one of its variables is actually set —
-        this list cannot claim a connection that does not exist.
-      </p>
-    </div>
   );
 }
 
