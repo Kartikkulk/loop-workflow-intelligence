@@ -1505,7 +1505,7 @@
         "type": "object"
       },
       "LlmUsage": {
-        "description": "Running LLM cost, surfaced so the operator can see it during a demo.",
+        "description": "Running LLM usage, surfaced so the operator can see it during a demo.",
         "properties": {
           "available": {
             "title": "Available",
@@ -1516,7 +1516,7 @@
             "type": "integer"
           },
           "estimated_cost_usd": {
-            "description": "Approximate, based on list pricing.",
+            "description": "Always 0 for local Ollama models.",
             "title": "Estimated Cost Usd",
             "type": "number"
           },
@@ -4697,7 +4697,7 @@
     },
     "/api/v1/llm-usage": {
       "get": {
-        "description": "Running LLM cost. Visible during a demo so the spend is never a surprise.",
+        "description": "Running LLM usage. Local Ollama models report zero hosted spend.",
         "operationId": "llm_usage_api_v1_llm_usage_get",
         "responses": {
           "200": {

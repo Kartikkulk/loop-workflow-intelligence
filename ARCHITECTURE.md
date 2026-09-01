@@ -296,16 +296,17 @@ numbers. Surfaced as a first-class list in the console, never as an error state.
 
 **Why the weighting is not cosmetic.** A workflow is flagged because its
 instances genuinely disagree with each other in the log — a fact — not because a
-model was asked for an opinion about it. With no API key, the judgement term
+model was asked for an opinion about it. With no model running, the judgement term
 falls back to a measured free-text ratio and the flag still fires correctly.
 
 ---
 
 ## 6. Generation (F4)
 
-Flow definitions come from **Anthropic tool use**, so the shape is guaranteed by
-the schema. Free-form JSON parsing is never used: a malformed response becomes
-impossible rather than merely unlikely.
+Flow definitions come from a **local model constrained to a JSON schema**
+(Ollama's `format` parameter), so the shape is guaranteed rather than hoped for.
+Free-form JSON parsing is never used: a malformed response becomes impossible
+rather than merely unlikely.
 
 Model output is then **sanitised against invariants we enforce ourselves**:
 
@@ -326,14 +327,16 @@ against observed reality is what makes the backtest a measurement.
 Every prompt lives in `app/llm/prompts/*.md` and is loaded at runtime. Prompts
 buried in f-strings cannot be iterated on under time pressure.
 
-The Anthropic client wraps retry-with-backoff, a token/cost counter, and an
-in-memory cache keyed on prompt hash. During a hackathon the same analysis runs
-fifty times; the cache saves both money and demo latency.
+The LLM client wraps retry-with-backoff, a token counter, and an in-memory
+cache keyed on prompt hash. During a hackathon the same analysis runs fifty
+times, and on a laptop-sized model the cache is what keeps the demo responsive.
+Hosted spend is reported as zero because the model is local — that is a
+measurement, not a rounding.
 
-**Every call site supplies a `fallback` callable.** With no API key — or after
-all retries fail — the fallback runs. A network problem on stage degrades output
-quality rather than breaking the demo, and the whole product is demonstrable
-offline.
+**Every call site supplies a `fallback` callable.** With Ollama not running —
+or after all retries fail — the fallback runs. A missing model on stage degrades
+output quality rather than breaking the demo, and the whole product is
+demonstrable with nothing installed at all.
 
 ---
 
