@@ -7,15 +7,16 @@ tests.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.automation import Automation
 from app.models.cluster import Cluster, TaskInstance
 from app.models.event import Event
 from app.services.clustering import ClusterResult, cluster_instances
-from app.services.ids import new_id
 from app.services.scoring import score_cluster, variance_as_dict
 from app.services.sessioniser import Instance, sessionise, signature_hash
 
@@ -41,6 +42,20 @@ MIN_SIGNATURE_STEPS = 3
 _UNSTABLE_ORDER_ENTROPY = 0.6
 
 _STOPWORDS = frozenset({"the", "a", "an", "new", "my", "item", "record", "unknown"})
+
+
+def cluster_id_for(signature: list[str]) -> str:
+    """A deterministic cluster id derived from its representative signature.
+
+    Detection is a pure function of the event log, so its output ids must be too.
+    Random ids broke that: re-running detection (via redetect, upload, a source
+    revoke or an account sync) minted fresh cluster ids and left every existing
+    automation pointing at a cluster that no longer existed — so "View workflow"
+    404'd. Hashing the signature makes the same workflow keep the same id across
+    runs, which is what keeps an automation linked to its source workflow.
+    """
+    digest = hashlib.sha256("|".join(signature).encode("utf-8")).hexdigest()
+    return f"clu_{digest[:12]}"
 
 
 def _object_types(signature: list[str]) -> list[str]:
@@ -177,6 +192,7 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
     await session.flush()
 
     created: list[Cluster] = []
+    used_ids: set[str] = set()
     for group in groups:
         signature = list(group.representative)
         # Scored first: the final name depends on how stable the step order
@@ -190,8 +206,18 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
             object_types=cluster_object_types(group),
         )
 
+        # Deterministic id from the signature; disambiguate on the rare chance
+        # two clusters share a representative signature in the same pass.
+        cluster_id = cluster_id_for(signature)
+        if cluster_id in used_ids:
+            suffix = 1
+            while f"{cluster_id}_{suffix}" in used_ids:
+                suffix += 1
+            cluster_id = f"{cluster_id}_{suffix}"
+        used_ids.add(cluster_id)
+
         cluster = Cluster(
-            id=new_id("clu"),
+            id=cluster_id,
             name=name,
             description=_describe(signature, score),
             signature=signature,
@@ -236,5 +262,64 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
             )
 
     await session.flush()
+
+    await _relink_orphaned_automations(session, created)
+
     created.sort(key=lambda c: c.priority, reverse=True)
     return created
+
+
+async def _relink_orphaned_automations(
+    session: AsyncSession, clusters: list[Cluster]
+) -> None:
+    """Re-point automations whose cluster no longer exists to a matching cluster.
+
+    Deterministic ids keep new automations linked across re-detection. This is
+    the safety net for automations created before that fix, or for a cluster
+    that genuinely changed shape between runs: rather than leave the automation
+    orphaned (a dead "View workflow" link), match it to the surviving cluster
+    with the most step tokens in common with its trigger/steps.
+    """
+    if not clusters:
+        return
+
+    live_ids = {c.id for c in clusters}
+    result = await session.execute(select(Automation))
+    automations = list(result.scalars().all())
+
+    orphans = [a for a in automations if a.cluster_id not in live_ids]
+    if not orphans:
+        return
+
+    def automation_tokens(automation: Automation) -> set[str]:
+        tokens: set[str] = set()
+        for step in automation.steps or []:
+            app = step.get("app") or step.get("tool")
+            action = step.get("action")
+            if app and action:
+                tokens.add(f"{app}:{action}")
+        return tokens
+
+    for automation in orphans:
+        wanted = automation_tokens(automation)
+        best: Cluster | None = None
+        best_overlap = -1
+        for cluster in clusters:
+            cluster_tokens = {
+                ":".join(token.split(":")[:2]) for token in (cluster.signature or [])
+            }
+            overlap = len(wanted & cluster_tokens)
+            if overlap > best_overlap:
+                best, best_overlap = cluster, overlap
+        # Fall back to the highest-priority cluster if nothing overlapped, so an
+        # automation is never left pointing at a nonexistent workflow.
+        target = best or max(clusters, key=lambda c: c.priority)
+        automation.cluster_id = target.id
+        logger.info(
+            "relinked automation %s -> cluster %s (overlap %d)",
+            automation.id,
+            target.id,
+            max(best_overlap, 0),
+        )
+
+    await session.flush()

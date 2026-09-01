@@ -19,6 +19,7 @@ import {
 import {
   useAutomation,
   useBreakSchema,
+  useCluster,
   useDemote,
   usePromote,
   useSeedExceptions,
@@ -35,6 +36,11 @@ export default function AutomationDetailPage() {
   const { data: automation, isLoading, error } = useAutomation(id);
   const { data: shadowRuns } = useShadowRuns(id);
   const { payload, connected } = useTrustStream(id);
+  // Resolve the linked workflow so "View workflow" is only offered when it
+  // actually leads somewhere. A missing cluster returns 404, which we treat as
+  // "no linked workflow" rather than surfacing a broken link.
+  const clusterId = automation?.cluster_id ?? "";
+  const { data: linkedCluster } = useCluster(clusterId);
 
   const simulate = useSimulateShadow();
   const promote = usePromote();
@@ -66,9 +72,11 @@ export default function AutomationDetailPage() {
         subtitle={automation.description}
         actions={
           <>
-            <Link className="btn-ghost" href={`/clusters/${automation.cluster_id}`}>
-              View workflow
-            </Link>
+            {linkedCluster && (
+              <Link className="btn-ghost" href={`/clusters/${automation.cluster_id}`}>
+                View workflow
+              </Link>
+            )}
             <button
               className="btn-ghost"
               disabled={simulate.isPending}

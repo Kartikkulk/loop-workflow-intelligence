@@ -15,7 +15,7 @@ import {
   Panel,
   Stat,
 } from "@/components/ui";
-import { apiUrl } from "@/lib/api/client";
+import { ApiError, apiUrl } from "@/lib/api/client";
 import { useCluster, useGenerateAutomation, useSop } from "@/lib/api/queries";
 import { displayName, duration, hours, percent, teamLabel } from "@/lib/format";
 
@@ -29,7 +29,41 @@ export default function ClusterDetailPage() {
   const generate = useGenerateAutomation();
 
   if (isLoading) return <PageSkeleton rows={2} />;
-  if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
+  if (error) {
+    // A 404 here means the automation pointed at a workflow that no longer
+    // exists (stale link from an older detection run). Explain it plainly and
+    // offer the way back, rather than dumping a raw error.
+    const notFound =
+      (error instanceof ApiError && error.status === 404) ||
+      /not found/i.test(String((error as Error)?.message ?? ""));
+    return (
+      <div className="pb-16">
+        <PageHeader back={{ href: "/", label: "Discovery" }} eyebrow="Workflow" title="Workflow unavailable" />
+        <div className="px-8 pt-6">
+          {notFound ? (
+            <div className="panel border-warn-500/30 bg-warn-500/5 px-4 py-4">
+              <p className="text-sm font-medium text-mist-100">This workflow isn&apos;t available</p>
+              <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-mist-400">
+                The link points to a detected workflow that no longer exists — usually because
+                detection was re-run since this automation was created. Re-seeding the demo
+                (or the next detection pass) re-links it automatically.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Link className="btn-primary" href="/">
+                  Back to Discovery
+                </Link>
+                <Link className="btn-ghost" href="/automations">
+                  View automations
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <ErrorNote error={error} />
+          )}
+        </div>
+      </div>
+    );
+  }
   if (!cluster) return null;
 
   const variance = cluster.variance_breakdown;
