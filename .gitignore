@@ -1,43 +1,89 @@
+# LOOP — what never gets committed.
+#
+# This repository is public, and a personal account can be connected to a local
+# LOOP in about two minutes. That means a working checkout holds real OAuth
+# access and refresh tokens for somebody's actual mailbox. Nothing below is
+# housekeeping; the database and secrets sections are the ones that matter.
+
+# ── secrets ────────────────────────────────────────────────────────────────
+# .env.example is committed and must stay empty of real values. Everything
+# else named .env is a real one.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+client_secret*.json
+secrets.json
+token.json
+*.token
+
+# ── local database ─────────────────────────────────────────────────────────
+# Once an account is connected, loop.db holds live OAuth tokens. SQLite also
+# writes recent transactions to -wal and -shm sidecars, so ignoring only *.db
+# leaves the newest pages — the ones most likely to hold a token just issued —
+# sitting untracked-but-visible next to it.
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ── dependencies ───────────────────────────────────────────────────────────
 node_modules/
-.next/
-dist/
-__pycache__/
-*.pyc
 .venv/
 venv/
-.env
-.env.local
-*.db
-*.sqlite3
-.DS_Store
-.turbo/
+__pycache__/
+*.pyc
+*.pyo
+
+# ── build output ───────────────────────────────────────────────────────────
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+# Assembled extensions — rebuild with `make collectors`.
+collectors/dist/
+
+# ── generated data ─────────────────────────────────────────────────────────
+# The seed exports are reproducible from `make seed`, byte for byte, so
+# committing them would only create merge conflicts on a file nobody reads.
+apps/api/fixtures/
+
+# Deliberately NOT ignored, both generated and both required:
+#   contracts/openapi.json         — the frontend/backend contract
+#   apps/web/lib/api/fixtures.json — lets the console run with no backend
+
+# ── caches ─────────────────────────────────────────────────────────────────
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
-loop.db
-
-# ── secrets ────────────────────────────────────────────────────────────────
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
-
-# ── generated, but committed on purpose ────────────────────────────────────
-# contracts/openapi.json        — the frontend/backend contract, must be tracked
-# apps/web/lib/api/fixtures.json — lets the frontend run with no backend
-
-# ── local artefacts ────────────────────────────────────────────────────────
-apps/api/fixtures/
-/tmp/
-.DS_Store
-*.log
+.turbo/
+.eslintcache
 coverage/
+htmlcov/
+.coverage
+
+# ── test output ────────────────────────────────────────────────────────────
 playwright-report/
 test-results/
 
-# TypeScript incremental build cache — machine-local, changes on every build
-*.tsbuildinfo
+# ── editors and operating systems ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
 
-# Assembled extensions — build with `make collectors`
-collectors/dist/
+# ── logs and scratch ───────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+tmp/

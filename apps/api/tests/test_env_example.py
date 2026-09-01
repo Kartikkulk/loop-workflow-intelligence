@@ -106,3 +106,25 @@ def test_the_dangerous_defaults_are_flagged():
         block = text[: text.index(f"{key}=")]
         preceding = block[-700:]
         assert "⚠" in preceding, f"{key} should be preceded by a warning explaining the risk"
+
+
+def test_gitignore_covers_the_local_database_and_its_sidecars():
+    """A public repo plus a connectable account is a token-leak waiting to happen.
+
+    Once somebody connects an account, `loop.db` holds live OAuth access and
+    refresh tokens for a real mailbox. SQLite also writes recent transactions
+    to `-wal` and `-shm` sidecar files, so ignoring `*.db` alone leaves the
+    newest pages — the ones most likely to hold a token just issued — sitting
+    beside it, untracked but perfectly visible to `git add -A`.
+    """
+    gitignore = (ENV_EXAMPLE.parent / ".gitignore").read_text(encoding="utf-8")
+    patterns = {
+        line.strip()
+        for line in gitignore.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    }
+    for required in ("*.db", "*.db-wal", "*.db-shm", "*.db-journal", ".env"):
+        assert required in patterns, f"{required} must be in .gitignore"
+
+    # .env.example is the one .env-shaped file that has to stay tracked.
+    assert "!.env.example" in patterns
