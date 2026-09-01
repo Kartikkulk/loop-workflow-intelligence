@@ -413,3 +413,20 @@ export interface DomainList {
   items: Domain[];
   unwatched_tools: string[];
 }
+
+export interface MonitorableTool {
+  key: string;
+  label: string;
+  reads: string;
+  api: string;
+  credentials: string[];
+  missing_credentials: string[];
+  needs_admin: boolean;
+  connected: boolean;
+}
+
+export interface ToolInventory {
+  total: number;
+  connected: number;
+  items: MonitorableTool[];
+}

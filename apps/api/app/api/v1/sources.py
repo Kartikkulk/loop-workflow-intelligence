@@ -27,11 +27,13 @@ from app.schemas.sources import (
     CollectResult,
     DomainList,
     DomainOut,
+    MonitorableToolOut,
     RecordingIngestRequest,
     RegisterSourceRequest,
     RegisterSourceResult,
     SourceList,
     SourceOut,
+    ToolInventory,
     ToolStatus,
     UpdateSourceRequest,
 )
@@ -655,4 +657,22 @@ async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainLi
         total=len(items),
         items=items,
         unwatched_tools=sorted(unwatched),
+    )
+
+
+
+@router.get("/tools", response_model=ToolInventory)
+async def list_tools() -> ToolInventory:
+    """Applications LOOP knows how to read activity out of.
+
+    Deliberately separate from the execution connectors: those act on a system,
+    these read what already happened, and the API is usually a different one
+    entirely. A tool reports connected only when every credential it needs is
+    actually present in the environment.
+    """
+    items = [MonitorableToolOut(**tool) for tool in source_service.tool_inventory()]
+    return ToolInventory(
+        total=len(items),
+        connected=sum(1 for t in items if t.connected),
+        items=items,
     )

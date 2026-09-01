@@ -1568,6 +1568,61 @@
         "title": "Message",
         "type": "object"
       },
+      "MonitorableToolOut": {
+        "description": "An application LOOP knows how to read activity out of.",
+        "properties": {
+          "api": {
+            "title": "Api",
+            "type": "string"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "credentials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Credentials",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "missing_credentials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Credentials",
+            "type": "array"
+          },
+          "needs_admin": {
+            "title": "Needs Admin",
+            "type": "boolean"
+          },
+          "reads": {
+            "title": "Reads",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "reads",
+          "api",
+          "credentials",
+          "missing_credentials",
+          "needs_admin",
+          "connected"
+        ],
+        "title": "MonitorableToolOut",
+        "type": "object"
+      },
       "PatchList": {
         "properties": {
           "items": {
@@ -2770,6 +2825,33 @@
           "settings"
         ],
         "title": "SystemStatus",
+        "type": "object"
+      },
+      "ToolInventory": {
+        "description": "GET /api/v1/tools",
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MonitorableToolOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "connected",
+          "items"
+        ],
+        "title": "ToolInventory",
         "type": "object"
       },
       "ToolStatus": {
@@ -4512,6 +4594,28 @@
         "summary": "System Status",
         "tags": [
           "governance"
+        ]
+      }
+    },
+    "/api/v1/tools": {
+      "get": {
+        "description": "Applications LOOP knows how to read activity out of.\n\nDeliberately separate from the execution connectors: those act on a system,\nthese read what already happened, and the API is usually a different one\nentirely. A tool reports connected only when every credential it needs is\nactually present in the environment.",
+        "operationId": "list_tools_api_v1_tools_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolInventory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Tools",
+        "tags": [
+          "sources"
         ]
       }
     },

@@ -14,11 +14,12 @@ import {
   useRedetect,
   useRevokeSource,
   useSources,
+  useTools,
   useUpdateSource,
   useUploadLog,
 } from "@/lib/api/queries";
 import { relativeTime } from "@/lib/format";
-import type { ObservationSource } from "@/lib/api/types";
+import type { MonitorableTool, ObservationSource } from "@/lib/api/types";
 
 const EXAMPLE_DESCRIPTION =
   "Every Monday I download the vendor ageing report, filter for rows more than 30 days overdue, update the summary tab, and email it to the finance leads.";
@@ -26,14 +27,18 @@ const EXAMPLE_DESCRIPTION =
 /**
  * Where the data comes from.
  *
- * The problem statement names three inputs — screen recordings, activity logs,
- * and workflow descriptions — so those are the three cards, in that order, with
- * the live browser collector as a fourth. Everything else that used to be on
- * this screen (per-team tool tables, coverage tiers, blind-spot columns) has
- * gone: it explained the architecture rather than telling anyone what to do.
+ * Five ways in. Connecting a tool comes first because that is what "source"
+ * means to most people — point LOOP at an application and let it read the
+ * activity log. Then the three inputs the brief names (activity logs, plain
+ * descriptions, screen recordings), plus the live browser collector.
+ *
+ * Everything that used to be here explaining the architecture — per-team tool
+ * tables, coverage tiers, blind-spot columns — has gone. It described how the
+ * system works rather than telling anyone what to do next.
  */
 export default function SourcesPage() {
   const { data, isLoading, error } = useSources();
+  const { data: tools } = useTools();
   const redetect = useRedetect();
   const [notice, setNotice] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -97,6 +102,23 @@ export default function SourcesPage() {
 
         {/* ── the four ways in ─────────────────────────────────────── */}
         <div className="grid gap-3 lg:grid-cols-2">
+          <SourceCard
+            title="Connect a tool"
+            blurb="Read the activity log out of an application your team already uses."
+            detail="LOOP pulls what already happened — who did what, where — straight from the tool. No install on anyone's machine."
+            badge={
+              tools && tools.connected > 0 ? (
+                <Badge tone="good">{tools.connected} connected</Badge>
+              ) : (
+                <Badge tone="warn">Needs credentials</Badge>
+              )
+            }
+            open={open === "tools"}
+            onToggle={() => setOpen(open === "tools" ? null : "tools")}
+          >
+            <ToolsPanel tools={tools?.items ?? []} />
+          </SourceCard>
+
           <SourceCard
             title="Activity log"
             blurb="An export from a tool you already use. CSV or JSONL."
@@ -204,6 +226,47 @@ function SourceCard({
       </button>
       {open && <div className="border-t border-ink-700">{children}</div>}
     </section>
+  );
+}
+
+function ToolsPanel({ tools }: { tools: MonitorableTool[] }) {
+  if (tools.length === 0) {
+    return <p className="px-4 py-4 text-2xs text-mist-500">Loading…</p>;
+  }
+  return (
+    <div>
+      <ul className="divide-y divide-ink-800">
+        {tools.map((tool) => (
+          <li key={tool.key} className="flex items-start justify-between gap-4 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-mist-100">{tool.label}</span>
+                {tool.needs_admin && <Badge tone="warn">Admin consent</Badge>}
+              </div>
+              <p className="mt-1 text-2xs leading-relaxed text-mist-400">{tool.reads}</p>
+              <p className="mono mt-1">{tool.api}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              {tool.connected ? (
+                <Badge tone="good">Connected</Badge>
+              ) : (
+                <>
+                  <span className="text-2xs text-mist-500">Not connected</span>
+                  <p className="mono mt-1 max-w-[11rem] text-right leading-snug">
+                    {tool.missing_credentials.join(" · ")}
+                  </p>
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="border-t border-ink-800 px-4 py-3 text-2xs leading-relaxed text-mist-500">
+        Add the credentials a tool needs to <span className="mono">.env</span> and restart the
+        API. A tool shows as connected only when every one of its variables is actually set —
+        this list cannot claim a connection that does not exist.
+      </p>
+    </div>
   );
 }
 

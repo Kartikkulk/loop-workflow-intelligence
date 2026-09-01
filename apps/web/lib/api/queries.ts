@@ -25,6 +25,7 @@ import type {
   RoiReport,
   ShadowRunList,
   SourceList,
+  ToolInventory,
   SimulateResult,
   Sop,
   SystemStatus,
@@ -43,6 +44,7 @@ export const keys = {
   system: ["system"] as const,
   sources: ["sources"] as const,
   domains: ["domains"] as const,
+  tools: ["tools"] as const,
 };
 
 type Options<T> = Omit<UseQueryOptions<T>, "queryKey" | "queryFn">;
@@ -133,6 +135,13 @@ export function useApprovalCount(): number {
   ).length;
 
   return proposed + (exceptions.data?.open_count ?? 0) + (patches.data?.proposed_count ?? 0);
+}
+
+export function useTools() {
+  return useQuery({
+    queryKey: keys.tools,
+    queryFn: () => http.get<ToolInventory>("/api/v1/tools"),
+  });
 }
 
 export function useDomains() {

@@ -208,3 +208,24 @@ class DomainList(BaseModel):
     items: list[DomainOut]
     #: Every tool across every domain that nothing is currently watching.
     unwatched_tools: list[str]
+
+
+class MonitorableToolOut(BaseModel):
+    """An application LOOP knows how to read activity out of."""
+
+    key: str
+    label: str
+    reads: str
+    api: str
+    credentials: list[str]
+    missing_credentials: list[str]
+    needs_admin: bool
+    connected: bool
+
+
+class ToolInventory(BaseModel):
+    """GET /api/v1/tools"""
+
+    total: int
+    connected: int
+    items: list[MonitorableToolOut]

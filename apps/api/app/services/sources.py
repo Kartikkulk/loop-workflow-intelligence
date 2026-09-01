@@ -302,3 +302,114 @@ async def coverage_report(session: AsyncSession) -> dict:
         "observed_events": int(observed_events.scalar() or 0),
         "kinds_connected": sorted({s.kind.value for s in connected}),
     }
+
+
+# ── tools LOOP can read activity out of ────────────────────────────────────
+#
+# Distinct from the execution connectors in app/connectors/. Those *act* on a
+# system — send an email, append a row. These *read* what already happened, and
+# the API surface is usually a completely different one: Gmail's execution API
+# sends mail, but the activity comes from the Admin SDK Reports API.
+#
+# Conflating the two is an easy mistake and an expensive one, because it makes
+# "we can send email" look like "we can see what you did".
+
+
+@dataclass
+class MonitorableTool:
+    """An application whose activity LOOP knows how to read."""
+
+    key: str
+    label: str
+    #: What activity this yields, in the user's words.
+    reads: str
+    #: The specific API the activity comes from.
+    api: str
+    #: Environment variables needed before it can connect.
+    credentials: list[str]
+    #: True when an administrator must consent, not just the individual.
+    needs_admin: bool = False
+
+
+MONITORABLE_TOOLS: list[MonitorableTool] = [
+    MonitorableTool(
+        key="google_workspace",
+        label="Google Workspace",
+        reads="Mail, Drive and Calendar activity across everyone in the tenant.",
+        api="Admin SDK Reports API — activities.list",
+        credentials=["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"],
+        needs_admin=True,
+    ),
+    MonitorableTool(
+        key="microsoft_365",
+        label="Microsoft 365",
+        reads="Mail and calendar for one mailbox, without an administrator.",
+        api="Microsoft Graph — /me/messages/delta, /me/events/delta",
+        credentials=["MS_CLIENT_ID", "MS_CLIENT_SECRET"],
+    ),
+    MonitorableTool(
+        key="microsoft_365_tenant",
+        label="Microsoft 365 — whole tenant",
+        reads="Every action across Exchange, SharePoint and Teams. The richest source there is.",
+        api="Office 365 Management Activity API",
+        credentials=["MS_CLIENT_ID", "MS_CLIENT_SECRET", "MS_TENANT_ID"],
+        needs_admin=True,
+    ),
+    MonitorableTool(
+        key="slack",
+        label="Slack",
+        reads="Who did what in which channel.",
+        api="Audit Logs API (Enterprise Grid) or the Events API",
+        credentials=["SLACK_BOT_TOKEN"],
+        needs_admin=True,
+    ),
+    MonitorableTool(
+        key="jira",
+        label="Jira",
+        reads="Issue transitions, comments and field edits.",
+        api="Webhooks plus the audit log",
+        credentials=["ATLASSIAN_SITE", "ATLASSIAN_API_TOKEN"],
+    ),
+    MonitorableTool(
+        key="salesforce",
+        label="Salesforce",
+        reads="Record views, edits and reports run.",
+        api="EventLogFile",
+        credentials=["SF_CLIENT_ID", "SF_CLIENT_SECRET", "SF_INSTANCE_URL"],
+        needs_admin=True,
+    ),
+    MonitorableTool(
+        key="erp",
+        label="Your ERP",
+        reads="Document changes and postings.",
+        api="Tenant REST API, or SAP change documents",
+        credentials=["ERP_BASE_URL", "ERP_API_TOKEN"],
+    ),
+]
+
+
+def tool_inventory() -> list[dict]:
+    """Every monitorable tool, with whether its credentials are configured.
+
+    Honest by construction: a tool reports connected only when the environment
+    actually holds every variable it needs, so this cannot claim a connection
+    that does not exist.
+    """
+    import os
+
+    out = []
+    for tool in MONITORABLE_TOOLS:
+        missing = [name for name in tool.credentials if not os.environ.get(name)]
+        out.append(
+            {
+                "key": tool.key,
+                "label": tool.label,
+                "reads": tool.reads,
+                "api": tool.api,
+                "credentials": tool.credentials,
+                "missing_credentials": missing,
+                "needs_admin": tool.needs_admin,
+                "connected": not missing,
+            }
+        )
+    return out
