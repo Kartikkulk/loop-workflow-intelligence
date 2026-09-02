@@ -54,16 +54,16 @@ export default function DiscoveryPage() {
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
-                label="Workflows detected"
+                label="Repeated jobs found"
                 value={String(data.total)}
-                hint={`${data.recommended.length} automatable, ${data.not_recommended.length} not recommended`}
+                hint={`${data.recommended.length} worth automating, ${data.not_recommended.length} better left to people`}
               />
               <Stat
-                label="Annual hours at stake"
+                label="Time spent on them"
                 value={hours(data.total_annual_hours)}
                 unit="hrs/yr"
                 tone="accent"
-                hint="Median duration × observed frequency × 48 weeks × people"
+                hint="How long each takes × how often people do it × how many people"
                 aside={
                   <Sparkline
                     points={data.recommended.map((c) => c.annual_hours).reverse()}
@@ -74,11 +74,11 @@ export default function DiscoveryPage() {
                 }
               />
               <Stat
-                label="Interruption tax"
+                label="Time lost switching apps"
                 value={hours(data.total_interruption_tax_hours)}
                 unit="hrs/yr"
                 tone="warn"
-                hint="Cost of context switching, invisible in a time-and-motion study"
+                hint="On top of the time above — the cost of bouncing between tabs to get one job done"
                 aside={
                   <Sparkline
                     points={data.recommended.map((c) => c.interruption_tax_hours).reverse()}
@@ -89,20 +89,20 @@ export default function DiscoveryPage() {
                 }
               />
               <Stat
-                label="Organisation-wide"
+                label="Whole-team problems"
                 value={String(data.recommended.filter((c) => c.is_organisational).length)}
-                hint="Performed by more than 3 people — a team problem, not a personal one"
+                hint="More than 3 people do these — worth fixing once for everyone"
               />
             </div>
 
             <Panel
-              title="Recommended for automation"
-              hint="Sorted by priority: (time + interruption tax) × automatability ÷ build effort"
+              title="Worth automating"
+              hint="Best first — the ones that cost the most time, repeat most predictably, and take least work to build."
             >
               {data.recommended.length === 0 ? (
                 <Empty
-                  title="No automatable workflows yet"
-                  hint="LOOP needs activity to mine. Add a log, describe a task in your own words, or connect a browser to watch real work."
+                  title="Nothing found yet"
+                  hint="LOOP needs to see some work first. Add an activity log, describe a task in your own words, or connect a browser."
                   action={
                     <div className="flex flex-wrap justify-center gap-2">
                       <button className="btn-primary" onClick={() => setShowIngest(true)}>
@@ -200,15 +200,15 @@ function ClusterRow({
                   ]}
                 />
                 <p className="tnum mt-1.5 text-2xs text-mist-500">
-                  {percent(variants.dominant_variant_share)} take the same path ·{" "}
-                  {variants.variant_count} distinct orders
+                  {percent(variants.dominant_variant_share)} of runs go the same way ·{" "}
+                  {variants.variant_count} variations seen
                 </p>
               </div>
 
               <div className="tnum mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
-                <span>{cluster.instance_count.toLocaleString()} instances</span>
-                <span>{duration(cluster.median_duration_ms)} median</span>
-                <span>{cluster.instances_per_user_per_week.toFixed(1)}×/person/week</span>
+                <span>done {cluster.instance_count.toLocaleString()} times</span>
+                <span>{duration(cluster.median_duration_ms)} each</span>
+                <span>{cluster.instances_per_user_per_week.toFixed(1)}× per person each week</span>
                 <span>{cluster.teams.map(teamLabel).join(", ")}</span>
               </div>
             </div>
@@ -233,7 +233,7 @@ function ClusterRow({
               </div>
 
               <div className="w-20 text-right">
-                <p className="eyebrow">Automatable</p>
+                <p className="eyebrow">Can automate</p>
                 <p
                   className={`metric mt-1 text-xl ${strong ? "text-good-400" : "text-warn-400"}`}
                 >
@@ -279,10 +279,9 @@ function NotRecommendedRow({ cluster }: { cluster: ClusterSummary }) {
             {cluster.reasoning}
           </p>
           <div className="tnum mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
-            <span>{cluster.instance_count} instances</span>
-            <span>{cluster.variance_breakdown.variant_count} distinct step orders</span>
-            <span>entropy {cluster.variance_breakdown.step_order_entropy.toFixed(2)}</span>
-            <span>judgement {percent(cluster.variance_breakdown.judgement_ratio)}</span>
+            <span>done {cluster.instance_count} times</span>
+            <span>{cluster.variance_breakdown.variant_count} different ways</span>
+            <span>{percent(cluster.variance_breakdown.judgement_ratio)} needs a human decision</span>
           </div>
         </div>
         <div className="text-right">
@@ -290,7 +289,7 @@ function NotRecommendedRow({ cluster }: { cluster: ClusterSummary }) {
           <p className="tnum mt-1 text-lg font-semibold leading-none text-bad-400">
             {percent(cluster.automatability)}
           </p>
-          <p className="mt-1 text-2xs text-mist-500">still worth an SOP</p>
+          <p className="mt-1 text-2xs text-mist-500">still worth writing down</p>
         </div>
       </div>
     </li>

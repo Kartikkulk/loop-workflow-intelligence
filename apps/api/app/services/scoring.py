@@ -11,7 +11,9 @@ from __future__ import annotations
 import math
 import statistics
 from collections.abc import Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
+
+from rapidfuzz.distance import Levenshtein
 
 from app.config import settings
 from app.llm.client import llm
@@ -33,6 +35,9 @@ class VarianceBreakdown:
     judgement_ratio: float
     variant_count: int
     dominant_variant_share: float
+    #: Mean similarity of each run to the cluster's representative. See
+    #: `sequence_similarity` for why this is not the inverse of entropy.
+    sequence_similarity: float = 0.0
 
 
 @dataclass
@@ -53,6 +58,10 @@ class ClusterScore:
     do_not_automate: bool
     reasoning: str
     is_organisational: bool
+    #: 0–100 ranking heuristic; see `automation_potential`. Defaulted, so it
+    #: has to sit after every required field.
+    potential: int = 0
+    potential_factors: list[dict] = field(default_factory=list)
 
 
 def shannon_entropy(counts: Sequence[int]) -> float:
@@ -107,16 +116,137 @@ def parameter_spread(cluster: ClusterResult) -> float:
     return float(statistics.fmean(spreads)) if spreads else 0.0
 
 
+def sequence_similarity(cluster: ClusterResult) -> float:
+    """How alike the observed runs are, as a mean similarity in [0, 1].
+
+    Distinct from `step_order_entropy`, and both are needed. Entropy answers
+    "how many different orders are there?", which goes high the moment a
+    workflow has a few optional steps — nine variants over eighteen runs looks
+    like chaos by that measure. This answers "how alike are two runs of it?",
+    and two sequences differing by one inserted step are genuinely ~90% alike.
+
+    Reporting only entropy made a workflow that a person would call obviously
+    repetitive read as 9% similar, which is true of the orders and false of the
+    work.
+    """
+    representative = cluster.representative
+    if not representative or not cluster.instances:
+        return 0.0
+    scores = [
+        Levenshtein.normalized_similarity(instance.signature, representative)
+        for instance in cluster.instances
+    ]
+    return float(statistics.fmean(scores)) if scores else 0.0
+
+
+#: Weights for Automation Potential. They sum to 1.0 before penalties.
+#:
+#: These are a judgement about what makes a workflow worth automating, not a
+#: measurement. Similarity carries the most because a workflow done the same
+#: way every time is the one a rule can actually cover; frequency and time
+#: decide whether it is worth the trouble. They are declared here, in one
+#: place, so the number can be argued with rather than only accepted.
+POTENTIAL_WEIGHTS = {
+    "similarity": 0.30,
+    "frequency": 0.25,
+    "time_impact": 0.20,
+    "predictability": 0.15,
+    "systems": 0.10,
+}
+
+#: Executions at which a workflow is as clearly repetitive as it needs to be.
+#: Absolute count rather than a weekly rate: something seen twenty times is
+#: repetitive whether that took a week or a quarter, and rate-scoring made a
+#: plainly repetitive workflow look marginal because the window was long.
+_FREQUENCY_CEILING = 20.0
+#: Observed minutes of manual effort that count as full marks for time impact.
+_EFFORT_CEILING_MINUTES = 120.0
+#: Applications above which extra systems add no further score.
+_SYSTEMS_CEILING = 4.0
+
+
+def automation_potential(
+    cluster: ClusterResult,
+    *,
+    similarity: float,
+    dominant_share: float,
+    executions: int,
+    observed_minutes: float,
+    apps: int,
+    judgement: float,
+    branches: int,
+    steps: int,
+    parameter_spread: float = 0.0,
+) -> tuple[int, list[dict[str, object]]]:
+    """Automation Potential, 0–100, with the arithmetic behind it.
+
+    Returns the score and one row per factor, so the console can show how it
+    was reached instead of asserting a number. This is a ranking heuristic and
+    is labelled as one: it is useful for deciding what to look at first, and it
+    is not a prediction of whether an automation will work.
+    """
+    # `predictability` is about the *values* a run carries, not its order.
+    # Using the dominant-variant share here counted order variation twice —
+    # once as similarity and again as predictability — and then a third time as
+    # the branch penalty, so a workflow with two optional steps scored 31 when
+    # a person would call it obviously automatable.
+    parts = {
+        "similarity": min(1.0, max(0.0, similarity)),
+        "frequency": min(1.0, executions / _FREQUENCY_CEILING),
+        "time_impact": min(1.0, observed_minutes / _EFFORT_CEILING_MINUTES),
+        "predictability": min(1.0, max(0.0, 1.0 - parameter_spread)),
+        "systems": min(1.0, apps / _SYSTEMS_CEILING),
+    }
+
+    rows: list[dict[str, object]] = []
+    total = 0.0
+    for name, weight in POTENTIAL_WEIGHTS.items():
+        contribution = parts[name] * weight * 100
+        total += contribution
+        rows.append(
+            {
+                "factor": name,
+                "measured": round(parts[name], 3),
+                "weight": weight,
+                "points": round(contribution, 1),
+            }
+        )
+
+    # Penalties, subtracted after the weighted sum so they read as deductions
+    # rather than being buried inside a factor.
+    judgement_penalty = min(25.0, judgement * 100 * 0.4)
+    # Scaled by how *dissimilar* the runs are. When they are 77% alike, most
+    # differing positions are one optional step shifting everything after it,
+    # not a genuine fork the automation has to decide between.
+    branch_penalty = min(15.0, (branches / max(steps, 1)) * 15) * (1.0 - min(1.0, similarity))
+    for name, points in (
+        ("judgement", -judgement_penalty),
+        ("branching", -branch_penalty),
+    ):
+        total += points
+        rows.append({"factor": name, "measured": None, "weight": None, "points": round(points, 1)})
+
+    return int(round(max(0.0, min(100.0, total)))), rows
+
+
 def branch_count(cluster: ClusterResult) -> int:
     """Distinct step tokens observed at any single position in the sequence.
 
     A workflow whose third step is sometimes `sheets:create:row` and sometimes
     `erp:update:record` has a real branch, and branches are what make an
     automation hard to write correctly.
+
+    Steps that are not part of this workflow are dropped before positions are
+    compared. Someone breaking off mid-task to check something unrelated pushes
+    every later step along by one; counting from the raw sequence read that
+    shift as a branch at each shifted position, so a rigid three-step workflow
+    reported four branches that no automation would ever have to handle.
     """
+    own_steps = set(cluster.representative)
     by_position: dict[int, set[str]] = {}
     for instance in cluster.instances:
-        for position, token in enumerate(instance.signature):
+        sequence = [token for token in instance.signature if token in own_steps]
+        for position, token in enumerate(sequence):
             by_position.setdefault(position, set()).add(token)
     return sum(1 for tokens in by_position.values() if len(tokens) > 1)
 
@@ -283,6 +413,20 @@ async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
     priority = (hours + tax_hours) * automatability / build_effort
 
     do_not_automate = automatability < settings.do_not_automate_threshold
+
+    similarity = sequence_similarity(cluster)
+    potential, potential_factors = automation_potential(
+        cluster,
+        similarity=similarity,
+        dominant_share=dominant_share,
+        executions=len(cluster.instances),
+        observed_minutes=sum(i.duration_ms for i in cluster.instances) / 60_000,
+        apps=len({token.split(":")[0] for token in cluster.representative}),
+        judgement=judgement,
+        branches=branches,
+        steps=steps,
+        parameter_spread=spread,
+    )
     if do_not_automate:
         reasoning = (
             f"Not recommended for automation. Step order varies across "
@@ -305,6 +449,8 @@ async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
         context_switches_total=switches,
         interruption_tax_hours=round(tax_hours, 1),
         automatability=round(automatability, 3),
+        potential=potential,
+        potential_factors=potential_factors,
         variance=VarianceBreakdown(
             step_order_entropy=round(entropy, 3),
             parameter_spread=round(spread, 3),
@@ -312,6 +458,7 @@ async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
             judgement_ratio=round(judgement, 3),
             variant_count=variant_count,
             dominant_variant_share=round(dominant_share, 3),
+            sequence_similarity=round(similarity, 3),
         ),
         build_effort=build_effort,
         priority=round(priority, 1),

@@ -14,7 +14,11 @@ from app.services.ids import SequentialIds
 from app.services.normaliser import NormalisedEvent
 from app.services.seed_spec import (
     CUSTOMERS,
+    ERROR_SIGNATURES,
     ESCALATION_NOTES,
+    IT_SYSTEMS,
+    PRIVILEGED_SYSTEMS,
+    REPOSITORIES,
     SCHEMA_CHANGE_DAY,
     SCHEMA_CHANGE_FROM,
     SCHEMA_CHANGE_TO,
@@ -92,7 +96,35 @@ def _instance_facts(rng: random.Random, domain: DomainPack) -> dict:
         "recipient": "finance-ap@northwind.example",
         "claimant": rng.choice(list(USERS.keys())),
         "po_number": f"PO-{rng.randint(10000, 99999)}",
-        "status": rng.choice(["matched", "mismatch", "approved", "routed"]),
+        # Most requests end the same routine way. Skewing this rather than
+        # drawing uniformly is what lets an automation that predicts the common
+        # outcome be measurably right most of the time and genuinely wrong the
+        # rest — a uniform draw would make every backtest look broken.
+        "status": (
+            "approved"
+            if rng.random() < 0.88
+            else rng.choice(["rejected", "routed", "on_hold"])
+        ),
+        "requester": rng.choice(list(USERS.keys())),
+        "approver": rng.choice(list(USERS.keys())),
+        "assignee": rng.choice(list(USERS.keys())),
+        "system": (system := rng.choice(IT_SYSTEMS)),
+        # What the desk actually granted. For a privileged system that is
+        # usually a reduced level, so the value the human ends up recording is
+        # not the value that was asked for.
+        "granted_system": (
+            f"{system} (read-only)"
+            if system in PRIVILEGED_SYSTEMS and rng.random() < 0.7
+            else system
+        ),
+        "ticket_id": f"SD-{rng.randint(10000, 99999)}",
+        "build_id": f"build-{rng.randint(4000, 9999)}",
+        "channel": rng.choice(["#platform", "#engineering", "#it-helpdesk"]),
+        "repo": rng.choice(REPOSITORIES),
+        "pr_number": rng.randint(100, 4000),
+        "error_signature": rng.choice(ERROR_SIGNATURES),
+        "folder": rng.choice(["/Reports/Daily", "/Reports/Builds"]),
+        "report_date": "2026-08-14",
         "sheet_name": "Vendor Ageing FY25",
         "filter_expr": "days_overdue > 30",
         "customer": rng.choice(CUSTOMERS),
@@ -123,10 +155,28 @@ def _payload_for(
             payload["currency"] = facts["currency"]
             if "amount_inr" in facts:
                 payload["amount_inr"] = facts["amount_inr"]
+        elif key == "system":
+            # The request carries the system asked for; the grant carries what
+            # was actually given. `source_payload` keeps the first value it sees
+            # and `observed_outcome` keeps the last, so a reduced grant becomes
+            # a real disagreement between the flow's prediction and the record.
+            # Everything from the grant onwards — including the confirmation
+            # sent back to the requester — reports what was actually granted.
+            # Only the original request carries what was asked for.
+            payload["system"] = (
+                facts["granted_system"]
+                if step.action in ("update", "send")
+                else facts["system"]
+            )
         elif key in facts:
             payload[key] = facts[key]
         else:
-            payload[key] = facts["vendor"]
+            # A field no domain fact covers still has to carry *something*, but
+            # it must not masquerade as a real value: handing back the vendor
+            # name made a new domain's `ticket_id` read as "Orbit Print Works",
+            # which is indistinguishable from a working field until someone
+            # reads the payload. Naming the gap makes it obvious instead.
+            payload[key] = f"<{key} not in seed vocabulary>"
     payload["workflow_hint"] = domain.key
     return payload
 

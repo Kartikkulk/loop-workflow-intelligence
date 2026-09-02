@@ -113,12 +113,72 @@ def test_context_switch_requires_a_return(seed_events):
     assert count_context_switches([E("gmail", 0), E("sheets", 1), E("gmail", 99)]) == 0
 
 
+class _FakeInstance:
+    """Just enough of an Instance for branch_count: a step-token sequence."""
+
+    def __init__(self, signature: list[str]) -> None:
+        self.signature = signature
+
+
+class _FakeCluster:
+    def __init__(self, representative: list[str], signatures: list[list[str]]) -> None:
+        self.representative = representative
+        self.instances = [_FakeInstance(sig) for sig in signatures]
+
+
 def test_branch_count_detects_varying_positions(clusters):
     for cluster in clusters:
         if len(cluster.members_by_hash) > 1:
             assert branch_count(cluster) >= 0
             return
     pytest.skip("no multi-variant cluster")
+
+
+def test_branch_count_still_sees_a_real_alternative_step():
+    """Substituting one step for another is a genuine branch and must count.
+
+    This is the case the interleaving fix must not swallow. Dropping the
+    substituted step shortens that instance, so the steps after it no longer
+    line up — and that misalignment is what registers. The count is therefore
+    conservative for substitutions: a longer workflow can report more than one
+    branch for a single swap. Over-reporting variance costs a workflow some
+    automatability, which is the safe direction to be wrong in.
+    """
+    cluster = _FakeCluster(
+        ["gmail:read:email", "sheets:create:row", "gmail:send:reply"],
+        [
+            ["gmail:read:email", "sheets:create:row", "gmail:send:reply"],
+            ["gmail:read:email", "erp:update:record", "gmail:send:reply"],
+        ],
+    )
+    assert branch_count(cluster) == 1
+
+
+def test_interleaved_unrelated_step_is_not_a_branch():
+    """An unrelated lookup mid-task must not register as a branch.
+
+    Before this was fixed, the interleaved step pushed every later step along
+    by one position, and each shifted position was counted as somewhere the
+    workflow varied. A three-step workflow that never varies reported four
+    branches, which dragged its automatability score down and told the user
+    that simple, rigid work needed four rules written for it.
+    """
+    steps = ["erp:read:report", "drive:create:copy", "slack:send:link"]
+    cluster = _FakeCluster(
+        steps,
+        [
+            steps,
+            steps,
+            # Same workflow, but someone checked their calendar in the middle.
+            [
+                "erp:read:report",
+                "browser:navigate:calendar",
+                "drive:create:copy",
+                "slack:send:link",
+            ],
+        ],
+    )
+    assert branch_count(cluster) == 0
 
 
 def test_free_text_ratio_is_higher_for_judgement_work(clusters):

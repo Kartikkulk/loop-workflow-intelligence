@@ -15,6 +15,10 @@ from app.llm.client import llm
 from app.llm.tools import GENERATE_FLOW
 from app.models.cluster import Cluster
 
+# The same restricted comparator the engine evaluates guards with, so the
+# generator rejects exactly the expressions the engine would refuse to run.
+from app.services.engine import _CONDITION
+
 # What each observed step token contributes to a flow step: the fields it reads
 # and the fields it produces. Derived from the canonical action vocabulary, so a
 # newly observed workflow gets a sensible flow without a code change.
@@ -42,6 +46,31 @@ _DEPENDS_BY_ACTION: dict[str, list[str]] = {
 
 _IRREVERSIBLE_ACTIONS = {"send", "delete"}
 
+#: Payload keys that carry a monetary value, in minor units.
+#:
+#: `amount_inr` is deliberately absent even though invoices produce it. It is a
+#: decision field, so `source_payload` withholds it from the automation at run
+#: time; a guard naming it would parse, display, and never once fire. The guard
+#: has to name a value the automation can actually read while it is running.
+_MONEY_FIELDS = ("amount", "total", "value")
+
+
+def _money_field(produced: set[str]) -> str | None:
+    """The money key this workflow actually produces, if it produces one.
+
+    A guard naming a field the workflow never sets — or one the engine hides
+    from the automation at run time — can never fire, and `evaluate_condition`
+    returns False for an unknown key. That is the worst
+    kind of safety mechanism: the console displays a spend limit, and every
+    irreversible step sails past it. An access-request or build-report workflow
+    has no money in it, so it gets no money guard — its irreversible steps are
+    still held at ASSIST, which is the protection that actually applies.
+    """
+    for field_name in _MONEY_FIELDS:
+        if field_name in produced:
+            return field_name
+    return None
+
 _TRIGGER_BY_APP = {
     "gmail": "email_received",
     "outlook": "email_received",
@@ -54,6 +83,15 @@ _TRIGGER_BY_APP = {
 # Fields that exist only because a human decided something. An automation may
 # produce these as predictions but must never read them as inputs.
 DECISION_FIELDS = frozenset({"status", "amount_inr", "approval", "note"})
+
+
+def _guard_names_a_produced_field(expression: str, produced: set[str]) -> bool:
+    """True when a guard's left-hand side is a field this workflow sets."""
+    match = _CONDITION.match(expression)
+    if not match:
+        return False
+    key = match.group(1).strip()
+    return key in produced or key.split(".")[-1] in produced
 
 
 def _fallback_flow(cluster: Cluster) -> dict[str, Any]:
@@ -115,6 +153,12 @@ def _fallback_flow(cluster: Cluster) -> dict[str, Any]:
     irreversible = [
         s["id"] for s in steps if s["type"] in _IRREVERSIBLE_ACTIONS
     ]
+    guards: dict[str, Any] = {"irreversible": irreversible}
+    approval_field = _money_field(produced)
+    if approval_field:
+        # 10,00,000 paise = 10,000 rupees. Above this a human signs off on
+        # anything irreversible.
+        guards["requires_approval_if"] = f"{approval_field} > 1000000"
 
     return {
         "name": cluster.name,
@@ -124,12 +168,7 @@ def _fallback_flow(cluster: Cluster) -> dict[str, Any]:
         ),
         "trigger": {"type": trigger_type, "filter": {"object_type": first_object}},
         "steps": steps,
-        "guards": {
-            # 10,00,000 paise = 10,000 rupees. Above this a human signs off on
-            # anything irreversible.
-            "requires_approval_if": "amount > 1000000",
-            "irreversible": irreversible,
-        },
+        "guards": guards,
     }
 
 
@@ -170,7 +209,17 @@ def _sanitise_flow(raw: dict[str, Any], cluster: Cluster) -> dict[str, Any]:
         produced.update(outputs)
 
     guards = dict(raw.get("guards") or {})
-    guards.setdefault("requires_approval_if", fallback["guards"]["requires_approval_if"])
+    fallback_approval = fallback["guards"].get("requires_approval_if")
+    model_approval = str(guards.get("requires_approval_if") or "").strip()
+    if model_approval and not _guard_names_a_produced_field(model_approval, produced):
+        # The model invents plausible-looking guards on fields that do not
+        # exist here. Silently keeping one would show a limit in the console
+        # that nothing can ever trip.
+        guards.pop("requires_approval_if", None)
+    if fallback_approval:
+        guards.setdefault("requires_approval_if", fallback_approval)
+    else:
+        guards.pop("requires_approval_if", None)
     declared = guards.get("irreversible") or []
     # Any step whose action is irreversible must be listed, whatever the model said.
     for step in cleaned:

@@ -74,52 +74,58 @@ export default function RoiPage() {
     <div className="pb-16">
       <PageHeader
         eyebrow="Impact"
-        title="Hours, tax and coverage"
-        subtitle="Projected is what the detected workflows are worth if fully automated. Realised counts only automations that have actually earned ASSIST or above, scaled by measured coverage — the defensible number rather than the impressive one."
+        title="How much work we're taking off people"
+        subtitle="Two numbers, and they are deliberately different. Possible is what we could save if every workflow we found were automated. Saved so far counts only automations you have actually approved to run, multiplied by how much of the job they really handle on their own."
       />
 
       <div className="space-y-6 px-8 pt-6">
+        <EffortBand
+          burden={data.projected_annual_hours + data.interruption_tax_hours}
+          possible={data.projected_annual_hours}
+          saved={data.realised_annual_hours}
+        />
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
-            label="Projected hours"
+            label="Possible to save"
             value={hours(data.projected_annual_hours)}
             unit="hrs/yr"
             tone="accent"
-            hint="Across every automatable workflow detected"
+            hint="If everything we found were automated"
           />
           <Stat
-            label="Realised hours"
+            label="Saved so far"
             value={hours(data.realised_annual_hours)}
             unit="hrs/yr"
             tone={data.realised_annual_hours > 0 ? "good" : "default"}
-            hint="Trusted automations only, × their coverage"
+            hint="Only what approved automations actually handle today"
           />
           <Stat
-            label="Interruption tax"
+            label="Time lost switching apps"
             value={hours(data.interruption_tax_hours)}
             unit="hrs/yr"
             tone="warn"
-            hint={`${hours(data.interruption_tax_recovered_hours)} hrs recovered so far`}
+            hint={`${hours(data.interruption_tax_recovered_hours)} hrs of it won back so far`}
           />
           <Stat
-            label="Average coverage"
+            label="Handled without a person"
             value={percent(data.average_coverage)}
-            hint={`${data.autonomous_count} automation(s) fully autonomous`}
+            hint={`${data.autonomous_count} automation(s) now run start to finish`}
           />
         </div>
 
         <Panel
-          title="Projected against realised"
-          hint="The gap is the work still to do, and it is shown deliberately rather than hidden."
+          title="Possible against saved so far"
+          hint="The gap is the work still to do. We show it rather than hide it."
         >
           <div className="space-y-4 px-4 py-4">
             <ProgressRow
-              label="Task hours"
+              label="Time doing the work"
               realised={data.realised_annual_hours}
               projected={data.projected_annual_hours}
             />
             <ProgressRow
-              label="Interruption tax"
+              label="Time lost switching apps"
               realised={data.interruption_tax_recovered_hours}
               projected={data.interruption_tax_hours}
               tone="warn"
@@ -129,13 +135,13 @@ export default function RoiPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Panel
-            title="Coverage trend"
-            hint="Running agreement rate per automation, over its shadow-run history."
+            title="Getting better with practice"
+            hint="How much of each job the automation handled by itself, run after run, while it was still practising safely."
           >
             {trendRows.length === 0 ? (
               <Empty
-                title="No shadow runs yet"
-                hint="Coverage is measured from real runs, so the chart fills in as the automations are exercised."
+                title="No practice runs yet"
+                hint="This fills in once the automations have run a few times."
               />
             ) : (
               <div className="h-64 px-2 py-4">
@@ -146,7 +152,7 @@ export default function RoiPage() {
                       dataKey="run"
                       {...AXIS}
                       tickLine={false}
-                      label={{ value: "shadow run", position: "insideBottom", offset: -2, fill: "#6b7688", fontSize: 10 }}
+                      label={{ value: "practice run", position: "insideBottom", offset: -2, fill: "#6b7688", fontSize: 10 }}
                     />
                     <YAxis {...AXIS} tickLine={false} unit="%" domain={[0, 100]} />
                     <Tooltip
@@ -179,7 +185,7 @@ export default function RoiPage() {
             )}
           </Panel>
 
-          <Panel title="Automations by trust level">
+          <Panel title="How far each automation has earned its way">
             <div className="h-64 px-2 py-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={distribution} margin={{ top: 4, right: 12, bottom: 4, left: -18 }}>
@@ -216,11 +222,11 @@ export default function RoiPage() {
                   <tr className="border-b border-ink-700 text-left">
                     <th className="px-4 py-2 font-medium text-mist-500">Automation</th>
                     <th className="px-4 py-2 font-medium text-mist-500">Trust</th>
-                    <th className="px-4 py-2 text-right font-medium text-mist-500">Hrs/yr</th>
-                    <th className="px-4 py-2 text-right font-medium text-mist-500">Tax</th>
-                    <th className="px-4 py-2 text-right font-medium text-mist-500">Replay</th>
+                    <th className="px-4 py-2 text-right font-medium text-mist-500">Hrs/yr saved</th>
+                    <th className="px-4 py-2 text-right font-medium text-mist-500">Switching</th>
+                    <th className="px-4 py-2 text-right font-medium text-mist-500">Got it right</th>
                     <th className="px-4 py-2 text-right font-medium text-mist-500">Runs</th>
-                    <th className="px-4 py-2 font-medium text-mist-500">Coverage</th>
+                    <th className="px-4 py-2 font-medium text-mist-500">Handled alone</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-800">
@@ -263,7 +269,7 @@ export default function RoiPage() {
         {domains && domains.items.length > 0 && (
           <Panel
             title="Effort reduction by area"
-            hint="Hours the business could hand over, against the hours it currently spends. Scaled by how automatable the work actually is — not the raw total."
+            hint="What could be handed over, against what is being spent today. Scaled by how much of each job a machine could really take on."
           >
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -345,6 +351,89 @@ export default function RoiPage() {
         </Panel>
       </div>
     </div>
+  );
+}
+
+/** A working day, in hours — the unit people actually think in. */
+const WORKING_DAY_HOURS = 8;
+/** One person, full time, for a year: 8 hours × 5 days × 48 weeks. */
+const PERSON_YEAR_HOURS = WORKING_DAY_HOURS * 5 * 48;
+
+/**
+ * The headline: the same hours, said in a unit somebody can picture.
+ *
+ * Hours per year is the honest unit but a poor one for judging scale — nobody
+ * has an instinct for whether 646 is a lot. Working days and full-time people
+ * are the same number, restated so the answer is obvious without arithmetic.
+ */
+function EffortBand({
+  burden,
+  possible,
+  saved,
+}: {
+  burden: number;
+  possible: number;
+  saved: number;
+}) {
+  const days = Math.round(burden / WORKING_DAY_HOURS);
+  const people = burden / PERSON_YEAR_HOURS;
+  const share = burden > 0 ? possible / burden : 0;
+
+  return (
+    <Panel
+      title="The work we found"
+      hint={`Working days assume an ${WORKING_DAY_HOURS}-hour day and a 48-week year — the same basis the hours are counted on.`}
+    >
+      <div className="px-4 py-4">
+        <p className="text-sm leading-relaxed text-mist-200">
+          People here spend{" "}
+          <strong className="tnum font-semibold text-mist-100">{hours(burden)} hours a year</strong>{" "}
+          doing jobs LOOP watched them repeat — about{" "}
+          <strong className="tnum font-semibold text-mist-100">
+            {days.toLocaleString()} working days
+          </strong>
+          , or {people.toFixed(1)} full-time {people === 1 ? "person" : "people"}.
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="eyebrow">LOOP could take over</p>
+            <p className="metric mt-1.5 text-2xl text-accent-400">
+              {hours(possible)}
+              <span className="ml-1.5 text-xs font-normal tracking-normal text-mist-500">
+                hrs/yr
+              </span>
+            </p>
+            <div className="mt-2.5">
+              <Meter value={share} tone="accent" />
+            </div>
+            <p className="mt-2 text-2xs leading-snug text-mist-500">
+              {percent(share)} of the repeated work. The rest needs a person to decide.
+            </p>
+          </div>
+
+          <div>
+            <p className="eyebrow">It has taken over so far</p>
+            <p
+              className={`metric mt-1.5 text-2xl ${saved > 0 ? "text-good-400" : "text-mist-400"}`}
+            >
+              {hours(saved)}
+              <span className="ml-1.5 text-xs font-normal tracking-normal text-mist-500">
+                hrs/yr
+              </span>
+            </p>
+            <div className="mt-2.5">
+              <Meter value={possible > 0 ? saved / possible : 0} tone="good" />
+            </div>
+            <p className="mt-2 text-2xs leading-snug text-mist-500">
+              {saved > 0
+                ? `${percent(possible > 0 ? saved / possible : 0)} of what is possible. Approve more to close the gap.`
+                : "Nothing approved yet, so nothing is counted. This stays at zero until you say yes."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Panel>
   );
 }
 

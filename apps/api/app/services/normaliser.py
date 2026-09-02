@@ -114,6 +114,72 @@ def canonical_app(raw: str) -> str:
     return key or "browser"
 
 
+#: Trailing nouns that describe *how* a step was done rather than what it acted
+#: on, so they are dropped from the object rather than becoming part of it.
+_NOISE_WORDS = {"information", "info", "details", "data", "form", "field", "fields"}
+
+#: Verbs recognised when splitting a compound action, mapped to the canonical
+#: vocabulary.
+#:
+#: Deliberately not `_ACTION_ALIASES`: that table exists for rows whose whole
+#: action is one word, and it maps nouns like "email" onto verbs. Reusing it
+#: here turned `open_email` into "send", because the noun matched last and won.
+_SPLIT_VERBS = {
+    "open": "read", "view": "read", "read": "read", "receive": "read", "check": "read",
+    "copy": "extract", "extract": "extract", "parse": "extract", "download": "extract",
+    "create": "create", "add": "create", "write": "create", "insert": "create",
+    "submit": "create", "file": "create",
+    "enter": "update", "update": "update", "edit": "update", "set": "update",
+    "assign": "update", "save": "update", "categorize": "update", "categorise": "update",
+    "send": "send", "reply": "send", "notify": "send", "acknowledge": "send",
+    "search": "search", "find": "search", "lookup": "search",
+    "delete": "delete", "remove": "delete",
+    "navigate": "navigate", "goto": "navigate",
+}
+
+
+def split_action(raw: str) -> tuple[str, str]:
+    """Split a collector's compound action into a canonical verb and an object.
+
+    Real collectors emit whole gestures — `copy_customer_information`,
+    `open_create_issue` — because that is the grain a UI event arrives at.
+    Detection needs the verb apart from the thing acted on, or every step
+    becomes one opaque token and nothing clusters.
+
+    `copy_customer_information` -> ("extract", "customer")
+    `open_create_issue`         -> ("create", "issue")
+    `set_priority`              -> ("update", "priority")
+    """
+    key = (raw or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not key:
+        return "read", ""
+    parts = [p for p in key.split("_") if p]
+
+    positions = [i for i, part in enumerate(parts) if part in _SPLIT_VERBS]
+    if not positions:
+        return canonical_action(key), ""
+
+    chosen = positions[0]
+    verb = _SPLIT_VERBS[parts[chosen]]
+
+    # A navigation verb stacked in front of another verb describes going to the
+    # place where that thing is done, not doing it. `open_create_issue` is
+    # opening the create-issue form; collapsing it to "create" made it
+    # indistinguishable from the `create_issue` that actually submits, so the
+    # workflow appeared to create the same ticket twice.
+    if len(positions) > 1 and verb == "read":
+        rest = [p for p in parts[chosen + 1 :] if p not in _NOISE_WORDS]
+        return "navigate", "_".join(rest)
+
+    after = [
+        p for p in parts[chosen + 1 :] if p not in _NOISE_WORDS and p not in _SPLIT_VERBS
+    ]
+    before = [
+        p for p in parts[:chosen] if p not in _NOISE_WORDS and p not in _SPLIT_VERBS
+    ]
+    return verb, "_".join(after or before)
+
+
 def canonical_action(raw: str) -> str:
     """Map a source verb onto the canonical vocabulary."""
     key = (raw or "").strip().lower()
@@ -159,6 +225,8 @@ def parse_timestamp(raw: str | datetime) -> datetime:
 
 
 def _duration_ms(row: dict) -> int:
+    if row.get("duration_seconds") not in (None, ""):
+        return int(float(row["duration_seconds"]) * 1000)
     for key in ("duration_ms", "durationMs", "duration"):
         if row.get(key) not in (None, ""):
             value = float(row[key])
@@ -190,17 +258,29 @@ def _payload(row: dict) -> dict:
 
 def normalise_row(row: dict, *, source: str = "upload") -> NormalisedEvent:
     """Coerce one source row into a canonical event."""
-    user_id = str(row.get("user_id") or row.get("userId") or "").strip()
+    # `employee_id` is what the activity collector calls this. Accepting the
+    # alias here rather than translating upstream is what lets the demo
+    # generator and a live collector post byte-identical events.
+    user_id = str(
+        row.get("user_id") or row.get("userId") or row.get("employee_id") or ""
+    ).strip()
     if not user_id:
         raise NormalisationError("missing user_id")
 
     app_raw = row.get("app") or row.get("application") or ""
     action_raw = row.get("action") or row.get("event") or ""
-    object_type = str(row.get("object_type") or row.get("objectType") or "unknown").strip()
+    object_type = str(row.get("object_type") or row.get("objectType") or "").strip()
+    if not object_type:
+        # No explicit object: derive both halves from the compound action, so a
+        # collector emitting whole gestures still produces a signature
+        # detection can compare.
+        derived_action, derived_object = split_action(str(action_raw))
+        action_raw = derived_action
+        object_type = derived_object or "unknown"
 
     return NormalisedEvent(
         user_id=user_id,
-        team=str(row.get("team") or "unknown").strip(),
+        team=str(row.get("team") or row.get("category") or "unknown").strip(),
         timestamp=parse_timestamp(row.get("timestamp") or row.get("ts") or ""),
         app=canonical_app(str(app_raw)),
         action=canonical_action(str(action_raw)),
@@ -209,7 +289,12 @@ def normalise_row(row: dict, *, source: str = "upload") -> NormalisedEvent:
         or (str(row["objectId"]) if row.get("objectId") else None),
         duration_ms=_duration_ms(row),
         payload=_payload(row),
-        session_id=str(row.get("session_id") or row.get("sessionId") or "") or None,
+        # `run_id` is the collector's name for one pass through a workflow,
+        # which is exactly what a session is here.
+        session_id=str(
+            row.get("session_id") or row.get("sessionId") or row.get("run_id") or ""
+        )
+        or None,
         ground_truth_workflow=str(row.get("ground_truth_workflow") or row.get("workflow") or "")
         or None,
         source=source,

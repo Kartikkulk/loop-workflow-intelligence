@@ -54,6 +54,8 @@ def _to_summary(cluster: Cluster, automation_id: str | None) -> ClusterSummary:
         context_switches_total=cluster.context_switches_total,
         interruption_tax_hours=cluster.interruption_tax_hours,
         automatability=cluster.automatability,
+        potential=cluster.potential,
+        potential_factors=list(cluster.potential_factors or []),
         variance_breakdown=VarianceOut(**(cluster.variance_breakdown or {})),
         build_effort=cluster.build_effort,
         priority=cluster.priority,

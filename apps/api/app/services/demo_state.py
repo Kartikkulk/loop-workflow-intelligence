@@ -34,6 +34,14 @@ _APPS = [
     ("slack", "Slack", "chat"),
     ("browser", "Web browser", "other"),
     ("pdf", "Document extraction", "documents"),
+    ("jira", "Jira", "ticketing"),
+    ("okta", "Okta", "identity"),
+    ("github", "GitHub", "code"),
+    ("jenkins", "CI pipeline", "code"),
+    ("confluence", "Confluence", "documents"),
+    ("git", "Git", "code"),
+    ("crm", "CRM", "system_of_record"),
+    ("hrms", "HR system", "system_of_record"),
 ]
 
 _ACTIONS = [

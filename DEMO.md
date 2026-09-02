@@ -57,15 +57,15 @@ Point at the Browser extension row.
 
 **Tab 1, Discovery.**
 
-> "Fourteen people in a finance team. Ninety days of activity logs — 8,539
+> "Twenty-one people across five teams. Ninety days of activity logs — 9,712
 > events. Nobody told LOOP what these people do."
 
 Point at the four stat tiles.
 
-> "It found five distinct repetitive workflows. 701 hours a year of task time.
-> And 263 hours of what we call interruption tax — the cost of bouncing between
-> applications, which is invisible in a normal time-and-motion study because
-> nobody's timer catches it."
+> "It found five distinct repetitive workflows. 646 hours a year of task time.
+> And 195 hours lost switching between applications — the cost of bouncing
+> between tabs to finish one job, which is invisible in a normal
+> time-and-motion study because nobody's timer catches it."
 
 ---
 
@@ -93,10 +93,10 @@ Read the reasoning aloud from the screen.
 
 ## 1:20 – 2:10 · From workflow to automation
 
-Click **Invoice email to confirmation** (819 instances, 6 people).
+Click **Invoice email to confirmation** (783 instances, 6 people).
 
 > "Six people do this. That's above our threshold, so it's promoted from 'saves
-> you two hours a week' to an organisational opportunity — 359 hours a year."
+> you two hours a week' to an organisational opportunity — 345 hours a year."
 
 Point at the step graph.
 
@@ -132,9 +132,9 @@ Point at the flow definition table at the bottom.
 
 Click **Run backtest**, 90 days.
 
-> "Now: how good is it actually? We replay it against 782 real historical
-> triggers, with all side effects mocked, and diff what it would have done
-> against what the human actually did."
+> "Now: how good is it actually? We replay it against every real historical
+> trigger in the window — read the count off the screen — with all side effects
+> mocked, and diff what it would have done against what the human actually did."
 
 When it lands:
 
@@ -234,9 +234,10 @@ Accept the rule patch.
 
 Switch to **Impact**.
 
-> "701 hours detected. 85% coverage measured on the automation we trust — not
-> 100%, because it correctly stops and asks on 15% of invoices, and we count
-> that against ourselves."
+> "646 hours detected. Read the coverage figure off the screen rather than from
+> this script — it is whatever the automation actually earned in the runs you
+> just did. It will not be 100%, because it correctly stops and asks on the
+> invoices it is unsure about, and we count those against ourselves."
 
 > "The brief said: get from 'this task is repetitive' to 'this task can now be
 > automated.' We think there's one more step, and it's the one that decides

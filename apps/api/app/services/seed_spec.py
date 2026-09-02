@@ -25,6 +25,36 @@ VENDORS = [
     "Suryodaya Power", "Meridian Freight",
 ]
 
+#: The systems an IT service desk grants access to. Ordinary enterprise tools,
+#: because the point of the workflow is that the request is routine.
+IT_SYSTEMS = [
+    "Salesforce", "Confluence", "AWS Production", "Jenkins", "Tableau",
+    "GitHub Enterprise", "SAP", "Zendesk", "Datadog", "VPN",
+]
+
+#: Systems that are never granted at the level asked for. A request for these
+#: comes back reduced, and the service desk records what was actually granted
+#: rather than what was requested — which is the gap a generated flow has no
+#: rule for, and therefore the failure an honest backtest has to name.
+PRIVILEGED_SYSTEMS = {"AWS Production", "SAP", "VPN"}
+
+#: Repositories the engineering team triages failures in.
+REPOSITORIES = [
+    "checkout-service", "billing-api", "web-console", "auth-gateway",
+    "notification-worker", "reporting-etl",
+]
+
+#: Build failure signatures. Short and mechanical: the diagnosis is the
+#: judgement, the signature itself is just a string that repeats.
+ERROR_SIGNATURES = [
+    "TimeoutError in integration suite",
+    "npm ERR! peer dependency conflict",
+    "OOMKilled during asset build",
+    "flaky: test_checkout_retry",
+    "connection refused: postgres:5432",
+    "TypeError: cannot read property of undefined",
+]
+
 CUSTOMERS = [
     "Alcove Retail", "Brightline Foods", "Cadence Motors", "Dunmore Textiles",
     "Everline Pharma", "Fairhaven Group",
@@ -55,6 +85,10 @@ ESCALATION_NOTES = [
 
 __all__ = [
     "CUSTOMERS",
+    "ERROR_SIGNATURES",
+    "IT_SYSTEMS",
+    "PRIVILEGED_SYSTEMS",
+    "REPOSITORIES",
     "DOMAINS",
     "DOMAINS_BY_KEY",
     "ESCALATION_NOTES",

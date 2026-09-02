@@ -9,8 +9,12 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { http } from "./client";
+import { isAwaitingApproval } from "./types";
 import type {
+  ActivityPage,
   AutomationDetail,
+  N8nPushResult,
+  N8nRunList,
   ObservationSource,
   BreakSchemaResult,
   ClusterDetail,
@@ -134,9 +138,7 @@ export function useApprovalCount(): number {
   const exceptions = useExceptions();
   const patches = usePatches();
 
-  const proposed = (automations.data?.items ?? []).filter(
-    (a) => a.trust_level !== "ASSIST" && a.trust_level !== "AUTONOMOUS",
-  ).length;
+  const proposed = (automations.data?.items ?? []).filter(isAwaitingApproval).length;
 
   return proposed + (exceptions.data?.open_count ?? 0) + (patches.data?.proposed_count ?? 0);
 }
@@ -311,6 +313,61 @@ export function usePromote() {
       void client.invalidateQueries({ queryKey: keys.automation(variables.id) });
       refresh();
     },
+  });
+}
+
+/**
+ * Approve a proposed workflow by creating it in n8n.
+ *
+ * The workflow arrives there switched off and with no accounts attached, so
+ * approving decides that the work is worth automating without connecting
+ * anything. Finishing it is a deliberate second act, in n8n, by a person.
+ */
+export function useApproveToN8n() {
+  const client = useQueryClient();
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: ({ id, schedule }: { id: string; schedule?: string }) =>
+      http.post<N8nPushResult>(
+        `/api/v1/automations/${id}/n8n?schedule=${schedule ?? "hourly"}`,
+        {},
+      ),
+    onSuccess: (_data, variables) => {
+      void client.invalidateQueries({ queryKey: keys.automation(variables.id) });
+      refresh();
+    },
+  });
+}
+
+/**
+ * How the exported workflow is getting on inside n8n.
+ *
+ * Polled rather than fetched once: the interesting moment is the first run
+ * after somebody wires up the accounts, and that happens while this screen is
+ * open. Without polling the person has to reload to find out whether the
+ * configuration they just typed actually works.
+ */
+/**
+ * The raw event stream, newest first.
+ *
+ * This exists so "LOOP watched your work" is something a person can check
+ * rather than take on trust. It is the evidence behind every discovery, and if
+ * it is empty then nothing downstream is real either.
+ */
+export function useActivity(limit = 100) {
+  return useQuery({
+    queryKey: ["activity", limit] as const,
+    queryFn: () => http.get<ActivityPage>(`/api/v1/ingest/events?limit=${limit}`),
+    refetchInterval: 5_000,
+  });
+}
+
+export function useN8nRuns(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["n8n-runs", id] as const,
+    queryFn: () => http.get<N8nRunList>(`/api/v1/automations/${id}/n8n/runs`),
+    enabled,
+    refetchInterval: 10_000,
   });
 }
 

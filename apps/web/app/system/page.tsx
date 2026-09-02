@@ -58,7 +58,7 @@ export default function SystemPage() {
 
         <Panel
           title="Connectors"
-          hint="One interface, two implementations per system. Replay and shadow force the mock regardless of configuration, so those modes can never produce a side effect."
+          hint="Every connected system has a real version and a safe pretend one. Testing and practice runs always use the pretend one, whatever the settings say, so they can never touch anything for real."
         >
           <div className="overflow-x-auto">
             <table className="w-full text-xs">

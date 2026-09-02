@@ -95,7 +95,7 @@ export default function DashboardPage() {
         {/* ── the headline ───────────────────────────────────────────── */}
         <Panel
           title="Time this could give back"
-          hint="Measured from real activity, then scaled by how automatable each workflow actually is — not the raw total."
+          hint="Counted from what people actually did, then scaled down by how much of each job a machine could really take over."
         >
           <div className="grid gap-5 px-4 py-4 sm:grid-cols-3">
             <div>
@@ -180,7 +180,7 @@ export default function DashboardPage() {
                       <p className="tnum mt-1.5 text-2xs text-mist-500">
                         {cluster.instance_count.toLocaleString()} times ·{" "}
                         {cluster.distinct_users} people ·{" "}
-                        {percent(cluster.automatability)} automatable
+                        {percent(cluster.automatability)} can be automated
                       </p>
                     </div>
                   </Link>

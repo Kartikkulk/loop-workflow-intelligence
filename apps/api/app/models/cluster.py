@@ -56,6 +56,11 @@ class Cluster(Base, TimestampMixin):
     context_switches_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     interruption_tax_hours: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     automatability: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    #: Automation Potential, 0-100, with the factor rows behind it. A
+    #: ranking heuristic, stored alongside its own arithmetic so the score
+    #: can be explained rather than only shown.
+    potential: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    potential_factors: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     # The four components behind the automatability score, kept so the UI can
     # explain the number instead of just asserting it.
     variance_breakdown: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

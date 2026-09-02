@@ -5,23 +5,27 @@ import { usePathname } from "next/navigation";
 import { useApprovalCount, useSystem } from "@/lib/api/queries";
 
 /**
- * Five destinations, in the order someone actually uses them.
+ * Seven destinations, in the order the product actually happens.
  *
- * Dashboard answers "what is going on" and links everywhere else. The rest is
- * the journey: find the work, approve what is proposed, watch what runs, and
- * add more to watch.
+ * The order is the story: LOOP watches, you see what it saw, it finds
+ * something, you approve it, it runs. Connections and Settings sit below
+ * because they are set up once and then forgotten.
+ *
+ * Impact and System are deliberately absent. Their useful numbers moved onto
+ * the Dashboard; the pages still resolve so existing links do not break, but
+ * nothing sends anyone to a screen of graphs.
  */
 const LINKS = [
   { href: "/", label: "Dashboard", hint: "What's happening" },
-  { href: "/discovery", label: "Discovery", hint: "Repetitive work found" },
-  { href: "/approvals", label: "Approvals", hint: "Needs your yes" },
-  { href: "/automations", label: "Automations", hint: "Running now" },
-  { href: "/sources", label: "Sources", hint: "Where data comes from" },
+  { href: "/activity", label: "Activity", hint: "What LOOP has seen" },
+  { href: "/discovery", label: "Discoveries", hint: "Repetitive work found" },
+  { href: "/approvals", label: "Approval", hint: "Needs your yes" },
+  { href: "/automations", label: "Automation", hint: "Running now" },
 ];
 
 const FOOTER_LINKS = [
-  { href: "/roi", label: "Impact" },
-  { href: "/system", label: "System" },
+  { href: "/sources", label: "Connections" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function Nav() {

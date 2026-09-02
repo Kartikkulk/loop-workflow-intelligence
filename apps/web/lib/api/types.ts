@@ -7,6 +7,8 @@ export interface Variance {
   judgement_ratio: number;
   variant_count: number;
   dominant_variant_share: number;
+  /** Mean similarity of observed runs to each other, 0–1. */
+  sequence_similarity: number;
 }
 
 export interface ClusterSummary {
@@ -26,6 +28,9 @@ export interface ClusterSummary {
   context_switches_total: number;
   interruption_tax_hours: number;
   automatability: number;
+  /** Automation Potential, 0-100. A ranking heuristic, not a prediction. */
+  potential: number;
+  potential_factors: { factor: string; measured: number | null; weight: number | null; points: number }[];
   variance_breakdown: Variance;
   build_effort: number;
   priority: number;
@@ -139,6 +144,33 @@ export interface AutomationSummary {
   annual_hours: number;
   step_count: number;
   created_at: string;
+  /** n8n's id, once approved and exported. Empty means still a proposal. */
+  n8n_workflow_id: string;
+}
+
+/**
+ * Where an automation sits in the discovery -> approval -> automation flow.
+ *
+ * These three answers used to be spelled out separately on the approvals page,
+ * on the automations page and in the nav badge, and they drifted: the approvals
+ * page learned that an exported workflow has already been decided, the other two
+ * never did. The result was a loop — Automations sent you to Approvals to
+ * approve something Approvals had already filtered out, the badge counted it
+ * forever, and the automation itself rendered nowhere. One definition, used by
+ * all three, is what stops that happening again.
+ */
+export function isAwaitingApproval(automation: AutomationSummary): boolean {
+  return !automation.n8n_workflow_id && !isRunning(automation);
+}
+
+/** A person said yes: it was built in n8n, or it has already climbed the ladder. */
+export function isApproved(automation: AutomationSummary): boolean {
+  return !isAwaitingApproval(automation);
+}
+
+/** Allowed to act on its own. Anything below ASSIST is built but switched off. */
+export function isRunning(automation: AutomationSummary): boolean {
+  return automation.trust_level === "ASSIST" || automation.trust_level === "AUTONOMOUS";
 }
 
 export interface AutomationDetail extends AutomationSummary {
@@ -197,6 +229,55 @@ export interface PromoteResult {
   level: TrustLevel;
   message: string;
   trust: TrustState;
+}
+
+export interface N8nPushResult {
+  ok: boolean;
+  workflow_id: string;
+  /** Where to open the created workflow and choose its accounts. */
+  configure_url: string;
+  needs_credentials: string[];
+  notes: string[];
+  message: string;
+}
+
+export interface ActivityEvent {
+  id: string;
+  user_id: string;
+  team: string;
+  timestamp: string;
+  app: string;
+  action: string;
+  object_type: string;
+  duration_ms: number;
+  payload: Record<string, unknown>;
+  session_id: string | null;
+}
+
+export interface ActivityPage {
+  total: number;
+  items: ActivityEvent[];
+}
+
+export interface N8nRun {
+  id: string;
+  status: string;
+  started_at: string;
+  finished_at: string;
+  failed_node: string;
+  error: string;
+}
+
+export interface N8nRunList {
+  ok: boolean;
+  workflow_id: string;
+  configure_url: string;
+  active: boolean;
+  total: number;
+  succeeded: number;
+  failed: number;
+  items: N8nRun[];
+  message: string;
 }
 
 export interface ExceptionCase {

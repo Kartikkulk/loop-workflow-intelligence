@@ -5,7 +5,14 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+# The repo root is wherever the shared .env lives. Searched rather than
+# reached by a fixed depth, because the container flattens the tree to
+# /app/app and a hardcoded parents[3] raises IndexError there.
+_APP_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = next(
+    (parent for parent in _APP_DIR.parents if (parent / ".env").is_file()),
+    _APP_DIR.parent,
+)
 
 
 class Settings(BaseSettings):
@@ -49,6 +56,57 @@ class Settings(BaseSettings):
 
     # Execution (F5)
     enable_mock_connectors: bool = True
+    #: The desktop connector is the only one that can change this machine, so it
+    #: describes what it would do until this is explicitly turned off.
+    desktop_dry_run: bool = True
+    #: Repositories the git connector may read, comma-separated. Empty means
+    #: none: an allow-list that defaults to "anything" is not an allow-list.
+    git_repos: str = ""
+
+    #: Everything the files connector may touch lives under this one root.
+    #: A path that escapes it is refused rather than clamped, because a flow
+    #: definition is partly model-generated and "clamp it back inside" quietly
+    #: turns a wrong path into a plausible-looking right one.
+    files_root: str = "~/LOOP-Invoices"
+    #: Describe the move rather than perform it.
+    files_dry_run: bool = True
+
+    #: Where automations get pushed to run. The API key is created inside n8n
+    #: (Settings > n8n API) and is separate from anything else here, so pushing
+    #: a workflow never borrows a credential granted for reading data.
+    n8n_base_url: str = "http://localhost:5678"
+    #: Where `files_root` is mounted inside the n8n container, per
+    #: docker-compose.yml. An exported workflow runs in that container, so a
+    #: host path in a file node resolves to nothing there — the translator has
+    #: to rewrite paths across the boundary.
+    n8n_files_mount: str = "/data/invoices"
+    n8n_api_key: str = ""
+
+    #: Same brake for Jira: describe the issue rather than file it.
+    jira_dry_run: bool = True
+    #: Writing to Jira uses its own credential, deliberately separate from the
+    #: OAuth connection under Sources. That connection is an observation tool
+    #: and every scope it asks for is read-only; quietly adding write access to
+    #: it would buy one workflow at the cost of the promise made to every user
+    #: who connects an account. An API token is opt-in, obvious, and revocable
+    #: on its own. Create one at:
+    #: https://id.atlassian.com/manage-profile/security/api-tokens
+    jira_site_url: str = ""
+    jira_email: str = ""
+    jira_api_token: str = ""
+    #: Comma-separated Jira project keys this may file into. Empty means none of
+    #: the write paths that need a project will run, which is the safe default
+    #: for a flow whose project key came partly from a model.
+    jira_allowed_projects: str = ""
+
+    @property
+    def jira_allowed_projects_list(self) -> list[str]:
+        """`jira_allowed_projects`, upper-cased and split."""
+        return [
+            part.strip().upper()
+            for part in self.jira_allowed_projects.split(",")
+            if part.strip()
+        ]
 
     # Self-healing (F8)
     patch_auto_apply_confidence: float = 0.9

@@ -78,10 +78,10 @@ export default function ClusterDetailPage() {
         actions={
           <>
             <a className="btn-ghost" href={apiUrl(`/api/v1/clusters/${id}/sop.md`)} download>
-              Download SOP
+              Download the guide
             </a>
             <button className="btn-ghost" onClick={() => setShowSop((v) => !v)}>
-              {showSop ? "Hide SOP" : "Preview SOP"}
+              {showSop ? "Hide the guide" : "Preview the guide"}
             </button>
             {cluster.has_automation && cluster.automation_id ? (
               <Link className="btn-primary" href={`/automations/${cluster.automation_id}`}>
@@ -125,7 +125,7 @@ export default function ClusterDetailPage() {
               {cluster.reasoning}
             </p>
             <p className="mt-2 text-2xs leading-relaxed text-mist-500">
-              The SOP is still worth having: it documents the work for a human without
+              A written guide is still worth having: it records the work for a person without
               pretending a machine can take it over.
             </p>
           </div>
@@ -140,27 +140,27 @@ export default function ClusterDetailPage() {
             hint={`${duration(cluster.median_duration_ms)} × ${cluster.instances_per_user_per_week.toFixed(1)}/wk × 48 × ${cluster.distinct_users}`}
           />
           <Stat
-            label="Interruption tax"
+            label="Time lost switching apps"
             value={hours(cluster.interruption_tax_hours)}
             unit="hrs/yr"
             tone="warn"
-            hint={`${cluster.context_switches_total} context switches observed across all instances`}
+            hint={`People jumped between apps ${cluster.context_switches_total.toLocaleString()} times doing this`}
           />
           <Stat
-            label="Instances"
+            label="Times people did this"
             value={cluster.instance_count.toLocaleString()}
             hint={`${cluster.distinct_users} people across ${cluster.teams.length} team(s)`}
           />
           <Stat
-            label="Build effort"
+            label="Effort to automate"
             value={`${cluster.build_effort}/5`}
-            hint={`Priority score ${cluster.priority.toFixed(1)}`}
+            hint={cluster.build_effort <= 2 ? "Straightforward to build" : "Needs some rules written"}
           />
         </div>
 
         <Panel
-          title="Observed step sequence"
-          hint="The canonical path, with the positions that varied between instances marked."
+          title="What people actually do"
+          hint="The usual path, start to finish. Marked steps are the ones that changed between runs."
         >
           <WorkflowGraph steps={cluster.step_graph} />
         </Panel>
@@ -168,47 +168,47 @@ export default function ClusterDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <Panel
             className="lg:col-span-1"
-            title="Automatability"
-            hint="Inverse of measured variance. Structural signals dominate; judgement is weighted least."
+            title="Can this be automated?"
+            hint="Scored from how consistently people repeat it. Work that is done the same way every time scores high."
           >
             <div className="space-y-4 px-4 py-4">
               <Gauge
                 value={cluster.automatability}
                 label={
                   cluster.do_not_automate
-                    ? "Too variable to automate safely."
-                    : "Consistent enough to automate."
+                    ? "Too unpredictable — a person should keep doing this."
+                    : "Done the same way often enough to hand over."
                 }
               />
               <dl className="space-y-2.5">
                 <VarianceRow
-                  label="Step-order entropy"
+                  label="How much the order varies"
                   value={variance.step_order_entropy.toFixed(2)}
-                  hint="0 = every instance identical, 1 = no dominant order"
+                  hint="0 means everyone does it the same way; 1 means no two runs match"
                   bad={variance.step_order_entropy > 0.6}
                 />
                 <VarianceRow
-                  label="Distinct step orders"
+                  label="Different ways people did it"
                   value={String(variance.variant_count)}
-                  hint={`most common covers ${percent(variance.dominant_variant_share)}`}
+                  hint={`the most common way covers ${percent(variance.dominant_variant_share)} of runs`}
                   bad={variance.dominant_variant_share < 0.4}
                 />
                 <VarianceRow
-                  label="Branch points"
+                  label="Steps that changed between runs"
                   value={String(variance.branch_count)}
-                  hint="positions where the step differed"
+                  hint="each one needs its own rule before this can run unattended"
                   bad={variance.branch_count > 4}
                 />
                 <VarianceRow
-                  label="Parameter spread"
+                  label="How much the details vary"
                   value={variance.parameter_spread.toFixed(2)}
-                  hint="how widely field values vary"
+                  hint="whether the values typed in change a lot from run to run"
                   bad={variance.parameter_spread > 0.7}
                 />
                 <VarianceRow
-                  label="Judgement content"
+                  label="How much needs a human decision"
                   value={percent(variance.judgement_ratio)}
-                  hint="share of the outcome depending on discretion"
+                  hint="the share of this work that depends on someone thinking, not just typing"
                   bad={variance.judgement_ratio > 0.4}
                 />
               </dl>
@@ -258,8 +258,8 @@ export default function ClusterDetailPage() {
 
         <div className="grid gap-6">
           <Panel
-            title="Observed variants"
-            hint="Every distinct step order in this cluster. This is the evidence behind the entropy figure."
+            title="Every way people did this"
+            hint="Each distinct order we saw, most common first. This is the evidence behind the score above."
           >
             <ul className="divide-y divide-ink-800">
               {cluster.variants.map((variant, index) => (
@@ -285,7 +285,7 @@ export default function ClusterDetailPage() {
             title="Standard operating procedure"
             hint={sop ? `Generated by ${sop.generated_by}` : undefined}
           >
-            {sopLoading && <Loading label="Writing SOP" />}
+            {sopLoading && <Loading label="Writing the guide" />}
             {sop && (
               <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap px-4 py-4 text-xs leading-relaxed text-mist-300">
                 {sop.markdown}

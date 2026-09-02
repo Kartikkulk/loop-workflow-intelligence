@@ -13,7 +13,7 @@ UV := $(shell command -v uv 2>/dev/null)
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-api setup-web dev api web seed demo test test-api test-web \
         test-collector check check-all lint typecheck fmt build clean reset-db logs \
-        contract contract-check fixtures web-mock collectors
+        contract contract-check fixtures web-mock collectors invoices invoice watch
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -75,6 +75,16 @@ collectors: ## Assemble the browser extensions into collectors/dist/
 demo: ## Reset to the exact known-good demo starting state
 	cd $(API) && rm -f loop.db && .venv/bin/python scripts/seed.py
 	@echo "Demo state ready. See DEMO.md for the run sheet."
+
+invoices: ## Reset the AWS-invoice demo to its starting state (needs `make api`)
+	@cd $(API) && .venv/bin/python scripts/reset_invoices.py
+
+invoice: ## Drop one new invoice into the inbox (for the live watcher)
+	@$(PY) $(API)/scripts/make_invoices.py --one --root $${LOOP_FILES_ROOT:-~/LOOP-Invoices}
+
+watch: ## File invoices as they arrive — leave this running on screen
+	@LOOP_FILES_ROOT=$${LOOP_FILES_ROOT:-$$HOME/LOOP-Invoices} \
+	  $(PY) $(API)/scripts/file_invoices.py --watch --yes
 
 reset-db: ## Delete the local database
 	rm -f $(API)/loop.db $(API)/test_loop.db

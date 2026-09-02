@@ -75,4 +75,9 @@ class Automation(Base, TimestampMixin):
     replay_human_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     coverage: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     generated_by: Mapped[str] = mapped_column(String(32), nullable=False, default="heuristic")
+
+    #: n8n's id for this workflow, once it has been approved and exported.
+    #: Its presence is what "approved" means: LOOP decided the work was worth
+    #: automating and handed it to the thing that will run it. Empty until then.
+    n8n_workflow_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     trust_history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

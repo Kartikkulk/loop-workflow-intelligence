@@ -12,6 +12,10 @@ class VarianceOut(BaseModel):
     judgement_ratio: float = 0.0
     variant_count: int = 0
     dominant_variant_share: float = 0.0
+    #: Mean similarity of the observed runs to each other, 0–1. High even
+    #: when the *number* of distinct orders is high, which is the normal
+    #: shape of a workflow with a couple of optional steps.
+    sequence_similarity: float = 0.0
 
 
 class ClusterSummary(BaseModel):
@@ -33,6 +37,10 @@ class ClusterSummary(BaseModel):
     context_switches_total: int
     interruption_tax_hours: float
     automatability: float
+    #: Automation Potential, 0-100. A ranking heuristic, not a prediction.
+    potential: int = 0
+    #: One row per factor: what was measured, its weight, points contributed.
+    potential_factors: list[dict] = []
     variance_breakdown: VarianceOut
     build_effort: int
     priority: float

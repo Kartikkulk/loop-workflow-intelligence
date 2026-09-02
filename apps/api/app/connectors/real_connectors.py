@@ -80,11 +80,23 @@ class BrowserConnector(RealConnector):
     api = "Playwright — drives a real browser for systems with no API"
 
 
+#: The one live connector that is implemented rather than declared. It is
+#: imported here so `REAL_REGISTRY` stays the single list of what can run.
+from app.connectors.desktop import DesktopConnector  # noqa: E402
+from app.connectors.files import FilesConnector  # noqa: E402
+from app.connectors.git_log import GitConnector  # noqa: E402
+from app.connectors.jira import JiraConnector  # noqa: E402
+from app.connectors.pdf_extract import PdfConnector as LivePdfConnector  # noqa: E402
+
 REAL_REGISTRY: dict[str, Connector] = {
+    "desktop": DesktopConnector(),
+    "files": FilesConnector(),
+    "git": GitConnector(),
+    "jira": JiraConnector(),
     "gmail": GmailConnector(),
     "outlook": OutlookConnector(),
     "sheets": SheetsConnector(),
-    "pdf": PdfConnector(),
+    "pdf": LivePdfConnector(),
     "erp": ErpConnector(),
     "drive": DriveConnector(),
     "slack": SlackConnector(),

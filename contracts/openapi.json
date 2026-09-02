@@ -65,6 +65,11 @@
             "title": "Id",
             "type": "string"
           },
+          "n8n_workflow_id": {
+            "default": "",
+            "title": "N8N Workflow Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -225,6 +230,11 @@
           },
           "id": {
             "title": "Id",
+            "type": "string"
+          },
+          "n8n_workflow_id": {
+            "default": "",
+            "title": "N8N Workflow Id",
             "type": "string"
           },
           "name": {
@@ -514,6 +524,20 @@
             "title": "Name",
             "type": "string"
           },
+          "potential": {
+            "default": 0,
+            "title": "Potential",
+            "type": "integer"
+          },
+          "potential_factors": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Potential Factors",
+            "type": "array"
+          },
           "priority": {
             "title": "Priority",
             "type": "number"
@@ -718,6 +742,20 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "potential": {
+            "default": 0,
+            "title": "Potential",
+            "type": "integer"
+          },
+          "potential_factors": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Potential Factors",
+            "type": "array"
           },
           "priority": {
             "title": "Priority",
@@ -1621,6 +1659,174 @@
           "connected"
         ],
         "title": "MonitorableToolOut",
+        "type": "object"
+      },
+      "N8nExport": {
+        "description": "GET /api/v1/automations/{id}/n8n",
+        "properties": {
+          "needs_credentials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Needs Credentials",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "description": "An importable n8n workflow: nodes, connections and settings.",
+            "title": "Workflow",
+            "type": "object"
+          }
+        },
+        "required": [
+          "workflow"
+        ],
+        "title": "N8nExport",
+        "type": "object"
+      },
+      "N8nPushResult": {
+        "description": "POST /api/v1/automations/{id}/n8n",
+        "properties": {
+          "configure_url": {
+            "default": "",
+            "title": "Configure Url",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "needs_credentials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Needs Credentials",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "workflow_id": {
+            "default": "",
+            "title": "Workflow Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "N8nPushResult",
+        "type": "object"
+      },
+      "N8nRun": {
+        "description": "One execution n8n has recorded for an exported workflow.",
+        "properties": {
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "failed_node": {
+            "default": "",
+            "title": "Failed Node",
+            "type": "string"
+          },
+          "finished_at": {
+            "default": "",
+            "title": "Finished At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "default": "",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "N8nRun",
+        "type": "object"
+      },
+      "N8nRunList": {
+        "description": "GET /api/v1/automations/{id}/n8n/runs",
+        "properties": {
+          "active": {
+            "default": false,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "configure_url": {
+            "default": "",
+            "title": "Configure Url",
+            "type": "string"
+          },
+          "failed": {
+            "default": 0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/N8nRun"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "succeeded": {
+            "default": 0,
+            "title": "Succeeded",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "workflow_id": {
+            "default": "",
+            "title": "Workflow Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "N8nRunList",
         "type": "object"
       },
       "PatchList": {
@@ -3280,6 +3486,11 @@
             "title": "Parameter Spread",
             "type": "number"
           },
+          "sequence_similarity": {
+            "default": 0.0,
+            "title": "Sequence Similarity",
+            "type": "number"
+          },
           "step_order_entropy": {
             "default": 0.0,
             "title": "Step Order Entropy",
@@ -3428,6 +3639,157 @@
           }
         },
         "summary": "Demote",
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/{automation_id}/n8n": {
+      "get": {
+        "description": "This automation as an importable n8n workflow.\n\nLOOP decides what is worth automating and whether it has earned the right\nto act; n8n has the connectors and the credential handling to carry it out.\nNo credential is ever written into the exported workflow \u2014 every node that\nneeds an account is listed in `needs_credentials` for a person to wire up\nin n8n itself.",
+        "operationId": "export_to_n8n_api_v1_automations__automation_id__n8n_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "automation_id",
+            "required": true,
+            "schema": {
+              "title": "Automation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How often the exported workflow should run: hourly, daily, weekly, manual",
+            "in": "query",
+            "name": "schedule",
+            "required": false,
+            "schema": {
+              "default": "manual",
+              "description": "How often the exported workflow should run: hourly, daily, weekly, manual",
+              "title": "Schedule",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/N8nExport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export To N8N",
+        "tags": [
+          "automations"
+        ]
+      },
+      "post": {
+        "description": "Approve this automation by creating it in n8n, and say where to finish it.\n\nApproving does not start anything. The workflow is created **inactive and\nwithout credentials**, so the person still has to choose which account each\nnode uses and switch it on inside n8n. That is the boundary that matters:\nLOOP can decide a workflow is worth running, but it cannot connect itself\nto somebody's Jira.\n\nFailure here is reported rather than swallowed. A button that says \"approved\"\nwhile nothing was created is worse than one that says why it could not be.",
+        "operationId": "push_to_n8n_api_v1_automations__automation_id__n8n_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "automation_id",
+            "required": true,
+            "schema": {
+              "title": "Automation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How often it should run.",
+            "in": "query",
+            "name": "schedule",
+            "required": false,
+            "schema": {
+              "default": "hourly",
+              "description": "How often it should run.",
+              "title": "Schedule",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/N8nPushResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push To N8N",
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/{automation_id}/n8n/runs": {
+      "get": {
+        "description": "How the exported workflow is actually getting on inside n8n.\n\nExporting a workflow and then losing sight of it is the failure mode worth\ndesigning against: the person is left switching between two tools to find\nout whether the thing LOOP recommended works. So LOOP asks n8n and reports\nwhat it says, naming the node that failed rather than only that something\ndid.",
+        "operationId": "n8n_runs_api_v1_automations__automation_id__n8n_runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "automation_id",
+            "required": true,
+            "schema": {
+              "title": "Automation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/N8nRunList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "N8N Runs",
         "tags": [
           "automations"
         ]

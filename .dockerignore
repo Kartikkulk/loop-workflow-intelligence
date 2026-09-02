@@ -1,0 +1,15 @@
+# Keep the build context small: everything below is either rebuilt inside the
+# image or has no business in it.
+.git
+node_modules
+**/node_modules
+apps/web/.next
+apps/api/.venv
+apps/api/**/__pycache__
+apps/api/.pytest_cache
+apps/api/.ruff_cache
+apps/api/.mypy_cache
+.ruff_cache
+*.db
+.env
+collectors/dist

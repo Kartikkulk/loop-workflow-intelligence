@@ -147,9 +147,26 @@ async def test_generated_flow_steps_declare_dependencies(client):
     assert send_steps <= set(body["guards"]["irreversible"])
 
 
+def _money_automation(automations: list[dict]) -> dict:
+    """The automation for the workflow that actually handles money.
+
+    Both tests below assert on behaviour only the invoice workflow has: the
+    foreign-currency failures its flow has no rule for, and the spend guard that
+    holds an irreversible step. Picking "whichever automation is biggest" tied
+    them to the seed's relative volumes, so adding a busier workflow in another
+    domain silently pointed them at a flow with no money in it at all.
+    """
+    for automation in automations:
+        if automation["name"].lower().startswith("invoice"):
+            return automation
+    raise AssertionError(
+        "no invoice automation in the seed; these tests need the money workflow"
+    )
+
+
 async def test_replay_reports_honest_accuracy_with_named_failures(client):
     automations = (await client.get("/api/v1/automations")).json()["items"]
-    hero = max(automations, key=lambda a: a["annual_hours"])
+    hero = _money_automation(automations)
 
     response = await client.post(
         f"/api/v1/automations/{hero['id']}/replay", json={"days": 90}
@@ -235,7 +252,7 @@ async def test_break_schema_triggers_a_patch(client):
 
 async def test_exception_resolution_learns_a_rule(client):
     automations = (await client.get("/api/v1/automations")).json()["items"]
-    automation_id = max(automations, key=lambda a: a["annual_hours"])["id"]
+    automation_id = _money_automation(automations)["id"]
 
     await client.post(
         f"/api/v1/demo/seed-exceptions?automation_id={automation_id}&count=4"

@@ -4,20 +4,20 @@ import { TRUST_LADDER, type TrustLevel, type TrustState } from "@/lib/api/types"
 import { percent } from "@/lib/format";
 
 const DESCRIPTIONS: Record<TrustLevel, string> = {
-  OBSERVE: "Watching only. No predictions recorded.",
-  SUGGEST: "Recommends the automation. Nothing runs.",
-  SHADOW: "Predicts what it would do while the human works. Nothing is sent.",
-  ASSIST: "Runs with a human confirming each irreversible step.",
-  AUTONOMOUS: "Runs unattended within its guards.",
+  OBSERVE: "Just watching how people do it.",
+  SUGGEST: "Says it could do this. Nothing runs.",
+  SHADOW: "Practises alongside the person. Nothing is sent.",
+  ASSIST: "Does the work, but asks before anything it cannot undo.",
+  AUTONOMOUS: "Runs on its own, inside the limits you set.",
 };
 
 /** What each rung is allowed to touch. Shown so the stakes of a rung are legible. */
 const EFFECT: Record<TrustLevel, string> = {
-  OBSERVE: "no effect",
-  SUGGEST: "no effect",
-  SHADOW: "no effect",
-  ASSIST: "real, confirmed",
-  AUTONOMOUS: "real, unattended",
+  OBSERVE: "changes nothing",
+  SUGGEST: "changes nothing",
+  SHADOW: "changes nothing",
+  ASSIST: "acts, with your yes",
+  AUTONOMOUS: "acts on its own",
 };
 
 /**
@@ -175,13 +175,13 @@ export function TrustLadder({ state, live }: { state: TrustState; live?: boolean
             className="pointer-events-none absolute -bottom-4 whitespace-nowrap text-[9px] font-medium text-mist-500"
             style={{ left: `${state.threshold * 100}%`, transform: "translateX(-50%)" }}
           >
-            {percent(state.threshold)} to promote
+            needs {percent(state.threshold)} to move up
           </span>
         </div>
 
         {/* ── run window: each shadow run as its own cell ─────────────── */}
         <div className="flex items-center gap-3 pt-5">
-          <span className="eyebrow shrink-0">Window</span>
+          <span className="eyebrow shrink-0">Recent runs</span>
           <div className="flex flex-1 items-center gap-1">
             {Array.from({ length: state.runs_required }).map((_, index) => {
               const filled = index < state.runs_in_window;
@@ -191,7 +191,7 @@ export function TrustLadder({ state, live }: { state: TrustState; live?: boolean
                   className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
                     filled ? (demoted ? "bg-warn-500" : "bg-accent-500") : "bg-ink-700"
                   }`}
-                  title={filled ? `run ${index + 1} recorded` : "not yet recorded"}
+                  title={filled ? `run ${index + 1} recorded` : "not run yet"}
                 />
               );
             })}
@@ -203,13 +203,13 @@ export function TrustLadder({ state, live }: { state: TrustState; live?: boolean
 
         <div className="tnum flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-2xs text-mist-500">
           <span>
-            rolling average{" "}
+            average so far{" "}
             <span className="font-medium text-mist-300">{percent(state.average_score, 1)}</span>
           </span>
           {state.critical_mismatches > 0 && (
             <span className="font-medium text-bad-400">
-              {state.critical_mismatches} critical mismatch
-              {state.critical_mismatches === 1 ? "" : "es"} in window
+              got {state.critical_mismatches} important thing
+              {state.critical_mismatches === 1 ? "" : "s"} wrong recently
             </span>
           )}
         </div>

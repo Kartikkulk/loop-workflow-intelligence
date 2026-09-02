@@ -59,6 +59,8 @@ class AutomationSummary(BaseModel):
     annual_hours: float = 0.0
     step_count: int = 0
     created_at: str
+    #: n8n's id, once approved and exported. Empty means still a proposal.
+    n8n_workflow_id: str = ""
 
 
 class AutomationDetail(AutomationSummary):
@@ -87,6 +89,63 @@ class GenerateAutomationRequest(BaseModel):
 
 class ReplayRequest(BaseModel):
     days: int = Field(default=30, ge=1, le=365)
+
+
+class N8nPushResult(BaseModel):
+    """POST /api/v1/automations/{id}/n8n"""
+
+    ok: bool
+    #: n8n's id for the created workflow.
+    workflow_id: str = ""
+    #: Where to open it and wire up the accounts. This is the whole point of
+    #: the response: approving is only useful if you land on the thing to do next.
+    configure_url: str = ""
+    #: Node names that need an account chosen before the workflow can run.
+    needs_credentials: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
+class N8nRun(BaseModel):
+    """One execution n8n has recorded for an exported workflow."""
+
+    id: str
+    #: n8n's own words: success, error, waiting, running, canceled.
+    status: str
+    started_at: str = ""
+    finished_at: str = ""
+    #: The node that failed, when one did. This is the whole reason LOOP shows
+    #: these at all: "it failed" is not actionable, "the Jira node failed" is.
+    failed_node: str = ""
+    error: str = ""
+
+
+class N8nRunList(BaseModel):
+    """GET /api/v1/automations/{id}/n8n/runs"""
+
+    #: False when the workflow has never been exported, or n8n is unreachable.
+    ok: bool
+    workflow_id: str = ""
+    configure_url: str = ""
+    #: True once the workflow has been switched on inside n8n.
+    active: bool = False
+    total: int = 0
+    succeeded: int = 0
+    failed: int = 0
+    items: list[N8nRun] = Field(default_factory=list)
+    message: str = ""
+
+
+class N8nExport(BaseModel):
+    """GET /api/v1/automations/{id}/n8n"""
+
+    workflow: dict = Field(
+        description="An importable n8n workflow: nodes, connections and settings."
+    )
+    #: What did not survive the translation. Empty means everything mapped.
+    notes: list[str] = Field(default_factory=list)
+    #: Nodes that will need an account chosen inside n8n before they can run.
+    needs_credentials: list[str] = Field(default_factory=list)
 
 
 class ReplayFailureOut(BaseModel):

@@ -14,7 +14,15 @@ from typing import Any
 # `critical_mismatch`, which blocks promotion outright and forces demotion —
 # no amount of good average scoring can outvote it.
 CRITICAL_FIELDS: frozenset[str] = frozenset(
-    {"amount", "amount_inr", "vendor", "supplier", "po_number", "recipient", "status"}
+    {
+        # Money, and who it was paid to.
+        "amount", "amount_inr", "vendor", "supplier", "po_number", "recipient",
+        "status",
+        # Who was given access, and to what. Getting either of these wrong is a
+        # security incident rather than a typo, so it disqualifies a run the
+        # same way a wrong payment amount does.
+        "requester", "system",
+    }
 )
 
 _NUMERIC_TOLERANCE = 0.01
@@ -108,6 +116,11 @@ def explain_failure(diff: Diff, predicted: dict, observed: dict) -> str:
             reasons.append(f"{name} name resolved differently (likely a renamed source column)")
     if "po_number" in diff.diff_fields:
         reasons.append("purchase order number did not match the human's entry")
+    if "system" in diff.diff_fields:
+        reasons.append(
+            "access was granted at a reduced level; the flow has no rule for "
+            "privileged systems"
+        )
     if "status" in diff.diff_fields:
         reasons.append("outcome status differs; this instance likely required a judgement call")
 

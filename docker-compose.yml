@@ -17,6 +17,31 @@ services:
       timeout: 3s
       retries: 20
 
+  # Where automations actually run. LOOP works out what repeats and whether it
+  # is safe to hand over; n8n already has the connectors and the credential
+  # handling, so a discovered workflow is exported into it rather than having a
+  # twelfth connector written by hand.
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      # Local-only by default, matching the rest of the stack. Turn auth on
+      # before this is reachable by anything but this machine.
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      GENERIC_TIMEZONE: ${LOOP_TIMEZONE:-Asia/Kolkata}
+      # The public REST API is what LOOP pushes workflows to.
+      N8N_PUBLIC_API_DISABLED: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    volumes:
+      - loop-n8n:/home/node/.n8n
+      # Invoices live on the host, so the workflow n8n runs can reach the same
+      # files the automation was detected from.
+      - ${LOOP_FILES_ROOT:-~/LOOP-Invoices}:/data/invoices
+
   api:
     build:
       context: .
@@ -29,11 +54,23 @@ services:
       LOOP_LLM_MODEL: ${LOOP_LLM_MODEL:-qwen2.5:7b-instruct}
       LOOP_OLLAMA_BASE_URL: ${LOOP_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       LOOP_OLLAMA_VISION_MODEL: ${LOOP_OLLAMA_VISION_MODEL:-}
+      # n8n is a sibling service here, so the default of localhost:5678 would
+      # point the API at itself. The key comes from .env — pushing a workflow
+      # needs it, and it is created inside n8n rather than shipped with the repo.
+      LOOP_N8N_BASE_URL: http://n8n:5678
+      LOOP_N8N_API_KEY: ${LOOP_N8N_API_KEY:-}
+      LOOP_FILES_ROOT: /data/invoices
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
+      n8n:
+        condition: service_started
+    # The same invoices n8n sees, at the same path, so a file automation
+    # resolves identically on both sides of the export.
+    volumes:
+      - ${LOOP_FILES_ROOT:-~/LOOP-Invoices}:/data/invoices
     # Seed on first boot so a clean clone has data to show immediately.
     command: >
       sh -c "python scripts/seed.py &&
@@ -52,4 +89,5 @@ services:
       - api
 
 volumes:
+  loop-n8n:
   loop-pgdata:

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { TrustBadge } from "@/components/trust-ladder";
 import { Badge, Empty, ErrorNote, Meter, PageHeader, PageSkeleton, Panel, Stat } from "@/components/ui";
 import { StateStripe } from "@/components/viz";
 import {
   useApplyPatch,
+  useApproveToN8n,
   useAutomations,
   useExceptions,
   usePatches,
@@ -14,6 +14,7 @@ import {
   useResolveException,
 } from "@/lib/api/queries";
 import { formatFieldValue, hours, percent, relativeTime } from "@/lib/format";
+import { isAwaitingApproval } from "@/lib/api/types";
 import type { AutomationSummary, ExceptionCase, Patch } from "@/lib/api/types";
 
 const DECISIONS = ["route_to_manager", "approve", "reject", "hold_for_clarification"];
@@ -39,10 +40,11 @@ export default function ApprovalsPage() {
   const error = automations.error ?? exceptions.error ?? patches.error;
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
 
-  // An automation that has not reached ASSIST is proposed, not running.
-  const proposed = (automations.data?.items ?? []).filter(
-    (a) => a.trust_level !== "ASSIST" && a.trust_level !== "AUTONOMOUS",
-  );
+  // Proposed means: not yet approved. Once a workflow has been exported to n8n
+  // the decision has been made, so it belongs on Automations rather than
+  // sitting here implying it still needs a yes. isAwaitingApproval is the one
+  // definition of that, shared with the nav badge and the automations page.
+  const proposed = (automations.data?.items ?? []).filter(isAwaitingApproval);
   const openExceptions = (exceptions.data?.items ?? []).filter((e) => e.status === "open");
   const openPatches = (patches.data?.items ?? []).filter((p) => p.status === "proposed");
 
@@ -98,7 +100,7 @@ export default function ApprovalsPage() {
         {/* ── 1. workflows proposed ─────────────────────────────────── */}
         <Panel
           title="Workflows proposed for automation"
-          hint="LOOP built each of these from a repetitive pattern it observed. Open one to see its backtest, then let it prove itself in shadow mode before you approve."
+          hint="LOOP built each of these from a repetitive pattern it observed. Approving builds it in n8n — switched off, with no accounts attached — and hands you the link to finish wiring it up."
         >
           {proposed.length === 0 ? (
             <Empty
@@ -162,28 +164,26 @@ export default function ApprovalsPage() {
 }
 
 function ProposedRow({ automation }: { automation: AutomationSummary }) {
-  const ready = automation.trust_level === "SHADOW" && automation.confidence >= 0.9;
+  const approve = useApproveToN8n();
+  const result = approve.data;
 
   return (
-    <li className="row-interactive">
-      <Link href={`/automations/${automation.id}`} className="flex gap-3 px-4 py-4">
-        <StateStripe state={ready ? "good" : automation.shadow_run_count > 0 ? "warn" : "idle"} />
+    <li>
+      <Link href={`/automations/${automation.id}`} className="row-interactive flex gap-3 px-4 py-4">
+        <StateStripe state="warn" />
 
         <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-medium text-mist-100">{automation.name}</h3>
-              <TrustBadge level={automation.trust_level} />
-              {ready && <Badge tone="good">Ready to approve</Badge>}
             </div>
             <p className="mt-1.5 max-w-2xl text-2xs leading-relaxed text-mist-500">
               {automation.description}
             </p>
             <div className="tnum mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
               <span>{automation.step_count} steps</span>
-              <span>{automation.shadow_run_count} trial runs</span>
               {automation.replay_accuracy !== null && (
-                <span>tested at {percent(automation.replay_accuracy, 1)} on past work</span>
+                <span>got it right {percent(automation.replay_accuracy, 1)} of the time on past work</span>
               )}
               {automation.critical_mismatch_count > 0 && (
                 <span className="text-bad-400">
@@ -219,6 +219,60 @@ function ProposedRow({ automation }: { automation: AutomationSummary }) {
           </div>
         </div>
       </Link>
+
+      {/* ── the decision ───────────────────────────────────────────────
+          Approving creates the workflow in n8n, switched off and with no
+          accounts attached. That split is the point: LOOP decides the work is
+          worth automating, and a person decides what it may connect to. */}
+      <div className="flex flex-wrap items-center gap-3 border-t border-ink-800 px-4 py-3">
+        <button
+          className="btn-primary"
+          disabled={approve.isPending || Boolean(result?.ok)}
+          onClick={() => approve.mutate({ id: automation.id, schedule: "hourly" })}
+        >
+          {approve.isPending
+            ? "Creating in n8n…"
+            : result?.ok
+              ? "Approved"
+              : "Approve — build it in n8n"}
+        </button>
+
+        {result?.ok && result.configure_url && (
+          <>
+            <a
+              className="btn-ghost"
+              href={result.configure_url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Configure the accounts in n8n →
+            </a>
+            <Link className="link text-2xs" href={`/automations/${automation.id}`}>
+              Watch how it gets on
+            </Link>
+          </>
+        )}
+
+        {!result && (
+          <span className="text-2xs text-mist-500">
+            It arrives switched off. You choose which accounts it may use.
+          </span>
+        )}
+
+        {result && !result.ok && (
+          <span className="text-2xs leading-relaxed text-warn-400">{result.message}</span>
+        )}
+
+        {result?.ok && (
+          <span className="text-2xs leading-relaxed text-mist-400">{result.message}</span>
+        )}
+      </div>
+
+      {approve.error && (
+        <div className="px-4 pb-3">
+          <ErrorNote error={approve.error} />
+        </div>
+      )}
     </li>
   );
 }

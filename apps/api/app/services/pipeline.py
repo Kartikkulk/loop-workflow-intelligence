@@ -233,6 +233,8 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
             context_switches_total=score.context_switches_total,
             interruption_tax_hours=score.interruption_tax_hours,
             automatability=score.automatability,
+            potential=score.potential,
+            potential_factors=score.potential_factors,
             variance_breakdown=variance_as_dict(score.variance),
             observed_fields=observed_fields_by_token(group),
             build_effort=score.build_effort,
