@@ -13,7 +13,12 @@ import type {
   AutomationDetail,
   ObservationSource,
   BreakSchemaResult,
+  CandidateAutomationResponse,
+  CandidateInvestigationResponse,
+  CandidateValidationResponse,
+  CandidateWorkflowList,
   ClusterDetail,
+  ClusterInvestigationResponse,
   ClusterList,
   DomainList,
   ExceptionList,
@@ -35,6 +40,7 @@ import type {
 } from "./types";
 
 export const keys = {
+  candidates: ["candidates"] as const,
   clusters: ["clusters"] as const,
   cluster: (id: string) => ["clusters", id] as const,
   sop: (id: string) => ["clusters", id, "sop"] as const,
@@ -53,6 +59,50 @@ export const keys = {
 
 type Options<T> = Omit<UseQueryOptions<T>, "queryKey" | "queryFn">;
 
+export function useCandidates() {
+  return useQuery({
+    queryKey: keys.candidates,
+    queryFn: () => http.get<CandidateWorkflowList>("/api/v1/candidates"),
+  });
+}
+
+export function useInvestigateCandidate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (workflowId: string) =>
+      http.post<CandidateInvestigationResponse>(
+        `/api/v1/candidates/${workflowId}/investigate`,
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.candidates }),
+  });
+}
+
+export function useValidateCandidate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (workflowId: string) =>
+      http.post<CandidateValidationResponse>(
+        `/api/v1/candidates/${workflowId}/validate`,
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.candidates }),
+  });
+}
+
+export function useCreateCandidateAutomation() {
+  const client = useQueryClient();
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: (workflowId: string) =>
+      http.post<CandidateAutomationResponse>(
+        `/api/v1/candidates/${workflowId}/automation`,
+      ),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.candidates });
+      refresh();
+    },
+  });
+}
+
 export function useClusters(options?: Options<ClusterList>) {
   return useQuery({
     queryKey: keys.clusters,
@@ -66,6 +116,13 @@ export function useCluster(id: string) {
     queryKey: keys.cluster(id),
     queryFn: () => http.get<ClusterDetail>(`/api/v1/clusters/${id}`),
     enabled: Boolean(id),
+  });
+}
+
+export function useInvestigateCluster() {
+  return useMutation({
+    mutationFn: (clusterId: string) =>
+      http.post<ClusterInvestigationResponse>(`/api/v1/clusters/${clusterId}/investigate`),
   });
 }
 
@@ -236,6 +293,7 @@ function useRefreshAll() {
   const client = useQueryClient();
   return () => {
     for (const key of [
+      keys.candidates,
       keys.clusters,
       keys.automations,
       keys.exceptions,

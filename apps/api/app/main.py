@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.api.v1 import (
     automations,
+    candidates,
     clusters,
     connect,
     demo,
@@ -78,6 +79,7 @@ app.add_middleware(
 
 v1 = APIRouter(prefix="/api/v1")
 v1.include_router(ingest.router)
+v1.include_router(candidates.router)
 v1.include_router(clusters.router)
 v1.include_router(automations.router)
 v1.include_router(sources.router)

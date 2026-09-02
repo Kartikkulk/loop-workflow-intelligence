@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent_analysis import WorkflowAgentAnalysis
 from app.models.automation import Automation, TrustLevel
+from app.models.candidate import WorkflowCandidate
 from app.models.cluster import Cluster, TaskInstance
 from app.models.event import ActionRegistry, AppRegistry, Event
 from app.models.execution import Execution, ShadowRun
@@ -66,6 +67,7 @@ async def clear_all(session: AsyncSession) -> None:
     """Truncate every table, children first."""
     for model in (
         WorkflowAgentAnalysis,
+        WorkflowCandidate,
         ShadowRun,
         Execution,
         ExceptionCase,

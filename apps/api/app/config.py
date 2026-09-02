@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     llm_model: str = "qwen2.5:7b-instruct"
     ollama_base_url: str = "http://localhost:11434"
     ollama_vision_model: str = ""
+    gemini_api_key: str = ""
     llm_cache: bool = True
     llm_max_retries: int = 3
 
@@ -80,10 +81,17 @@ class Settings(BaseSettings):
     def has_llm(self) -> bool:
         """True when an LLM provider is configured.
 
-        The default provider is local Ollama. If Ollama is not running, every
-        text LLM feature still falls back to deterministic heuristics.
+        The default provider is local Ollama. Gemini is optional and requires
+        LOOP_GEMINI_API_KEY. If neither is usable, every AI feature falls back
+        to deterministic heuristics.
         """
-        return self.llm_provider.strip().lower() == "ollama" and bool(self.llm_model.strip())
+        provider = self.llm_provider.strip().lower()
+        model = bool(self.llm_model.strip())
+        if provider == "ollama":
+            return model
+        if provider == "gemini":
+            return model and bool(self.gemini_api_key.strip())
+        return False
 
     @property
     def has_vision_llm(self) -> bool:

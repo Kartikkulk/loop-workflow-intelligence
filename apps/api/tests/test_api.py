@@ -84,6 +84,51 @@ async def test_clusters_split_recommended_from_not(client):
     assert any(c["is_organisational"] for c in body["recommended"])
 
 
+async def test_cluster_investigation_uses_grounded_safe_fallback(
+    client, monkeypatch
+):
+    from app.schemas.investigation import InvestigationResult
+    from app.services import investigation_pipeline
+
+    async def safe_investigation(atlas, analysis, *, client=None):
+        assert atlas.signature_catalog
+        assert analysis.proposed_workflows
+        return [
+            InvestigationResult(
+                status="insufficient_evidence",
+                generated_by="fallback",
+                candidate_workflow_id=analysis.proposed_workflows[0].proposal_id,
+                evidence_gaps=["LLM unavailable"],
+                final_decision="insufficient_evidence",
+            )
+        ]
+
+    monkeypatch.setattr(
+        investigation_pipeline, "investigate_agent_analysis", safe_investigation
+    )
+    clusters = (await client.get("/api/v1/clusters")).json()
+    cluster_id = clusters["recommended"][0]["id"]
+
+    response = await client.post(f"/api/v1/clusters/{cluster_id}/investigate")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cluster_id"] == cluster_id
+    assert body["investigation"]["status"] == "insufficient_evidence"
+    assert body["investigation"]["final_decision"] == "insufficient_evidence"
+    assert body["automation_eligible"] is False
+    serialized = str(body).lower()
+    for forbidden in (
+        "ground_truth_workflow",
+        "email_body",
+        "cell_value",
+        "password",
+        "clipboard",
+        "raw_payload",
+    ):
+        assert forbidden not in serialized
+
+
 async def test_cluster_detail_has_graph_users_and_variants(client):
     listing = (await client.get("/api/v1/clusters")).json()
     cluster_id = listing["recommended"][0]["id"]

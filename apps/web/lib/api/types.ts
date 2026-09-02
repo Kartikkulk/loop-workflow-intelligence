@@ -73,6 +73,126 @@ export interface ClusterList {
   total_interruption_tax_hours: number;
 }
 
+export type InvestigationRelationship =
+  | "same_workflow"
+  | "optional_step"
+  | "conditional_step"
+  | "separate_workflow"
+  | "insufficient_evidence";
+
+export interface InvestigationEvidence {
+  evidence_id: string;
+  evidence_type: string;
+  source: "atlas_catalog" | "deterministic_stats";
+  description: string;
+  supporting_ids: string[];
+  facts: Record<string, unknown>;
+}
+
+export interface InvestigationConclusion {
+  relationship: InvestigationRelationship;
+  confidence: number;
+  reasoning: string;
+  evidence_ids: string[];
+  evidence_gaps: string[];
+  subject: string;
+  weakened: boolean;
+}
+
+export interface InvestigationResult {
+  status: "ok" | "insufficient_evidence" | "unavailable" | "invalid";
+  generated_by: "llm" | "fallback";
+  model_name: string;
+  candidate_workflow_id: string;
+  conclusions: InvestigationConclusion[];
+  semantic_relationships: {
+    kind: string;
+    from_token: string;
+    to_token: string;
+    confidence: number;
+    evidence_ids: string[];
+    evidence_gaps: string[];
+    weakened: boolean;
+  }[];
+  evidence: InvestigationEvidence[];
+  variant_statistics: {
+    variant_token: string;
+    base_pattern_frequency: number;
+    variant_frequency: number;
+    variant_rate: number;
+    variant_position: string;
+    associated_context_keys: string[];
+    evidence_id: string;
+  }[];
+  evidence_gaps: string[];
+  investigation_notes: string[];
+  final_decision: "safe_to_continue" | "insufficient_evidence";
+}
+
+export interface ValidatedProposal {
+  proposal_id: string;
+  status: "validated" | "rejected";
+  validation_score: number;
+  issues: string[];
+}
+
+export interface ValidationResult {
+  validated: ValidatedProposal[];
+  rejected: ValidatedProposal[];
+  notes: string[];
+}
+
+export interface ClusterInvestigationResponse {
+  cluster_id: string;
+  investigation: InvestigationResult;
+  validation: ValidationResult;
+  automation_eligible: boolean;
+}
+
+export type CandidateStatus = "observed" | "candidate" | "investigated" | "validated";
+
+export interface CandidateWorkflow {
+  workflow_id: string;
+  name: string;
+  signature_tokens: string[];
+  session_count: number;
+  occurrence_count: number;
+  distinct_users: number;
+  apps: string[];
+  first_seen: string;
+  last_seen: string;
+  confidence: number;
+  status: CandidateStatus;
+  investigation: InvestigationResult | null;
+  validation: ValidationResult | null;
+  automation_id: string | null;
+  automation_trust_level: string | null;
+}
+
+export interface CandidateWorkflowList {
+  source: "browser_extension";
+  total: number;
+  items: CandidateWorkflow[];
+}
+
+export interface CandidateInvestigationResponse {
+  candidate: CandidateWorkflow;
+  result: InvestigationResult;
+}
+
+export interface CandidateValidationResponse {
+  candidate: CandidateWorkflow;
+  result: ValidationResult;
+}
+
+export interface CandidateAutomationResponse {
+  workflow_id: string;
+  cluster_id: string;
+  automation_id: string;
+  trust_level: string;
+  generated_by: string;
+}
+
 export interface Sop {
   cluster_id: string;
   name: string;

@@ -278,3 +278,98 @@ DISCOVER_WORKFLOWS: dict[str, Any] = {
         "required": ["proposed_workflows", "unrelated_patterns", "analysis_notes"],
     },
 }
+
+INVESTIGATE_WORKFLOW: dict[str, Any] = {
+    "name": "investigate_workflow_semantics",
+    "description": (
+        "Classify semantic relationships for a candidate workflow using only "
+        "the supplied evidence packet. Cite evidence_ids; do not invent facts."
+    ),
+    "input_schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "conclusions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "relationship": {
+                            "type": "string",
+                            "enum": [
+                                "same_workflow",
+                                "optional_step",
+                                "conditional_step",
+                                "separate_workflow",
+                                "insufficient_evidence",
+                            ],
+                        },
+                        "confidence": {"type": "number"},
+                        "reasoning": {"type": "string"},
+                        "evidence_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "evidence_gaps": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "subject": {"type": "string"},
+                    },
+                    "required": ["relationship", "confidence", "evidence_ids"],
+                },
+            },
+            "semantic_relationships": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": [
+                                "source_destination",
+                                "transformation",
+                                "unrelated",
+                                "unknown",
+                                "insufficient_evidence",
+                            ],
+                        },
+                        "from_token": {"type": "string"},
+                        "to_token": {"type": "string"},
+                        "confidence": {"type": "number"},
+                        "evidence_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "evidence_gaps": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                    "required": ["kind", "evidence_ids"],
+                },
+            },
+            "evidence_gaps": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "investigation_notes": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "final_decision": {
+                "type": "string",
+                "enum": ["safe_to_continue", "insufficient_evidence"],
+            },
+        },
+        "required": [
+            "conclusions",
+            "semantic_relationships",
+            "evidence_gaps",
+            "investigation_notes",
+            "final_decision",
+        ],
+    },
+}

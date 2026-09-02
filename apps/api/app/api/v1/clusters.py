@@ -24,8 +24,10 @@ from app.schemas.clusters import (
     StepNode,
     VarianceOut,
 )
+from app.schemas.investigation import ClusterInvestigationResponse
 from app.services.generator import generate_flow, generate_sop
 from app.services.ids import new_id
+from app.services.investigation_pipeline import investigate_persisted_cluster
 from app.services.sessioniser import signature_hash
 
 router = APIRouter(prefix="/clusters", tags=["clusters"])
@@ -96,6 +98,15 @@ async def _get_cluster(session: AsyncSession, cluster_id: str) -> Cluster:
     if cluster is None:
         raise HTTPException(404, f"cluster {cluster_id} not found")
     return cluster
+
+
+@router.post("/{cluster_id}/investigate", response_model=ClusterInvestigationResponse)
+async def investigate_cluster(
+    cluster_id: str, session: AsyncSession = Depends(get_session)
+) -> ClusterInvestigationResponse:
+    """Investigate a persisted Discovery cluster using bounded Atlas evidence."""
+    cluster = await _get_cluster(session, cluster_id)
+    return await investigate_persisted_cluster(session, cluster)
 
 
 @router.get("/{cluster_id}", response_model=ClusterDetail)

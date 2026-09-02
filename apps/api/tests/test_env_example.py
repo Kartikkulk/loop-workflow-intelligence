@@ -157,7 +157,7 @@ def test_no_real_secret_committed():
 
     # Every OAuth key is either absent or empty; none may carry a value.
     for key, value in documented().items():
-        if key.endswith(("_CLIENT_ID", "_CLIENT_SECRET")):
+        if key.endswith(("_CLIENT_ID", "_CLIENT_SECRET", "_API_KEY")):
             assert value == "", f"{key} must be left empty in the example"
 
 

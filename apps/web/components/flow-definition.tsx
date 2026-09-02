@@ -45,8 +45,8 @@ export function FlowDefinition({ automation }: { automation: AutomationDetail })
             </tr>
           </thead>
           <tbody className="divide-y divide-ink-800">
-            {automation.steps.map((step) => (
-              <tr key={step.id}>
+            {automation.steps.map((step, index) => (
+              <tr key={`${step.id}-${index}`}>
                 <td className="px-4 py-2 align-top">
                   <span className="mono">{step.id}</span>
                   {irreversible.has(step.id) && (

@@ -1,154 +1,96 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { IngestPanel } from "@/components/ingest-panel";
 import { SignatureChips } from "@/components/workflow-graph";
 import {
-  AvatarRow,
   Badge,
   Empty,
   ErrorNote,
+  Meter,
   PageHeader,
   PageSkeleton,
   Panel,
   Stat,
 } from "@/components/ui";
-import { ProportionBar, Sparkline, StateStripe, VariantBar } from "@/components/viz";
-import { IngestPanel } from "@/components/ingest-panel";
-import { useClusters } from "@/lib/api/queries";
-import { duration, hours, percent, teamLabel } from "@/lib/format";
-import type { ClusterSummary } from "@/lib/api/types";
+import {
+  useCandidates,
+  useCreateCandidateAutomation,
+  useInvestigateCandidate,
+  usePromote,
+  useReplay,
+  useValidateCandidate,
+} from "@/lib/api/queries";
+import { percent } from "@/lib/format";
+import type { CandidateStatus, CandidateWorkflow } from "@/lib/api/types";
 
 export default function DiscoveryPage() {
-  const { data, isLoading, error } = useClusters();
+  const candidates = useCandidates();
   const [showIngest, setShowIngest] = useState(false);
-  const [showNotRecommended, setShowNotRecommended] = useState(false);
-
-  // One ruler for every bar on the screen: bars scaled per-row would rank
-  // nothing, which is the only thing a bar is for here.
-  const maxHours = Math.max(
-    1,
-    ...(data?.recommended ?? []).map((c) => c.annual_hours + c.interruption_tax_hours),
-  );
+  const items = candidates.data?.items ?? [];
+  const apps = new Set(items.flatMap((candidate) => candidate.apps));
 
   return (
     <div className="pb-16">
       <PageHeader
         eyebrow="Step 2 of 4"
-        title="What we found in your work"
-        subtitle="Repetitive work LOOP spotted in the applications you connected, ranked by what handing it over would give back. Every number is measured from real activity — nothing here was configured by hand."
+        title="Workflows observed in your browser"
+        subtitle="Live candidates built only from browser-extension events through the existing sessioniser and workflow clustering pipeline. Seed workflows are not shown here."
         actions={
-          <button className="btn-ghost" onClick={() => setShowIngest((v) => !v)}>
+          <button className="btn-ghost" onClick={() => setShowIngest((value) => !value)}>
             {showIngest ? "Hide" : "Add activity data"}
           </button>
         }
       />
 
-      <div className="space-y-6 px-8 pt-6">
+      <div className="space-y-6 px-5 pt-6 sm:px-8">
         {showIngest && <IngestPanel onDone={() => setShowIngest(false)} />}
+        {candidates.error && <ErrorNote error={candidates.error} />}
+        {candidates.isLoading && <PageSkeleton rows={4} />}
 
-        {error && <ErrorNote error={error} />}
-        {isLoading && <PageSkeleton rows={5} />}
-
-        {data && (
+        {candidates.data && (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
-                label="Workflows detected"
-                value={String(data.total)}
-                hint={`${data.recommended.length} automatable, ${data.not_recommended.length} not recommended`}
+                label="Live workflows"
+                value={String(candidates.data.total)}
+                hint="Browser-extension activity only"
               />
               <Stat
-                label="Annual hours at stake"
-                value={hours(data.total_annual_hours)}
-                unit="hrs/yr"
+                label="Observed sessions"
+                value={String(items.reduce((total, item) => total + item.session_count, 0))}
+                hint="Sessionised by the existing F2 pipeline"
+              />
+              <Stat
+                label="Applications"
+                value={String(apps.size)}
+                hint={Array.from(apps).join(", ") || "No browser activity yet"}
+              />
+              <Stat
+                label="Validated"
+                value={String(items.filter((item) => item.status === "validated").length)}
+                hint="Grounded against Activity Atlas evidence"
                 tone="accent"
-                hint="Median duration × observed frequency × 48 weeks × people"
-                aside={
-                  <Sparkline
-                    points={data.recommended.map((c) => c.annual_hours).reverse()}
-                    tone="accent"
-                    width={64}
-                    height={20}
-                  />
-                }
-              />
-              <Stat
-                label="Interruption tax"
-                value={hours(data.total_interruption_tax_hours)}
-                unit="hrs/yr"
-                tone="warn"
-                hint="Cost of context switching, invisible in a time-and-motion study"
-                aside={
-                  <Sparkline
-                    points={data.recommended.map((c) => c.interruption_tax_hours).reverse()}
-                    tone="warn"
-                    width={64}
-                    height={20}
-                  />
-                }
-              />
-              <Stat
-                label="Organisation-wide"
-                value={String(data.recommended.filter((c) => c.is_organisational).length)}
-                hint="Performed by more than 3 people — a team problem, not a personal one"
               />
             </div>
 
             <Panel
-              title="Recommended for automation"
-              hint="Sorted by priority: (time + interruption tax) × automatability ÷ build effort"
+              title="Live workflow candidates"
+              hint="Observed ≥1 session · Candidate ≥2 occurrences · lifecycle actions require grounded evidence"
             >
-              {data.recommended.length === 0 ? (
+              {items.length === 0 ? (
                 <Empty
-                  title="No automatable workflows yet"
-                  hint="LOOP needs activity to mine. Add a log, describe a task in your own words, or connect a browser to watch real work."
-                  action={
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <button className="btn-primary" onClick={() => setShowIngest(true)}>
-                        Add activity data
-                      </button>
-                      <Link className="btn-ghost" href="/sources">
-                        Add a source
-                      </Link>
-                    </div>
-                  }
+                  title="No browser workflows observed yet"
+                  hint="Capture a multi-step browser task, then refresh this page. Synthetic seed clusters are intentionally excluded."
                 />
               ) : (
                 <ul className="divide-y divide-ink-700">
-                  {data.recommended.map((cluster) => (
-                    <ClusterRow
-                      key={cluster.id}
-                      cluster={cluster}
-                      maxHours={maxHours}
-                    />
+                  {items.map((candidate) => (
+                    <CandidateCard key={candidate.workflow_id} candidate={candidate} />
                   ))}
                 </ul>
               )}
             </Panel>
-
-            {data.not_recommended.length > 0 && (
-              <Panel
-                title="Not recommended for automation"
-                hint="Knowing a task should stay human is a result, not a gap. These are surfaced deliberately."
-                actions={
-                  <button
-                    className="btn-ghost"
-                    onClick={() => setShowNotRecommended((v) => !v)}
-                  >
-                    {showNotRecommended ? "Collapse" : `Show ${data.not_recommended.length}`}
-                  </button>
-                }
-              >
-                {showNotRecommended && (
-                  <ul className="divide-y divide-ink-700">
-                    {data.not_recommended.map((cluster) => (
-                      <NotRecommendedRow key={cluster.id} cluster={cluster} />
-                    ))}
-                  </ul>
-                )}
-              </Panel>
-            )}
           </>
         )}
       </div>
@@ -156,143 +98,219 @@ export default function DiscoveryPage() {
   );
 }
 
-function ClusterRow({
-  cluster,
-  maxHours,
-}: {
-  cluster: ClusterSummary;
-  maxHours: number;
-}) {
-  const strong = cluster.automatability >= 0.6;
-  const variants = cluster.variance_breakdown;
+function CandidateCard({ candidate }: { candidate: CandidateWorkflow }) {
+  const investigate = useInvestigateCandidate();
+  const validate = useValidateCandidate();
+  const createAutomation = useCreateCandidateAutomation();
+  const approve = usePromote();
+  const replay = useReplay();
+
+  const investigation = candidate.investigation;
+  const conclusion = investigation?.conclusions[0];
+  const canValidate =
+    investigation?.status === "ok" &&
+    investigation.final_decision === "safe_to_continue";
+  const grounded = candidate.validation?.validated[0];
+  const canCreate = Boolean(grounded && !candidate.automation_id);
+  const approved =
+    Boolean(candidate.automation_id) &&
+    candidate.automation_trust_level !== null &&
+    candidate.automation_trust_level !== "SUGGEST";
+  const error =
+    investigate.error ??
+    validate.error ??
+    createAutomation.error ??
+    approve.error ??
+    replay.error;
 
   return (
-    <li className="row-interactive">
-      <Link href={`/clusters/${cluster.id}`} className="flex gap-3 px-4 py-4">
-        <StateStripe state={cluster.has_automation ? "good" : strong ? "warn" : "idle"} />
-
+    <li className="p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-medium text-mist-100">{cluster.name}</h3>
-                {cluster.is_organisational && <Badge tone="accent">Organisational</Badge>}
-                {cluster.has_automation && <Badge tone="good">Automation built</Badge>}
-              </div>
-
-              <div className="mt-2.5">
-                <SignatureChips signature={cluster.signature} />
-              </div>
-
-              {/* The share of instances taking the dominant path. A cluster whose
-                  first segment fills the bar is one workflow; a tail of slivers
-                  is a workflow with real branching. */}
-              <div className="mt-3 max-w-sm">
-                <VariantBar
-                  shares={[
-                    variants.dominant_variant_share,
-                    ...Array.from(
-                      { length: Math.min(5, Math.max(0, variants.variant_count - 1)) },
-                      () =>
-                        (1 - variants.dominant_variant_share) /
-                        Math.min(5, Math.max(1, variants.variant_count - 1)),
-                    ),
-                  ]}
-                />
-                <p className="tnum mt-1.5 text-2xs text-mist-500">
-                  {percent(variants.dominant_variant_share)} take the same path ·{" "}
-                  {variants.variant_count} distinct orders
-                </p>
-              </div>
-
-              <div className="tnum mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
-                <span>{cluster.instance_count.toLocaleString()} instances</span>
-                <span>{duration(cluster.median_duration_ms)} median</span>
-                <span>{cluster.instances_per_user_per_week.toFixed(1)}×/person/week</span>
-                <span>{cluster.teams.map(teamLabel).join(", ")}</span>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 items-start gap-8">
-              <div className="w-32">
-                <p className="eyebrow text-right">Hours / yr</p>
-                <p className="metric mt-1 text-right text-xl text-mist-100">
-                  {hours(cluster.annual_hours)}
-                </p>
-                <div className="mt-2">
-                  <ProportionBar
-                    value={cluster.annual_hours}
-                    secondary={cluster.interruption_tax_hours}
-                    max={maxHours}
-                    label={`${cluster.annual_hours} hours plus ${cluster.interruption_tax_hours} tax`}
-                  />
-                </div>
-                <p className="tnum mt-1.5 text-right text-2xs text-warn-400">
-                  +{hours(cluster.interruption_tax_hours)} tax
-                </p>
-              </div>
-
-              <div className="w-20 text-right">
-                <p className="eyebrow">Automatable</p>
-                <p
-                  className={`metric mt-1 text-xl ${strong ? "text-good-400" : "text-warn-400"}`}
-                >
-                  {percent(cluster.automatability)}
-                </p>
-                <p className="tnum mt-2 text-2xs text-mist-500">
-                  effort {cluster.build_effort}/5
-                </p>
-              </div>
-
-              <div className="w-24 text-right">
-                <p className="eyebrow">People</p>
-                <div className="mt-1.5 flex justify-end">
-                  <AvatarRow userIds={cluster.user_ids} max={5} />
-                </div>
-                <p className="tnum mt-2 text-2xs text-mist-500">
-                  priority {cluster.priority.toFixed(0)}
-                </p>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-mist-100">{candidate.name}</h3>
+            <StatusBadge status={candidate.status} />
+            {candidate.automation_trust_level && (
+              <Badge tone={approved ? "good" : "warn"}>
+                {candidate.automation_trust_level}
+              </Badge>
+            )}
+          </div>
+          <p className="mt-1 font-mono text-[10px] text-mist-600">
+            {candidate.workflow_id}
+          </p>
+          <div className="mt-3">
+            <SignatureChips signature={candidate.signature_tokens} max={12} />
           </div>
         </div>
-      </Link>
+
+        <div className="w-full sm:w-44">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="eyebrow">Evidence confidence</span>
+            <span className="tnum text-xs text-mist-300">
+              {percent(candidate.confidence)}
+            </span>
+          </div>
+          <Meter value={candidate.confidence} tone="accent" />
+        </div>
+      </div>
+
+      <div className="tnum mt-4 flex flex-wrap gap-x-5 gap-y-1 text-2xs text-mist-500">
+        <span>{candidate.session_count} sessions</span>
+        <span>{candidate.occurrence_count} occurrences</span>
+        <span>{candidate.distinct_users} users</span>
+        <span>{candidate.apps.join(" → ")}</span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {!candidate.automation_id && (
+          <button
+            className="btn-primary"
+            disabled={investigate.isPending}
+            onClick={() => investigate.mutate(candidate.workflow_id)}
+          >
+            {investigate.isPending ? "Investigating…" : "Investigate Workflow"}
+          </button>
+        )}
+        {investigation && !candidate.automation_id && (
+          <button
+            className="btn-ghost"
+            disabled={!canValidate || validate.isPending}
+            onClick={() => validate.mutate(candidate.workflow_id)}
+            title={
+              canValidate
+                ? "Validate against Activity Atlas evidence"
+                : "Investigation must be safe to continue"
+            }
+          >
+            {validate.isPending ? "Validating…" : "Validate Workflow"}
+          </button>
+        )}
+        {candidate.validation && !candidate.automation_id && (
+          <button
+            className="btn-ghost"
+            disabled={!canCreate || createAutomation.isPending}
+            onClick={() => createAutomation.mutate(candidate.workflow_id)}
+          >
+            {createAutomation.isPending ? "Creating…" : "Create Automation"}
+          </button>
+        )}
+        {candidate.automation_id && candidate.automation_trust_level === "SUGGEST" && (
+          <button
+            className="btn-primary"
+            disabled={approve.isPending}
+            onClick={() => approve.mutate({ id: candidate.automation_id!, force: true })}
+          >
+            {approve.isPending ? "Approving…" : "Approve"}
+          </button>
+        )}
+        {candidate.automation_id && approved && (
+          <button
+            className="btn-primary"
+            disabled={replay.isPending}
+            onClick={() => replay.mutate({ id: candidate.automation_id!, days: 30 })}
+          >
+            {replay.isPending ? "Running replay…" : "Run Replay"}
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="mt-3">
+          <ErrorNote error={error} />
+        </div>
+      )}
+
+      {investigation && (
+        <div className="mt-4 rounded-md border border-ink-700 bg-ink-850 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="eyebrow">Investigation result</p>
+            <Badge
+              tone={
+                investigation.final_decision === "safe_to_continue" ? "accent" : "warn"
+              }
+            >
+              {conclusion?.relationship ?? "INSUFFICIENT EVIDENCE"}
+            </Badge>
+          </div>
+          <p className="mt-2 text-xs text-mist-300">
+            Confidence {percent(conclusion?.confidence ?? 0)} ·{" "}
+            {investigation.final_decision.replaceAll("_", " ")}
+          </p>
+          <p className="mt-1 text-2xs text-mist-500">
+            Evidence:{" "}
+            {investigation.evidence
+              .slice(0, 12)
+              .map((item) => item.evidence_id)
+              .join(", ") || "none cited"}
+            {investigation.evidence.length > 12
+              ? ` +${investigation.evidence.length - 12} more`
+              : ""}
+          </p>
+          <p className="mt-1 text-2xs text-mist-500">
+            Gaps: {investigation.evidence_gaps.join("; ") || "none"}
+          </p>
+        </div>
+      )}
+
+      {candidate.validation && (
+        <div className="mt-3 rounded-md border border-good-500/25 bg-good-500/5 p-3">
+          <p className="eyebrow text-good-400">Grounded validation</p>
+          {grounded ? (
+            <p className="mt-2 text-xs text-mist-300">
+              Validated · score {percent(grounded.validation_score)} ·{" "}
+              {grounded.issues.length ? grounded.issues.join("; ") : "no grounding issues"}
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-warn-400">
+              Rejected ·{" "}
+              {candidate.validation.rejected[0]?.issues.join("; ") ||
+                "insufficient grounded evidence"}
+            </p>
+          )}
+        </div>
+      )}
+
+      {candidate.automation_id && (
+        <div className="mt-3 rounded-md border border-accent-500/25 bg-accent-500/5 p-3">
+          <p className="eyebrow">Persisted automation</p>
+          <p className="mt-1 font-mono text-xs text-accent-300">
+            {candidate.automation_id}
+          </p>
+          <p className="mt-1 text-2xs text-mist-500">
+            Human approval moves SUGGEST to SHADOW before replay is enabled.
+          </p>
+        </div>
+      )}
+
+      {replay.data && (
+        <div className="mt-3 rounded-md border border-good-500/25 bg-good-500/5 p-3">
+          <p className="text-xs font-semibold text-good-400">REPLAY COMPLETE</p>
+          <p className="tnum mt-1 text-2xs text-mist-300">
+            {replay.data.correct}/{replay.data.total - replay.data.not_comparable} scored
+            correctly · {percent(replay.data.accuracy)} accuracy · {replay.data.errored} step
+            errors
+          </p>
+          {replay.data.not_comparable > 0 && (
+            <p className="mt-1 text-2xs text-mist-500">
+              {replay.data.not_comparable} of {replay.data.total} matching historical rows lacked
+              comparable output fields.
+            </p>
+          )}
+        </div>
+      )}
     </li>
   );
 }
 
-function NotRecommendedRow({ cluster }: { cluster: ClusterSummary }) {
-  return (
-    <li className="px-4 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/clusters/${cluster.id}`}
-              className="text-sm font-medium text-mist-200 hover:text-mist-100"
-            >
-              {cluster.name}
-            </Link>
-            <Badge tone="bad">Do not automate</Badge>
-          </div>
-          <p className="mt-2 max-w-3xl text-2xs leading-relaxed text-mist-400">
-            {cluster.reasoning}
-          </p>
-          <div className="tnum mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-mist-500">
-            <span>{cluster.instance_count} instances</span>
-            <span>{cluster.variance_breakdown.variant_count} distinct step orders</span>
-            <span>entropy {cluster.variance_breakdown.step_order_entropy.toFixed(2)}</span>
-            <span>judgement {percent(cluster.variance_breakdown.judgement_ratio)}</span>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="eyebrow">Automatable</p>
-          <p className="tnum mt-1 text-lg font-semibold leading-none text-bad-400">
-            {percent(cluster.automatability)}
-          </p>
-          <p className="mt-1 text-2xs text-mist-500">still worth an SOP</p>
-        </div>
-      </div>
-    </li>
-  );
+function StatusBadge({ status }: { status: CandidateStatus }) {
+  const tone =
+    status === "validated"
+      ? "good"
+      : status === "investigated"
+        ? "accent"
+        : status === "candidate"
+          ? "warn"
+          : "neutral";
+  return <Badge tone={tone}>{status.toUpperCase()}</Badge>;
 }
