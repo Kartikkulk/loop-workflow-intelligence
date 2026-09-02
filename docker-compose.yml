@@ -49,10 +49,15 @@ services:
     environment:
       LOOP_DATABASE_URL: postgresql+asyncpg://loop:loop@postgres:5432/loop
       LOOP_ENABLE_MOCK_CONNECTORS: "true"
-      # Optional: point this at an Ollama server reachable from the container.
       LOOP_LLM_PROVIDER: ollama
       LOOP_LLM_MODEL: ${LOOP_LLM_MODEL:-qwen2.5:7b-instruct}
-      LOOP_OLLAMA_BASE_URL: ${LOOP_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # Deliberately NOT ${LOOP_OLLAMA_BASE_URL}. That variable holds the host's
+      # view — localhost:11434 — which inside this container resolves to the
+      # container itself, so reading it here would silently point the API at
+      # nothing and every AI call would take the fallback path. Ollama must also
+      # be started as `OLLAMA_HOST=0.0.0.0:11434 ollama serve`; bound to
+      # loopback it refuses connections from the container.
+      LOOP_OLLAMA_BASE_URL: ${LOOP_OLLAMA_BASE_URL_IN_DOCKER:-http://host.docker.internal:11434}
       LOOP_OLLAMA_VISION_MODEL: ${LOOP_OLLAMA_VISION_MODEL:-}
       # n8n is a sibling service here, so the default of localhost:5678 would
       # point the API at itself. The key comes from .env — pushing a workflow
