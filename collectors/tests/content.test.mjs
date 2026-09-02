@@ -11,10 +11,10 @@
 import { chromium } from "playwright-core";
 import fs from "node:fs";
 import crypto from "node:crypto";
-
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT = fs.readFileSync(
   path.join(HERE, "..", "shared", "content.js"),
   "utf8",
@@ -28,6 +28,9 @@ const APP = `<!doctype html><title>Invoice INV-8899 from Kaveri Logistics</title
   <input name="amount" placeholder="amount" />
   <input type="search" name="q" placeholder="search rows" />
   <input name="secret" type="password" />
+  <input name="coalesce_field" />
+  <input name="waffle-rich-text-editor" />
+  <input name="A1" />
   <button type="submit">Save</button>
 </form>
 <button id="reply" aria-label="Send reply">Reply</button>
@@ -38,6 +41,9 @@ const APP = `<!doctype html><title>Invoice INV-8899 from Kaveri Logistics</title
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const context = await browser.newContext();
 await context.route("https://mail.google.com/**", (r) =>
+  r.fulfill({ contentType: "text/html", body: APP }),
+);
+await context.route("https://docs.google.com/**", (r) =>
   r.fulfill({ contentType: "text/html", body: APP }),
 );
 const page = await context.newPage();
@@ -89,12 +95,27 @@ await page.evaluate(() => {
 await page.waitForTimeout(150);
 
 await page.evaluate(() => {
+  const input = document.querySelector('input[name="coalesce_field"]');
+  input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+});
+
+// Paste is a distinct action and must flush, not swallow, the pending edit.
+await page.evaluate(() => {
   const input = document.querySelector('input[name="amount"]');
   input.focus();
   const dt = new DataTransfer();
   dt.setData("text", "92,400.00");
   input.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, clipboardData: dt }));
 });
+// A later edit beyond the inactivity boundary must remain a separate event.
+await page.waitForTimeout(3100);
+await page.evaluate(() => {
+  const input = document.querySelector('input[name="coalesce_field"]');
+  input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+});
+await page.waitForTimeout(3100);
 await page.fill('input[name="vendor"]', "Kaveri Logistics");
 await page.fill('input[name="q"]', "overdue");
 await page.fill('input[name="secret"]', "hunter2");
@@ -108,8 +129,27 @@ await page.waitForTimeout(500);
 // The submit navigated, so Chrome would run the content script again on the new
 // document. Re-inject to mirror that, then exercise the SPA history patch.
 await inject();
+const pageviewsBeforeSpa = signals.filter((s) => s.interaction === "pageview").length;
 await page.evaluate(() => history.pushState({}, "", "/mail/u/0/#inbox/NEXT"));
 await page.waitForTimeout(400);
+const pageviewsAfterSpa = signals.filter((s) => s.interaction === "pageview").length;
+
+// Sheets presents the same logical cell edit through both an internal editor
+// and a cell coordinate. They should coalesce as one editing-surface event.
+await page.goto("https://docs.google.com/spreadsheets/d/1AbC_def-GhIJkLmNopQRsTuvWXyZ/edit");
+await inject();
+const sheetsEditStart = signals.length;
+await page.evaluate(() => {
+  document
+    .querySelector('input[name="waffle-rich-text-editor"]')
+    .dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  document
+    .querySelector('input[name="A1"]')
+    .dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+});
+await page.click("#reply"); // flush the pending edit without waiting three seconds
+await page.waitForTimeout(200);
+const sheetsSignals = signals.slice(sheetsEditStart);
 
 await page.waitForTimeout(400);
 await browser.close();
@@ -133,6 +173,28 @@ check("emitted a search (typed vs edit)", kinds.includes("search"));
 check("emitted clicks", kinds.includes("click"));
 check("emitted a submit", kinds.includes("submit"));
 check("emitted an SPA route_change", kinds.includes("route_change"));
+check(
+  "SPA route change does not emit a duplicate pageview",
+  pageviewsAfterSpa === pageviewsBeforeSpa,
+  `pageviews before ${pageviewsBeforeSpa}, after ${pageviewsAfterSpa}`,
+);
+
+const coalescedEdits = signals.filter(
+  (s) => s.interaction === "field_edit" && s.field_name === "coalesce_field",
+);
+check(
+  "nearby edit events collapse into one logical edit",
+  coalescedEdits.length === 2,
+  `expected one burst plus one post-pause edit, got ${coalescedEdits.length}`,
+);
+check(
+  "edits separated by the inactivity boundary remain separate",
+  coalescedEdits.length === 2 && coalescedEdits[0].occurred_at !== coalescedEdits[1].occurred_at,
+);
+check(
+  "Sheets editor and cell blur collapse into one logical edit",
+  sheetsSignals.filter((s) => s.interaction === "field_edit").length === 1,
+);
 
 const copy = signals.find((s) => s.interaction === "copy");
 check(
@@ -144,6 +206,7 @@ check(
 const paste = signals.find((s) => s.interaction === "paste");
 check("paste carries the same digest", paste?.payload_digest === expectedDigest);
 check("paste records the target field name", paste?.field_name === "amount");
+check("paste is not swallowed by edit coalescing", Boolean(paste));
 
 const reply = signals.find((s) => s.label === "Send reply");
 check("reads aria-label for a control", Boolean(reply));

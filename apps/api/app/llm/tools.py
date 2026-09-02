@@ -156,3 +156,125 @@ READ_FRAMES: dict[str, Any] = {
         "required": ["workflow_name", "frames"],
     },
 }
+
+DISCOVER_WORKFLOWS: dict[str, Any] = {
+    "name": "discover_repetitive_workflows",
+    "description": (
+        "Propose which observed activity patterns may represent the same "
+        "repetitive human workflow. Cite atlas ids only; do not invent steps "
+        "or counts."
+    ),
+    "input_schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "proposed_workflows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "proposal_id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "description": {"type": "string"},
+                        "supporting_signature_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "supporting_motif_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "supporting_sample_instance_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "core_steps": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "token": {"type": "string"},
+                                    "reason": {"type": "string"},
+                                },
+                                "required": ["token"],
+                            },
+                        },
+                        "optional_steps": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "token": {"type": "string"},
+                                    "frequency": {"type": "number"},
+                                    "reason": {"type": "string"},
+                                },
+                                "required": ["token"],
+                            },
+                        },
+                        "observed_applications": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "repetition_assessment": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "strength": {
+                                    "type": "string",
+                                    "enum": ["low", "medium", "high"],
+                                },
+                                "reason": {"type": "string"},
+                            },
+                            "required": ["strength"],
+                        },
+                        "automation_assessment": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "deterministic_steps": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "judgment_steps": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "potentially_automatable": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "human_approval_points": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                        },
+                        "confidence": {"type": "number"},
+                        "evidence_gaps": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                    "required": [
+                        "name",
+                        "supporting_signature_ids",
+                        "core_steps",
+                        "confidence",
+                    ],
+                },
+            },
+            "unrelated_patterns": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "analysis_notes": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+        "required": ["proposed_workflows", "unrelated_patterns", "analysis_notes"],
+    },
+}

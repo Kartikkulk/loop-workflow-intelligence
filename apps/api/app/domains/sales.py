@@ -1,19 +1,11 @@
-"""Sales — inbound lead into the CRM.
+"""Sales — inbound enquiry to lead tracker.
 
-Owner: Vijay          STATUS: template — replace with what you find
+Owner: Vijay
 
-This is a working starting point so you are not editing a blank file, not a
-researched finding. Replace the tools, the people and the steps with the real
-ones once you have looked at how the team actually works.
-
-What to change:
-  1. `tools`  — which applications this team really lives in.
-  2. `steps`  — the actions you actually observe, in the order they happen.
-  3. `per_person_per_week` and `people` — real frequency, real headcount.
-  4. `is_template=False` once it reflects reality.
-
-Keep it to ONE workflow. A domain with one clearly-understood workflow is more
-convincing than a domain with five half-understood ones.
+One repetitive workflow: a salesperson reads a customer enquiry in Gmail,
+records the lead in the shared Google Sheet, and sends an acknowledgement.
+There is no CRM in this pack. Optional follow-up-date updates and the
+generator's existing variance knobs keep instances from being identical.
 """
 
 from app.domains.base import DomainPack, Step
@@ -22,24 +14,23 @@ DOMAIN = DomainPack(
     key="sales",
     label="Sales",
     owner="Vijay",
-    summary="An inbound enquiry is qualified and copied into the CRM by hand.",
-    tools=["gmail", "crm", "sheets"],
+    summary="An inbound customer enquiry is logged in the sales lead tracker and acknowledged by email.",
+    tools=["gmail", "sheets"],
     team="sales",
     people=["u_rohit", "u_neha", "u_imran", "u_divya"],
 
-    workflow_name="Inbound lead to CRM record",
+    workflow_name="Inbound Lead Processing",
     per_person_per_week=9.0,
     steps=[
-        Step("gmail", "read", "enquiry_email", 50, fields=["sender", "subject"]),
-        Step("crm", "search", "existing_contact", 55, fields=["customer"]),
-        Step("crm", "create", "lead_record", 95, fields=["customer", "amount"]),
-        # Optional: not every lead gets logged in the shared pipeline sheet.
-        Step("sheets", "update", "pipeline_tracker", 45, probability=0.4, fields=["customer"]),
+        Step("gmail", "read", "customer_enquiry", 50, fields=["sender", "subject"]),
+        Step("sheets", "create", "lead_row", 70, fields=["customer"]),
+        # Optional: some leads also get a follow-up date written on the row.
+        Step("sheets", "update", "follow_up_date", 35, probability=0.35, fields=["customer"]),
         Step("gmail", "send", "acknowledgement", 40, fields=["recipient"]),
     ],
 
     reorder_probability=0.08,
     context_switch_probability=0.40,
     anomaly_probability=0.03,
-    is_template=True,
+    is_template=False,
 )

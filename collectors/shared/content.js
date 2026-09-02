@@ -20,9 +20,12 @@
   if (SELF_HOSTS.some((h) => location.host === h)) return;
 
   const MIN_INTERVAL_MS = 400; // coalesce bursts of identical interactions
+  const EDIT_IDLE_MS = 3000;
   let lastKey = "";
   let lastAt = 0;
   let pageEnteredAt = Date.now();
+  let pendingEdit = null;
+  let editTimer = null;
 
   // A page title routinely carries the subject of an email or a customer's
   // name, so it is withheld unless the console has explicitly scoped this
@@ -119,6 +122,42 @@
     }
   }
 
+  /**
+   * A rich editor can emit several blur events while committing one logical
+   * edit (Sheets alternates between cell ids and its internal editor). Keep one
+   * trailing event per continuous editing burst, preserving when it began.
+   */
+  function flushPendingEdit() {
+    if (!pendingEdit) return;
+    const signal = pendingEdit.signal;
+    pendingEdit = null;
+    if (editTimer) clearTimeout(editTimer);
+    editTimer = null;
+    send(signal);
+  }
+
+  function editGroup(fieldName) {
+    const isSheets =
+      location.hostname === "docs.google.com" &&
+      location.pathname.startsWith("/spreadsheets");
+    if (
+      isSheets &&
+      (fieldName === "waffle-rich-text-editor" || /^[A-Z]{1,3}\d+$/i.test(fieldName))
+    ) {
+      return "sheets-grid-edit";
+    }
+    return fieldName;
+  }
+
+  function queueEdit(signal) {
+    const group = editGroup(signal.field_name);
+    if (pendingEdit && pendingEdit.group !== group) flushPendingEdit();
+    const occurredAt = pendingEdit?.signal.occurred_at || new Date().toISOString();
+    pendingEdit = { group, signal: { ...signal, occurred_at: occurredAt } };
+    if (editTimer) clearTimeout(editTimer);
+    editTimer = setTimeout(flushPendingEdit, EDIT_IDLE_MS);
+  }
+
   /** SHA-256, first 16 hex chars. Must match the server's digest exactly. */
   async function digest(text) {
     const data = new TextEncoder().encode(text);
@@ -199,7 +238,10 @@
   }
 
   reportPageView();
-  addEventListener("beforeunload", reportDwell, { capture: true });
+  addEventListener("beforeunload", () => {
+    flushPendingEdit();
+    reportDwell();
+  }, { capture: true });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") reportDwell();
     else pageEnteredAt = Date.now();
@@ -212,7 +254,7 @@
     const original = history[method];
     history[method] = function (...args) {
       const result = original.apply(this, args);
-      reportDwell();
+      flushPendingEdit();
       setTimeout(() => send({ interaction: "route_change" }), 60);
       pageEnteredAt = Date.now();
       return result;
@@ -229,6 +271,7 @@
         'button, a, [role="button"], [role="menuitem"], [role="tab"], input[type="submit"]'
       );
       if (!target) return;
+      flushPendingEdit();
       send({ interaction: "click", label: labelFor(target), role: roleFor(target) });
     },
     { capture: true, passive: true }
@@ -238,6 +281,7 @@
     "submit",
     (event) => {
       const form = event.target;
+      flushPendingEdit();
       send({
         interaction: "submit",
         label: labelFor(form?.querySelector?.('[type="submit"], button')) || "submit",
@@ -259,11 +303,17 @@
         target.type === "search" ||
         roleFor(target) === "searchbox" ||
         /search|query|filter|^q$/i.test(name);
-      send({
+      const signal = {
         interaction: isSearch ? "search" : "field_edit",
         field_name: name,
         role: roleFor(target),
-      });
+      };
+      if (isSearch) {
+        flushPendingEdit();
+        send(signal);
+      } else {
+        queueEdit(signal);
+      }
     },
     { capture: true, passive: true }
   );
@@ -271,6 +321,7 @@
   document.addEventListener(
     "copy",
     async () => {
+      flushPendingEdit();
       const text = String(getSelection?.() ?? "").trim();
       if (text.length < 3) return;
       send({ interaction: "copy", payload_digest: await digest(text) });
@@ -281,6 +332,7 @@
   document.addEventListener(
     "paste",
     async (event) => {
+      flushPendingEdit();
       const text = String(event.clipboardData?.getData?.("text") ?? "").trim();
       if (text.length < 3) return;
       send({

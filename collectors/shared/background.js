@@ -14,7 +14,10 @@
 const QUEUE_KEY = "loop_queue";
 const CONFIG_KEY = "loop_config";
 const STATS_KEY = "loop_stats";
+const SESSION_KEY = "loop_session";
 const FLUSH_ALARM = "loop_flush";
+// Matches LOOP_SESSION_GAP_MINUTES (default 15). Flush must not start a new session.
+const SESSION_IDLE_MS = 15 * 60 * 1000;
 
 const DEFAULTS = {
   apiBase: "http://localhost:8000",
@@ -92,6 +95,34 @@ function isDenied(url, denylist) {
   return (denylist || []).some((entry) => entry.trim() && lowered.includes(entry.trim().toLowerCase()));
 }
 
+function newSessionId() {
+  const rand = Math.random().toString(16).slice(2, 10) + Date.now().toString(16);
+  return `ses_${rand.slice(0, 12)}`;
+}
+
+async function getSession() {
+  const stored = await chrome.storage.local.get([SESSION_KEY]);
+  return stored[SESSION_KEY] || { id: "", lastActivityAt: 0 };
+}
+
+/**
+ * Stable session across flushes. A new id is minted only when none exists yet,
+ * or when the last queued signal was more than 15 minutes ago *and* the local
+ * queue is empty (so in-flight activity is not retagged).
+ */
+async function sessionIdForEnqueue(now) {
+  const sess = await getSession();
+  const queued = (await chrome.storage.local.get([QUEUE_KEY]))[QUEUE_KEY] || [];
+  const idle = sess.id && sess.lastActivityAt && now - sess.lastActivityAt > SESSION_IDLE_MS;
+  const next = { ...sess };
+  if (!next.id || (idle && queued.length === 0)) {
+    next.id = newSessionId();
+  }
+  next.lastActivityAt = now;
+  await chrome.storage.local.set({ [SESSION_KEY]: next });
+  return next.id;
+}
+
 function enqueue(signal) {
   return serialise(async () => {
     const settings = await getSettings();
@@ -99,6 +130,8 @@ function enqueue(signal) {
     // Enforced locally as well as on the server. A denylisted domain should
     // never reach the network at all, not merely be discarded on arrival.
     if (isDenied(signal.url, settings.denylist)) return;
+
+    await sessionIdForEnqueue(Date.now());
 
     // A page title can carry the subject of an email or a customer's name, so
     // it is dropped unless the source is explicitly scoped to capture values.
@@ -129,6 +162,12 @@ async function flush() {
   });
   if (batch.length === 0) return;
 
+  // Flush never rotates the session. The collector owns grouping; the API
+  // stamps this id on every signal in the batch.
+  const sess = await getSession();
+  const payload = { signals: batch };
+  if (sess.id) payload.session_id = sess.id;
+
   // The fetch happens outside the lock: holding it across a network round trip
   // would stall every enqueue for the duration, losing activity during exactly
   // the pause a slow network creates.
@@ -141,7 +180,7 @@ async function flush() {
         "content-type": "application/json",
         authorization: `Bearer ${settings.token}`,
       },
-      body: JSON.stringify({ signals: batch }),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     // Keep the batch queued: an unreachable API must not lose activity.

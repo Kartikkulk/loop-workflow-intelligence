@@ -1,0 +1,106 @@
+{
+  "time_window": {
+    "start": "2026-04-01T09:00:00Z",
+    "end": "2026-04-08T17:00:00Z"
+  },
+  "summary": {
+    "event_count": 48,
+    "instance_count": 15,
+    "distinct_users": 2,
+    "distinct_sessions": 15
+  },
+  "signature_catalog": [
+    {
+      "signature_id": "sig_core",
+      "tokens": [
+        "app_a:read:item",
+        "app_b:update:item",
+        "app_c:send:item"
+      ],
+      "occurrence_count": 10,
+      "distinct_users": 2,
+      "median_duration_ms": 120000,
+      "example_instance_ids": ["ti_001", "ti_002"]
+    },
+    {
+      "signature_id": "sig_optional",
+      "tokens": [
+        "app_a:read:item",
+        "app_x:search:item",
+        "app_b:update:item",
+        "app_c:send:item"
+      ],
+      "occurrence_count": 5,
+      "distinct_users": 1,
+      "median_duration_ms": 180000,
+      "example_instance_ids": ["ti_003"]
+    }
+  ],
+  "candidate_groups": [
+    {
+      "candidate_id": "cand_core",
+      "occurrence_count": 15,
+      "medoid_signature": [
+        "app_a:read:item",
+        "app_b:update:item",
+        "app_c:send:item"
+      ],
+      "member_signature_ids": ["sig_core", "sig_optional"]
+    }
+  ],
+  "motif_catalog": [
+    {
+      "motif_id": "motif_core",
+      "tokens": [
+        "app_a:read:item",
+        "app_b:update:item",
+        "app_c:send:item"
+      ],
+      "length": 3,
+      "instance_support": 2,
+      "total_occurrences": 3,
+      "distinct_users": 2,
+      "example_instance_ids": ["ti_001"]
+    }
+  ],
+  "app_transitions": [
+    { "from": "app_a", "to": "app_b", "count": 10 },
+    { "from": "app_b", "to": "app_c", "count": 15 },
+    { "from": "app_a", "to": "app_x", "count": 5 },
+    { "from": "app_x", "to": "app_b", "count": 5 }
+  ],
+  "field_name_histograms": {
+    "app_a:read:item": ["title"],
+    "app_b:update:item": ["status_flag"]
+  },
+  "sample_instances": [
+    {
+      "instance_id": "ti_001",
+      "signature": [
+        "app_a:read:item",
+        "app_b:update:item",
+        "app_c:send:item"
+      ],
+      "duration_ms": 110000,
+      "user_id": "u_a",
+      "started_at": "2026-04-01T09:00:00Z",
+      "event_count": 3
+    },
+    {
+      "instance_id": "ti_003",
+      "signature": [
+        "app_a:read:item",
+        "app_x:search:item",
+        "app_b:update:item",
+        "app_c:send:item"
+      ],
+      "duration_ms": 175000,
+      "user_id": "u_b",
+      "started_at": "2026-04-02T10:00:00Z",
+      "event_count": 4
+    }
+  ],
+  "evidence_notes": [
+    "This atlas is compressed evidence only; it does not decide that a pattern is a repetitive workflow."
+  ]
+}

@@ -13,6 +13,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.agent_analysis import WorkflowAgentAnalysis
 from app.models.automation import Automation, TrustLevel
 from app.models.cluster import Cluster, TaskInstance
 from app.models.event import ActionRegistry, AppRegistry, Event
@@ -64,6 +65,7 @@ async def seed_registries(session: AsyncSession) -> None:
 async def clear_all(session: AsyncSession) -> None:
     """Truncate every table, children first."""
     for model in (
+        WorkflowAgentAnalysis,
         ShadowRun,
         Execution,
         ExceptionCase,

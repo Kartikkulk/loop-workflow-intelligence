@@ -10,8 +10,9 @@ import vm from "node:vm";
 import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = fs.readFileSync(path.join(HERE, "..", "shared", "background.js"), "utf8");
 
 /** Boot background.js in isolation, returning handles to poke at it. */
@@ -232,6 +233,44 @@ await test("respects maxBatchSize and leaves the remainder queued", async () => 
   const stats = await app.send({ type: "loop:flush" });
   assert.equal(app.calls[0].body.signals.length, 2);
   assert.equal(stats.queued, 3);
+});
+
+await test("two flushes during continuous activity reuse the same session_id", async () => {
+  const app = boot();
+  await app.send({ type: "loop:settings", patch: { token: "loop_src_x", apiBase: "http://api" } });
+  await app.send({ type: "loop:signal", signal: signal({ label: "a" }) });
+  await settle();
+  await app.send({ type: "loop:flush" });
+  await app.send({ type: "loop:signal", signal: signal({ label: "b" }) });
+  await settle();
+  await app.send({ type: "loop:flush" });
+  assert.equal(app.calls.length, 2);
+  const first = app.calls[0].body.session_id;
+  const second = app.calls[1].body.session_id;
+  assert.ok(first && first.startsWith("ses_"), "flush must send a collector session_id");
+  assert.equal(second, first, "a flush must not mint a new session");
+});
+
+await test("a new session_id is minted after 15 minutes of inactivity", async () => {
+  const app = boot();
+  await app.send({ type: "loop:settings", patch: { token: "loop_src_x", apiBase: "http://api" } });
+  await app.send({ type: "loop:signal", signal: signal({ label: "before" }) });
+  await settle();
+  await app.send({ type: "loop:flush" });
+  const first = app.calls[0].body.session_id;
+  assert.ok(first);
+  // Queue is empty after flush; age the last activity past the 15-minute idle window.
+  const fifteenMin = 15 * 60 * 1000;
+  app.store.loop_session = {
+    ...app.store.loop_session,
+    lastActivityAt: Date.now() - fifteenMin - 1000,
+  };
+  await app.send({ type: "loop:signal", signal: signal({ label: "after" }) });
+  await settle();
+  await app.send({ type: "loop:flush" });
+  const second = app.calls[1].body.session_id;
+  assert.ok(second && second.startsWith("ses_"));
+  assert.notEqual(second, first, "idle rotation must start a new task session");
 });
 
 let failed = 0;

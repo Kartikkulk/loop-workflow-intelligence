@@ -218,10 +218,14 @@ def canonical_app_for_host(url: str) -> str:
     parts = parts[:-2] if two_label_suffix else parts[:-1]
 
     # What remains is subdomains plus the brand; the brand is the last label.
-    candidates = [p for p in parts if p not in _GENERIC_SUBDOMAINS] or parts
+    candidates = [
+        p for p in parts
+        if p not in _GENERIC_SUBDOMAINS and not p.isdigit()
+    ]
     if not candidates:
         return "browser"
-    return re.sub(r"[^a-z0-9_-]", "", candidates[-1])[:40] or "browser"
+    app = re.sub(r"[^a-z0-9_-]", "", candidates[-1])[:40]
+    return app if app and not app.isdigit() else "browser"
 
 
 def infer_action(signal: RawSignal) -> str:
@@ -268,6 +272,15 @@ def extract_object_id(url: str) -> str | None:
     """
     parsed = urlparse(url if "://" in url else f"https://{url}")
     segments = [s for s in parsed.path.split("/") if s]
+    # Google Workspace resources use /d/<id>/ URLs. Their opaque ids contain
+    # mixed-case letters, digits, underscores and hyphens, so the generic
+    # hex-only rule below cannot recognise them. Capture only that bounded,
+    # path-scoped identifier; query values and document contents are irrelevant.
+    for index, segment in enumerate(segments[:-1]):
+        if segment == "d":
+            candidate = segments[index + 1]
+            if re.fullmatch(r"[A-Za-z0-9_-]{10,128}", candidate):
+                return candidate
     for segment in reversed(segments):
         if re.fullmatch(r"\d{2,}|[0-9a-f]{8,}|[A-Z]{2,}-\d+", segment):
             return segment[:128]

@@ -21,6 +21,7 @@ from app.main import app
 from app.services.web_activity import (
     RawSignal,
     canonical_app_for_host,
+    extract_object_id,
     infer_action,
     interpret,
     sanitise_url,
@@ -135,6 +136,35 @@ def test_sanitise_url_redacts_free_text_and_emails_in_the_path():
 )
 def test_app_mapping(url, expected):
     assert canonical_app_for_host(url) == expected
+
+
+def test_google_resource_id_accepts_realistic_mixed_case_id():
+    resource_id = "1AbC_def-GhIJkLmNopQRsTuvWXyZ0123456789"
+    url = f"https://docs.google.com/spreadsheets/d/{resource_id}/edit?gid=987654"
+    assert extract_object_id(url) == resource_id
+
+
+def test_google_resource_id_ignores_query_values():
+    resource_id = "1AbC_def-GhIJkLmNopQRsTuvWXyZ0123456789"
+    url = f"https://docs.google.com/spreadsheets/d/{resource_id}/edit?secret=customer-data"
+    assert extract_object_id(url) == resource_id
+    interpreted = interpret(RawSignal(interaction="pageview", url=url), allow_values=False)
+    assert "customer-data" not in str(interpreted)
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://docs.0.com/path", "docs"),
+        ("https://0.example.com/path", "example"),
+        ("https://0/path", "browser"),
+        ("https://000.example/path", "browser"),
+    ],
+)
+def test_unknown_numeric_hostname_never_becomes_numeric_app(url, expected):
+    app_name = canonical_app_for_host(url)
+    assert app_name == expected
+    assert not app_name.isdigit()
 
 
 @pytest.mark.parametrize(
