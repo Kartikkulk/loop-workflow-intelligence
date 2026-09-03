@@ -1,4 +1,4 @@
-# LOOP — Workflow Intelligence Platform
+# Kriyā AI — Workflow Intelligence Platform
 
 ## What this is
 Detects repetitive enterprise workflows from activity logs, converts them into

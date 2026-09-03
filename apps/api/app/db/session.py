@@ -28,7 +28,7 @@ _is_sqlite = settings.database_url.startswith("sqlite")
 #: each on a local model. The default is to fail instantly, and that lost a
 #: real write: an approved automation was pushed to n8n, n8n created it, and
 #: writing the returned workflow id back raised "database is locked". The
-#: workflow existed in n8n while LOOP still believed it had never been
+#: workflow existed in n8n while Kriyā AI still believed it had never been
 #: approved, so the next click would have created a duplicate.
 _BUSY_TIMEOUT_SECONDS = 60
 
@@ -154,7 +154,7 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
             # the shared one meant an unauthenticated caller was handed whatever
             # happened to be in it — which on a deployment with sign-in turned
             # on is precisely the data sign-in exists to separate.
-            raise HTTPException(401, "Sign in to use LOOP.")
+            raise HTTPException(401, "Sign in to use Kriyā AI.")
         factory = await sessionmaker_for(username)
 
     async with factory() as session:

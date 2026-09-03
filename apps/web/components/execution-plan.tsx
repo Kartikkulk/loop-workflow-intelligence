@@ -8,7 +8,7 @@ import type { ExecutionPlan } from "@/lib/api/types";
 /**
  * Build → validate → dry run → approve, as four visibly separate steps.
  *
- * They are separate because they are separate decisions. Reviewing what LOOP
+ * They are separate because they are separate decisions. Reviewing what Kriyā AI
  * intends to do is not the same act as permitting it to happen, and collapsing
  * them into one button would mean the only moment a person is asked to think is
  * the moment they are also asked to consent. The approve control stays disabled

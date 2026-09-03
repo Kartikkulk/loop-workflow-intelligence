@@ -42,7 +42,7 @@ export default function DiscoveryPage() {
       <PageHeader
         eyebrow="Step 2 of 4"
         title="What we found in your work"
-        subtitle="Repetitive work LOOP spotted in the applications you connected, ranked by what handing it over would give back. Every number is measured from real activity — nothing here was configured by hand."
+        subtitle="Repetitive work Kriyā AI spotted in the applications you connected, ranked by what handing it over would give back. Every number is measured from real activity — nothing here was configured by hand."
         actions={
           <button className="btn-ghost" onClick={() => setShowIngest((v) => !v)}>
             {showIngest ? "Hide" : "Add activity data"}
@@ -108,7 +108,7 @@ export default function DiscoveryPage() {
               {data.recommended.length === 0 ? (
                 <Empty
                   title="Nothing found yet"
-                  hint="LOOP needs to see some work first. Add an activity log, describe a task in your own words, or connect a browser."
+                  hint="Kriyā AI needs to see some work first. Add an activity log, describe a task in your own words, or connect a browser."
                   action={
                     <div className="flex flex-wrap justify-center gap-2">
                       <button className="btn-primary" onClick={() => setShowIngest(true)}>

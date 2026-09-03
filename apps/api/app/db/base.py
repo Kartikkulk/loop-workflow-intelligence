@@ -14,7 +14,7 @@ NAMING_CONVENTION = {
 
 
 def utcnow() -> datetime:
-    """Timezone-aware current time. All timestamps in LOOP are UTC."""
+    """Timezone-aware current time. All timestamps in Kriyā AI are UTC."""
     return datetime.now(UTC)
 
 

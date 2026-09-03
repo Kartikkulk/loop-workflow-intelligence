@@ -16,11 +16,11 @@ import type { Provider } from "@/lib/api/types";
 /**
  * Connect your own accounts.
  *
- * LOOP runs on one laptop and reads one person's own work, so this is ordinary
+ * Kriyā AI runs on one laptop and reads one person's own work, so this is ordinary
  * personal sign-in: press a button, sign in with the account you already use,
  * come back. No administrator has to enable anything.
  *
- * The one unavoidable step is that LOOP has no cloud service behind it and so
+ * The one unavoidable step is that Kriyā AI has no cloud service behind it and so
  * ships with no client secret of its own — each person registers a personal app
  * once. That is a real cost and this panel does not hide it: the steps are
  * listed, the redirect URI is one click to copy, and the whole thing collapses
@@ -168,7 +168,7 @@ function SetupForm({ provider, onDone }: { provider: Provider; onDone: () => voi
   return (
     <div className="mt-3.5 rounded-md border border-ink-700 bg-ink-900/60 px-3.5 py-3.5">
       <p className="text-2xs leading-relaxed text-mist-400">
-        LOOP has no server of its own, so it cannot hold a {provider.label} client secret for
+        Kriyā AI has no server of its own, so it cannot hold a {provider.label} client secret for
         you — you register a personal app once and it stays on this machine.
       </p>
 
@@ -262,7 +262,7 @@ function SetupForm({ provider, onDone }: { provider: Provider; onDone: () => voi
         )}
 
         <p className="text-2xs leading-relaxed text-mist-500">
-          Stored in LOOP&rsquo;s database on this machine. Never sent back to this page, never
+          Stored in Kriyā AI&rsquo;s database on this machine. Never sent back to this page, never
           committed, never sent anywhere except {provider.label}.
         </p>
       </div>
@@ -275,7 +275,7 @@ function SetupForm({ provider, onDone }: { provider: Provider; onDone: () => voi
 
       <details className="mt-3">
         <summary className="cursor-pointer text-2xs text-mist-500">
-          What LOOP will be allowed to read
+          What Kriyā AI will be allowed to read
         </summary>
         <ul className="mt-1.5 space-y-1">
           {provider.scopes.map((scope) => (
@@ -285,7 +285,7 @@ function SetupForm({ provider, onDone }: { provider: Provider; onDone: () => voi
           ))}
         </ul>
         <p className="mt-1.5 text-2xs leading-relaxed text-mist-500">
-          Read-only, and only your own account. Nothing here lets LOOP write anything or see a
+          Read-only, and only your own account. Nothing here lets Kriyā AI write anything or see a
           colleague&rsquo;s activity.
         </p>
       </details>

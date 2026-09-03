@@ -1,12 +1,12 @@
 """Personal OAuth providers.
 
-LOOP is a personal tool: one employee, their own laptop, their own accounts.
+Kriyā AI is a personal tool: one employee, their own laptop, their own accounts.
 Every scope below is a *delegated, read-only, personal* scope — nothing here
 needs an administrator to approve it, and nothing here can see a colleague's
 activity. That is a deliberate constraint, not a limitation we have not got
 round to: a tool that needs IT to enable it never gets tried.
 
-What LOOP cannot do without the person's own consent, it does not do.
+What Kriyā AI cannot do without the person's own consent, it does not do.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ class OAuthProvider:
 
     key: str
     label: str
-    #: What LOOP reads once connected, in the user's words.
+    #: What Kriyā AI reads once connected, in the user's words.
     reads: str
 
     authorize_url: str
@@ -30,7 +30,7 @@ class OAuthProvider:
     scopes: list[str]
 
     #: Environment variables holding the app registration. These belong to the
-    #: person running LOOP, not to us — see `setup_steps`.
+    #: person running Kriyā AI, not to us — see `setup_steps`.
     client_id_env: str
     client_secret_env: str
 
@@ -56,7 +56,7 @@ class OAuthProvider:
 
 
 #: Credentials the person typed into the Sources page, loaded from the database
-#: at startup and updated whenever they save. LOOP is a single-process personal
+#: at startup and updated whenever they save. Kriyā AI is a single-process personal
 #: tool on one laptop, so a module-level cache is the whole story — there is no
 #: second worker to fall out of sync with. It exists because the provider
 #: properties are read from synchronous code that has no database session to

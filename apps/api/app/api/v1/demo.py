@@ -212,7 +212,7 @@ async def seed_exceptions(
     """Generate genuine high-value exceptions so rule learning has evidence.
 
     Runs the automation against real historical instances and queues the ones
-    its guard actually held back. The rule LOOP later proposes is therefore
+    its guard actually held back. The rule Kriyā AI later proposes is therefore
     learned from real decisions, not seeded with a pre-written answer.
     """
     automation = await session.get(Automation, automation_id)

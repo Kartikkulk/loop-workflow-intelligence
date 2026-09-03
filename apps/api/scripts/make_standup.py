@@ -158,7 +158,7 @@ def upload(events: list[dict], api: str) -> None:
         with urllib.request.urlopen(request, timeout=300) as response:
             result = json.load(response)
     except urllib.error.URLError as exc:
-        raise SystemExit(f"could not reach the LOOP API at {api}: {exc}") from exc
+        raise SystemExit(f"could not reach the Kriyā AI API at {api}: {exc}") from exc
     print(
         f"uploaded {result.get('events_ingested', 0)} events; "
         f"{result.get('clusters_detected', 0)} workflow(s) detected now",
@@ -169,7 +169,7 @@ def upload(events: list[dict], api: str) -> None:
 def main() -> int:
     repo_default = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path("~/LOOP-Invoices"))
+    parser.add_argument("--root", type=Path, default=Path("~/Kriya-Invoices"))
     parser.add_argument("--repo", type=Path, default=repo_default)
     parser.add_argument("--days", type=int, default=60, help="Weekdays of history.")
     parser.add_argument("--seed", type=int, default=11)

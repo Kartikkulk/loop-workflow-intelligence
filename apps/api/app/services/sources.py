@@ -15,9 +15,9 @@ from app.models.source import CaptureScope, Source, SourceKind, SourceStatus
 from app.services.ids import new_id
 
 CONSENT_TEXT = (
-    "I agree to LOOP observing which applications I use and what kind of action I take "
+    "I agree to Kriyā AI observing which applications I use and what kind of action I take "
     "in each, for the purpose of identifying repetitive work. In metadata-only mode "
-    "LOOP records that a field was filled, never what was typed into it. I can pause "
+    "Kriyā AI records that a field was filled, never what was typed into it. I can pause "
     "or revoke this at any time, and revoking deletes the events this source reported."
 )
 
@@ -109,7 +109,7 @@ CAPABILITIES: list[SourceCapability] = [
         sees=[
             "Authoritative records of what changed in that system",
             "Tenant-wide activity, not just one person's",
-            "History from before LOOP was installed",
+            "History from before Kriyā AI was installed",
         ],
         blind_to=[
             "How the person got there, and what else they had open",
@@ -268,7 +268,7 @@ def is_denied(source: Source, url: str) -> bool:
 
 
 async def coverage_report(session: AsyncSession) -> dict:
-    """What LOOP can currently see, and through what."""
+    """What Kriyā AI can currently see, and through what."""
     sources = list((await session.execute(select(Source))).scalars().all())
     connected = [s for s in sources if s.status is SourceStatus.CONNECTED]
 
@@ -305,7 +305,7 @@ async def coverage_report(session: AsyncSession) -> dict:
     }
 
 
-# ── tools LOOP can read activity out of ────────────────────────────────────
+# ── tools Kriyā AI can read activity out of ────────────────────────────────────
 #
 # Distinct from the execution connectors in app/connectors/. Those *act* on a
 # system — send an email, append a row. These *read* what already happened, and
@@ -318,7 +318,7 @@ async def coverage_report(session: AsyncSession) -> dict:
 
 @dataclass
 class MonitorableTool:
-    """An application whose activity LOOP knows how to read."""
+    """An application whose activity Kriyā AI knows how to read."""
 
     key: str
     label: str

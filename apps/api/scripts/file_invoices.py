@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the discovered invoice automation over everything sitting in the inbox.
 
-This is the last mile: the workflow LOOP detected, executed for real, moving
+This is the last mile: the workflow Kriyā AI detected, executed for real, moving
 real files on this machine and noting each one on its month's Jira ticket.
 
 It defaults to a dry run and prints exactly what it would do. Nothing moves

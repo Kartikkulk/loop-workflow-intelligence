@@ -1,6 +1,6 @@
-"""Translate a LOOP automation into an n8n workflow.
+"""Translate a Kriyā AI automation into an n8n workflow.
 
-The argument for doing this at all: LOOP's contribution is working out *what*
+The argument for doing this at all: Kriyā AI's contribution is working out *what*
 repeats and whether it is safe to hand over. Executing it needs a connector per
 system, each with its own OAuth dance — and n8n already has several hundred of
 those, with credential handling its users already trust. Writing a twelfth
@@ -18,7 +18,7 @@ Two things this deliberately does not do:
     hidden in a log.
 
 The guard travels too. `requires_approval_if` becomes an IF node in front of
-the irreversible steps, so the hold that LOOP measured is still enforced by the
+the irreversible steps, so the hold that Kriyā AI measured is still enforced by the
 thing actually doing the work.
 """
 
@@ -29,7 +29,7 @@ from typing import Any
 
 from app.config import settings
 
-#: Node types per LOOP connector, chosen so an imported workflow lands on a
+#: Node types per Kriyā AI connector, chosen so an imported workflow lands on a
 #: real node the person can configure rather than a placeholder.
 _NODE_TYPES: dict[str, tuple[str, float]] = {
     "files": ("n8n-nodes-base.readWriteFile", 1),
@@ -56,7 +56,7 @@ _NO_OP = ("n8n-nodes-base.noOp", 1)
 
 
 def node_type_for(connector: str) -> tuple[str, float] | None:
-    """The n8n node backing a LOOP connector, or None when nothing maps.
+    """The n8n node backing a Kriyā AI connector, or None when nothing maps.
 
     Public because the execution planner needs the same answer to decide
     whether n8n could run a whole flow. Two copies of this table would drift,
@@ -65,7 +65,7 @@ def node_type_for(connector: str) -> tuple[str, float] | None:
     return _NODE_TYPES.get(connector)
 
 
-#: How often the workflow should wake up, per LOOP trigger type. A workflow
+#: How often the workflow should wake up, per Kriyā AI trigger type. A workflow
 #: nobody triggers does nothing, so a trigger is always emitted.
 _SCHEDULE_BY_TRIGGER = {
     "email_received": "hours",
@@ -106,15 +106,15 @@ def _parameters_for(
 ) -> dict[str, Any]:
     """Node parameters that are safe to prefill.
 
-    Only values LOOP genuinely observed are set. Anything that would amount to
+    Only values Kriyā AI genuinely observed are set. Anything that would amount to
     guessing at somebody's project key, channel or spreadsheet is left empty for
     them to fill in, because a wrong prefilled target is harder to notice than
     an empty one.
 
     `mount` is where the document root appears *inside the n8n container*. The
-    paths LOOP observed are host paths, and a host path in a file node resolves
+    paths Kriyā AI observed are host paths, and a host path in a file node resolves
     to nothing on the other side of the container boundary — so the first run
-    fails with "no such file" and looks like a LOOP bug rather than a mapping
+    fails with "no such file" and looks like a Kriyā AI bug rather than a mapping
     one.
     """
     connector = str(step.get("connector", ""))
@@ -169,7 +169,7 @@ def _parameters_for(
                 "comment": (
                     "={{ 'Filed ' + ($json.invoice_no || $binary.data.fileName) "
                     "+ ' — total INR ' + (($json.amount || 0) / 100).toFixed(2) "
-                    "+ ' (filed automatically by LOOP)' }}"
+                    "+ ' (filed automatically by Kriyā AI)' }}"
                 ),
             }
         if action == "create":
@@ -185,16 +185,16 @@ def _parameters_for(
         return {"operation": "append" if action == "create" else "read"}
     if connector in ("erp", "crm", "hrms", "okta", "confluence"):
         # An HTTP node with no URL imports cleanly and shows as incomplete,
-        # which is the honest state: LOOP knows the system was touched but not
+        # which is the honest state: Kriyā AI knows the system was touched but not
         # which endpoint does it.
         return {"method": "GET" if action in ("read", "search") else "POST"}
     return {}
 
 
 def _guard_node(expression: str, position: list[int]) -> dict[str, Any] | None:
-    """An IF node enforcing LOOP's approval guard, or None if unparseable.
+    """An IF node enforcing Kriyā AI's approval guard, or None if unparseable.
 
-    Failing closed matters here as much as it does in LOOP's own engine: a guard
+    Failing closed matters here as much as it does in Kriyā AI's own engine: a guard
     that cannot be translated must not become an IF node that always passes.
     Returning None means the caller leaves the guard out entirely and says so,
     rather than shipping a workflow that looks guarded and is not.
@@ -215,7 +215,7 @@ def _guard_node(expression: str, position: list[int]) -> dict[str, Any] | None:
         value = literal.strip("'\"")
         kind = "string"
 
-    # The condition is inverted on purpose. LOOP's guard says "hold when this is
+    # The condition is inverted on purpose. Kriyā AI's guard says "hold when this is
     # true", and what the workflow needs is "continue when it is not".
     negated = {
         "gt": "lte", "lte": "gt", "lt": "gte", "gte": "lt",
@@ -255,7 +255,7 @@ def to_n8n_workflow(
     mount: str | None = None,
     constants: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build an importable n8n workflow from a LOOP automation.
+    """Build an importable n8n workflow from a Kriyā AI automation.
 
     `automation` is the shape the detail endpoint returns: name, trigger, steps
     and guards. `schedule` overrides how often it runs — the observed trigger
@@ -360,7 +360,7 @@ def to_n8n_workflow(
         }
 
     return {
-        "name": str(automation.get("name") or "LOOP workflow"),
+        "name": str(automation.get("name") or "Kriyā AI workflow"),
         "nodes": nodes,
         "connections": connections,
         "settings": {"executionOrder": "v1"},

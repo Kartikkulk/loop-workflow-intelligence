@@ -1,7 +1,7 @@
 """Connecting your own accounts.
 
-LOOP runs on one person's laptop and reads that person's own work. There is no
-tenant, no administrator, and no LOOP cloud in the middle — which is why the
+Kriyā AI runs on one person's laptop and reads that person's own work. There is no
+tenant, no administrator, and no Kriyā AI cloud in the middle — which is why the
 whole flow here is ordinary personal OAuth: press a button, sign in with the
 account you already use, come back with a read-only token that lives in a
 database file on your own disk.
@@ -71,7 +71,7 @@ def _query(params: dict[str, str]) -> str:
 def _provider_or_404(key: str) -> OAuthProvider:
     provider = PROVIDERS_BY_KEY.get(key)
     if provider is None:
-        raise HTTPException(404, f"LOOP does not know a provider called {key!r}.")
+        raise HTTPException(404, f"Kriyā AI does not know a provider called {key!r}.")
     return provider
 
 
@@ -91,7 +91,7 @@ async def reload_credentials(session: AsyncSession) -> None:
 
 @router.get("/providers", response_model=ProviderList)
 async def list_providers(session: AsyncSession = Depends(get_session)) -> ProviderList:
-    """Every account LOOP can read, with its current state."""
+    """Every account Kriyā AI can read, with its current state."""
     await reload_credentials(session)
     live = await oauth.connected(session)
 
@@ -245,7 +245,7 @@ async def sync(
     """Pull recent activity, store it as events, then re-run detection.
 
     Detection runs here rather than on a button elsewhere because of what the
-    person actually asked for: connect an account and have LOOP notice the
+    person actually asked for: connect an account and have Kriyā AI notice the
     repetitive parts. Making them press a second button to find that out would
     be making them do the work the tool exists to do.
     """
@@ -327,7 +327,7 @@ async def sync(
     elif clusters:
         message = (
             f"Read {added} new {'thing' if added == 1 else 'things'} you did in "
-            f"{provider.label}. LOOP now sees {len(clusters)} "
+            f"{provider.label}. Kriyā AI now sees {len(clusters)} "
             f"{'pattern' if len(clusters) == 1 else 'patterns'} worth a look."
         )
     else:
@@ -364,7 +364,7 @@ async def disconnect(
     """Disconnect an account and delete every event it contributed.
 
     Deliberately destructive. A person who disconnects an account has withdrawn
-    consent, and leaving the events behind would mean LOOP kept a record of
+    consent, and leaving the events behind would mean Kriyā AI kept a record of
     their inbox after being told to stop reading it. Detection is re-run so the
     findings reflect only what remains.
     """

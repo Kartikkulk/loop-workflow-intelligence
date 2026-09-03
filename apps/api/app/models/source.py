@@ -6,7 +6,7 @@ OAuth connection to a tenant's Microsoft 365, a desktop agent, an uploaded log.
 Sources are first-class rows rather than a string on each event because three
 things have to be true per-source and are meaningless globally: consent has to
 be granted and revocable, capture has to be pausable by the person being
-observed, and coverage has to be reportable so an operator knows what LOOP can
+observed, and coverage has to be reportable so an operator knows what Kriyā AI can
 and cannot currently see.
 """
 

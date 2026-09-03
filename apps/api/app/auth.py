@@ -1,4 +1,4 @@
-"""Who is using LOOP, and which database their work lives in.
+"""Who is using Kriyā AI, and which database their work lives in.
 
 Deliberately small. This is a shared-password sign-in for a demo deployment,
 not an identity system: it establishes *which* of a known set of people is

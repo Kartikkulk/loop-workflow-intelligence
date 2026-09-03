@@ -6,7 +6,7 @@ Two outputs, and they describe the same work:
   * Real PDF files in `<root>/Inbox`, one per linked AWS account per month for
     the last twelve months. These are genuine files — the automation moves
     these, not a fixture.
-  * A LOOP activity log of three people filing them by hand, month after month.
+  * A Kriyā AI activity log of three people filing them by hand, month after month.
     Detection reads this and has to find the workflow on its own.
 
 The PDFs are written directly rather than through a library: a one-page invoice
@@ -281,7 +281,7 @@ def upload(events: list[dict], api: str) -> None:
         with urllib.request.urlopen(request, timeout=300) as response:
             result = json.load(response)
     except urllib.error.URLError as exc:
-        raise SystemExit(f"could not reach the LOOP API at {api}: {exc}") from exc
+        raise SystemExit(f"could not reach the Kriyā AI API at {api}: {exc}") from exc
     print(
         f"uploaded {result.get('events_ingested', 0)} events; "
         f"{result.get('clusters_detected', 0)} workflow(s) detected",
@@ -294,7 +294,7 @@ def main() -> int:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path("~/LOOP-Invoices"),
+        default=Path("~/Kriya-Invoices"),
         help="Where the invoices live. Must match LOOP_FILES_ROOT.",
     )
     parser.add_argument("--months", type=int, default=12)
@@ -311,7 +311,7 @@ def main() -> int:
         "Use this on stage: the watcher picks it up while people are looking.",
     )
     parser.add_argument("--out", type=Path, help="Also write the activity log here.")
-    parser.add_argument("--upload", action="store_true", help="Send it to the LOOP API.")
+    parser.add_argument("--upload", action="store_true", help="Send it to the Kriyā AI API.")
     parser.add_argument("--api", default="http://127.0.0.1:8000")
     args = parser.parse_args()
 

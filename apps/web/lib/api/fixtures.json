@@ -1565,7 +1565,7 @@
         "sees": [
           "Authoritative records of what changed in that system",
           "Tenant-wide activity, not just one person's",
-          "History from before LOOP was installed"
+          "History from before Kriyā AI was installed"
         ],
         "setup": "OAuth consent. Tenant-wide audit APIs need an administrator.",
         "summary": "OAuth into Microsoft 365, Google Workspace, Slack or a line-of-business system and pull its audit trail.",

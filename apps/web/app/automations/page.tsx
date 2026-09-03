@@ -10,7 +10,7 @@ import type { AutomationSummary } from "@/lib/api/types";
  * Automations, in the two states that matter.
  *
  * Previously this page ranked automations along a five-rung trust ladder and
- * counted how many had reached each rung. That was the right model when LOOP
+ * counted how many had reached each rung. That was the right model when Kriyā AI
  * executed workflows itself and had to earn the right to act. n8n executes
  * them now, and the only questions left are whether a workflow has been built
  * and whether it is switched on — so those are the only two states shown.
@@ -29,7 +29,7 @@ export default function AutomationsPage() {
     <div className="pb-16">
       <PageHeader
         eyebrow="Automation"
-        title="What LOOP has automated"
+        title="What Kriyā AI has automated"
         subtitle="Each of these was discovered from observed work, approved by you, and built in n8n. Open one to see whether it is running and where it is failing."
         actions={
           proposed.length > 0 ? (

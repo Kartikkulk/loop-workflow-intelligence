@@ -23,7 +23,7 @@ export default function SettingsPage() {
     <div className="pb-16">
       <PageHeader
         eyebrow="Settings"
-        title="How LOOP is set up"
+        title="How Kriyā AI is set up"
         subtitle="Everything here is read from the running configuration, so it is what is actually in force rather than what was intended."
       />
 
@@ -50,13 +50,13 @@ export default function SettingsPage() {
               detail={
                 data.llm_available
                   ? "Used to name and explain workflows. It never executes anything."
-                  : "LOOP falls back to deterministic naming and scoring. Nothing breaks; the wording is plainer."
+                  : "Kriyā AI falls back to deterministic naming and scoring. Nothing breaks; the wording is plainer."
               }
             />
           </div>
         </Panel>
 
-        <Panel title="What LOOP has stored">
+        <Panel title="What Kriyā AI has stored">
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-3">
             <Metric label="Activity events" value={data.event_count.toLocaleString()} />
             <Metric label="Workflows found" value={String(data.cluster_count)} />

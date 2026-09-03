@@ -467,7 +467,7 @@ export function useApproveAutomation() {
 /**
  * The raw event stream, newest first.
  *
- * This exists so "LOOP watched your work" is something a person can check
+ * This exists so "Kriyā AI watched your work" is something a person can check
  * rather than take on trust. It is the evidence behind every discovery, and if
  * it is empty then nothing downstream is real either.
  */

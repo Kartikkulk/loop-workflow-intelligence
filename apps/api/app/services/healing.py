@@ -2,7 +2,7 @@
 
 When a step's `depends_on` field stops resolving, the cause is almost always
 that the world moved: a spreadsheet column was renamed, an API field was
-restructured, a DOM selector changed. LOOP captures the schema as it exists
+restructured, a DOM selector changed. Kriyā AI captures the schema as it exists
 *now*, asks for a remapping, and scores its own confidence.
 
 The confidence gate is the whole safety story. A high-confidence remapping on a

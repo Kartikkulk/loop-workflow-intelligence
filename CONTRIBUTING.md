@@ -1,4 +1,4 @@
-# Working on LOOP
+# Working on Kriyā AI
 
 Three people, one repo, four days. This document exists so nobody blocks anybody.
 

@@ -1,4 +1,4 @@
-"""LOOP API entrypoint."""
+"""Kriyā AI API entrypoint."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
         # Credentials the person typed into the Sources page in an earlier run.
         await connect.reload_credentials(session)
     logger.info(
-        "LOOP api ready — db=%s llm=%s connectors=%s",
+        "Kriyā AI api ready — db=%s llm=%s connectors=%s",
         settings.database_url.split("://")[0],
         settings.llm_description
         if llm.available
@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="LOOP — Workflow Intelligence Platform",
+    title="Kriyā AI — Workflow Intelligence Platform",
     description=(
         "Detects repetitive enterprise workflows from activity logs, converts them into "
         "automations, and promotes those automations from suggested to autonomous through a "

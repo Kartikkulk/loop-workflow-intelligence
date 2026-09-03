@@ -149,7 +149,7 @@ class N8nRun(BaseModel):
     status: str
     started_at: str = ""
     finished_at: str = ""
-    #: The node that failed, when one did. This is the whole reason LOOP shows
+    #: The node that failed, when one did. This is the whole reason Kriyā AI shows
     #: these at all: "it failed" is not actionable, "the Jira node failed" is.
     failed_node: str = ""
     error: str = ""

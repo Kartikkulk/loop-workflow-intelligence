@@ -1,6 +1,6 @@
 """Choose which runtime should execute an approved automation.
 
-LOOP works out *what* repeats and whether handing it over is safe. That is a
+Kriyā AI works out *what* repeats and whether handing it over is safe. That is a
 separate question from *how* it should run, and the answer is not the same for
 every workflow: a chain of SaaS API calls belongs in n8n, which already owns the
 connectors and the OAuth; a workflow that has to click through a system with no
@@ -156,7 +156,7 @@ def feasibility(method: str, steps: list[dict]) -> tuple[bool, str]:
             f"{missing} step(s) map to no n8n node, so n8n cannot run the whole flow."
         )
     if method not in EXECUTION_METHODS:
-        return False, f"'{method}' is not a runtime LOOP can generate."
+        return False, f"'{method}' is not a runtime Kriyā AI can generate."
     return True, ""
 
 

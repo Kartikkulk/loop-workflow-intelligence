@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Record real desktop app switching on macOS as a LOOP activity log.
+"""Record real desktop app switching on macOS as a Kriyā AI activity log.
 
 Run this, then do the dull thing you keep doing — three or four times, the same
 way you always do it. Every time the frontmost application changes, that is one
 event. Stop with Ctrl-C and the log is written; pass --upload and it goes
-straight to a running LOOP API, which re-runs detection over it.
+straight to a running Kriyā AI API, which re-runs detection over it.
 
 What it can and cannot see, on purpose:
 
@@ -14,7 +14,7 @@ What it can and cannot see, on purpose:
   * Browser tab titles are readable, but they are the most revealing thing on
     the machine, so they are off unless you pass --titles.
 
-Nothing leaves the laptop: the only network call is to the LOOP API you name,
+Nothing leaves the laptop: the only network call is to the Kriyā AI API you name,
 which defaults to localhost.
 
     python3 collectors/desktop/record.py --upload
@@ -34,7 +34,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-#: macOS application names mapped onto LOOP's app vocabulary. Anything not
+#: macOS application names mapped onto Kriyā AI's app vocabulary. Anything not
 #: listed registers itself under a slugified version of its own name the first
 #: time it is seen, which is why an unknown app is not an error.
 APP_KEYS = {
@@ -98,7 +98,7 @@ def browser_tab_title(app_name: str) -> str | None:
 
 
 def slugify(name: str) -> str:
-    """An app key LOOP can group on: lowercase, no spaces."""
+    """An app key Kriyā AI can group on: lowercase, no spaces."""
     cleaned = "".join(char if char.isalnum() else "_" for char in name.lower())
     return "_".join(part for part in cleaned.split("_") if part) or "unknown"
 
@@ -191,7 +191,7 @@ class Recorder:
 
 
 def upload(events: list[dict], api: str) -> None:
-    """POST the log to a running LOOP API as a JSONL upload."""
+    """POST the log to a running Kriyā AI API as a JSONL upload."""
     body = "\n".join(json.dumps(event) for event in events).encode()
     boundary = f"----loop{uuid.uuid4().hex}"
     parts = (
@@ -210,7 +210,7 @@ def upload(events: list[dict], api: str) -> None:
         with urllib.request.urlopen(request, timeout=120) as response:
             result = json.load(response)
     except urllib.error.URLError as exc:
-        raise SystemExit(f"could not reach the LOOP API at {api}: {exc}") from exc
+        raise SystemExit(f"could not reach the Kriyā AI API at {api}: {exc}") from exc
 
     print(
         f"uploaded {result.get('events_ingested', 0)} events; "
@@ -224,8 +224,8 @@ def upload(events: list[dict], api: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, help="Write the log here as JSONL.")
-    parser.add_argument("--upload", action="store_true", help="Send it to the LOOP API.")
-    parser.add_argument("--api", default="http://127.0.0.1:8000", help="LOOP API base URL.")
+    parser.add_argument("--upload", action="store_true", help="Send it to the Kriyā AI API.")
+    parser.add_argument("--api", default="http://127.0.0.1:8000", help="Kriyā AI API base URL.")
     parser.add_argument("--user", default="u_me", help="Who is being recorded.")
     parser.add_argument("--team", default="desktop", help="Team label for the events.")
     parser.add_argument(

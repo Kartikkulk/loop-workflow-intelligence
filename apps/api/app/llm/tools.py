@@ -158,7 +158,7 @@ READ_FRAMES: dict[str, Any] = {
 }
 
 
-#: The three ways LOOP can actually run an approved automation. Kept as an
+#: The three ways Kriyā AI can actually run an approved automation. Kept as an
 #: enum in the schema so the model cannot invent a fourth backend that nothing
 #: downstream knows how to generate code for.
 EXECUTION_METHODS = ["n8n", "playwright", "python", "hybrid"]

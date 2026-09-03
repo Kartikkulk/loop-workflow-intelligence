@@ -2,7 +2,7 @@
 
 Executions the engine is not confident about route to a human with a stated
 reason. Each resolution is stored as an `(input features -> human decision)`
-pair. Once enough similar pairs agree, LOOP proposes a branch rule; accepting it
+pair. Once enough similar pairs agree, Kriyā AI proposes a branch rule; accepting it
 patches the flow definition, and the automation's coverage rises.
 
 Coverage is the metric that makes the system look alive: the share of triggers

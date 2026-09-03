@@ -44,7 +44,7 @@ class OAuthState(Base, TimestampMixin):
 
     Short-lived and single-use: the callback consumes it. Without this, an
     attacker could feed the callback a code of their own choosing and connect
-    their account to this LOOP instance.
+    their account to this Kriyā AI instance.
     """
 
     __tablename__ = "oauth_states"
@@ -58,7 +58,7 @@ class OAuthState(Base, TimestampMixin):
 class AppCredential(Base, TimestampMixin):
     """The person's own OAuth app registration.
 
-    LOOP ships with no client secret of its own — there is no LOOP cloud to
+    Kriyā AI ships with no client secret of its own — there is no Kriyā AI cloud to
     hold one. Each person registers a personal app with Google or Microsoft
     once and pastes the two values into the Sources page. They are stored here,
     on their machine, and read only when building a sign-in URL or exchanging a

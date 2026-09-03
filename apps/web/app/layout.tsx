@@ -31,7 +31,7 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "LOOP — Workflow Intelligence",
+  title: "Kriyā AI — From Repetitive Work to Intelligent Action",
   description:
     "Finds the work your team repeats, turns it into automations, and makes each one earn the right to run.",
 };

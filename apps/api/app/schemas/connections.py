@@ -13,7 +13,7 @@ class ProviderOut(BaseModel):
 
     key: str
     label: str
-    #: What LOOP reads once connected, in the person's own words.
+    #: What Kriyā AI reads once connected, in the person's own words.
     reads: str
     scopes: list[str]
 

@@ -46,7 +46,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Dashboard"
         title="What's happening"
-        subtitle="LOOP watches how work actually gets done, finds the parts people repeat, and turns those into automations you approve before anything runs."
+        subtitle="Kriyā AI watches how work actually gets done, finds the parts people repeat, and turns those into automations you approve before anything runs."
       />
 
       <div className="space-y-6 px-8 pt-6">

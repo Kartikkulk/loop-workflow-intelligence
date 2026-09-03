@@ -7,7 +7,7 @@ Two things are not optional and are easy to leave out:
 
 * **State.** Generated per attempt, stored server-side, consumed once. Without
   it, anything that can reach the callback could hand it a code of its own and
-  connect *their* account to this LOOP.
+  connect *their* account to this Kriyā AI.
 * **PKCE.** The verifier never leaves this machine; only its hash goes to the
   provider. An intercepted authorisation code is then useless on its own.
 """
@@ -197,7 +197,7 @@ async def resolve_atlassian_site(session: AsyncSession, connection: Connection) 
     except Exception as exc:  # noqa: BLE001 — recorded for the UI, not raised
         logger.info("could not list atlassian sites: %s", exc)
         connection.last_error = (
-            "Connected, but LOOP could not ask Atlassian which Jira site to read. "
+            "Connected, but Kriyā AI could not ask Atlassian which Jira site to read. "
             "Press Sync to try again."
         )
         await session.flush()

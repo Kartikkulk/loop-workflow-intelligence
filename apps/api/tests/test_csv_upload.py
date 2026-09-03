@@ -1,4 +1,4 @@
-"""A CSV a person exported by hand has to work, not just one LOOP wrote.
+"""A CSV a person exported by hand has to work, not just one Kriyā AI wrote.
 
 The console tells people it "maps common column names for you". These tests are
 that claim: a spreadsheet with `Timestamp`, `Role` and `Duration` of "3 min"

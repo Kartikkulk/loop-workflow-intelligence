@@ -1,6 +1,6 @@
 """Source onboarding and the collector ingest endpoint.
 
-This is how LOOP gets to *observe* rather than merely be fed. A collector — a
+This is how Kriyā AI gets to *observe* rather than merely be fed. A collector — a
 browser extension, a desktop agent, an API poller — registers once, receives a
 bearer token, and posts batches of raw signals here.
 """
@@ -390,7 +390,7 @@ async def _link_transfers(
 
     This is the signature the brief names directly — "moving information between
     systems" — and it is the single most valuable thing a browser collector can
-    see. Matching is on a hash of the transferred text, so LOOP can prove that
+    see. Matching is on a hash of the transferred text, so Kriyā AI can prove that
     the same value moved from app A to app B without ever holding the value.
     """
     digests = {
@@ -600,10 +600,10 @@ async def ingest_recording(
 
 @router.get("/domains", response_model=DomainList)
 async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainList:
-    """The teams LOOP knows about, and whether their tools are being watched.
+    """The teams Kriyā AI knows about, and whether their tools are being watched.
 
     This is the honest answer to "what do I need to onboard?". A domain whose
-    tools have produced no events is a domain LOOP is blind to, however good the
+    tools have produced no events is a domain Kriyā AI is blind to, however good the
     detection is — so the gap is reported per tool rather than as one number.
     """
     counted = await session.execute(
@@ -675,7 +675,7 @@ async def list_domains(session: AsyncSession = Depends(get_session)) -> DomainLi
 
 @router.get("/tools", response_model=ToolInventory)
 async def list_tools() -> ToolInventory:
-    """Applications LOOP knows how to read activity out of.
+    """Applications Kriyā AI knows how to read activity out of.
 
     Deliberately separate from the execution connectors: those act on a system,
     these read what already happened, and the API is usually a different one

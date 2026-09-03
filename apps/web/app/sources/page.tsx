@@ -29,7 +29,7 @@ const EXAMPLE_DESCRIPTION =
  * Where the data comes from.
  *
  * Five ways in. Connecting a tool comes first because that is what "source"
- * means to most people — point LOOP at an application and let it read the
+ * means to most people — point Kriyā AI at an application and let it read the
  * activity log. Then the three inputs the brief names (activity logs, plain
  * descriptions, screen recordings), plus the live browser collector.
  *
@@ -62,7 +62,7 @@ export default function SourcesPage() {
     setNotice(
       failure
         ? `Could not connect ${returned}: ${failure}`
-        : `${account || returned} connected. Press “Read my activity” and LOOP will start looking for the parts you repeat.`,
+        : `${account || returned} connected. Press “Read my activity” and Kriyā AI will start looking for the parts you repeat.`,
     );
     window.history.replaceState(null, "", "/sources");
   }, []);
@@ -78,7 +78,7 @@ export default function SourcesPage() {
       <PageHeader
         eyebrow="Sources"
         title="Where the data comes from"
-        subtitle="LOOP can only find repetitive work in activity it can see. Give it one of these and it starts looking."
+        subtitle="Kriyā AI can only find repetitive work in activity it can see. Give it one of these and it starts looking."
         actions={
           <button
             className="btn-ghost"
@@ -129,7 +129,7 @@ export default function SourcesPage() {
         <div className="grid gap-3 lg:grid-cols-2">
           <SourceCard
             title="Connect your accounts"
-            blurb="Sign in to the tools you already work in, and LOOP reads what you did."
+            blurb="Sign in to the tools you already work in, and Kriyā AI reads what you did."
             detail="Your own accounts, read-only, nobody else's. Gmail and Outlook are read as metadata — who and when, never the message. Disconnecting deletes the tokens and every event they produced."
             badge={
               providers && providers.connected_count > 0 ? (
@@ -147,7 +147,7 @@ export default function SourcesPage() {
           <SourceCard
             title="Activity log"
             blurb="An export from a tool you already use. CSV or JSONL."
-            detail="Fastest way to see real results. Needs a user, a timestamp, an application and an action per row — LOOP maps common column names for you."
+            detail="Fastest way to see real results. Needs a user, a timestamp, an application and an action per row — Kriyā AI maps common column names for you."
             open={open === "log"}
             onToggle={() => setOpen(open === "log" ? null : "log")}
           >
@@ -167,7 +167,7 @@ export default function SourcesPage() {
           <SourceCard
             title="Browser extension"
             blurb="Watches the web applications your team works in, live."
-            detail="Two minutes to install. Records which application and what kind of action — never what was typed. Copied values are matched by hash, so LOOP can tell data moved between two systems without ever receiving it."
+            detail="Two minutes to install. Records which application and what kind of action — never what was typed. Copied values are matched by hash, so Kriyā AI can tell data moved between two systems without ever receiving it."
             badge={<Badge tone="good">Best coverage</Badge>}
             open={open === "browser"}
             onToggle={() => setOpen(open === "browser" ? null : "browser")}

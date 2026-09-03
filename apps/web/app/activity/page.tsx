@@ -7,7 +7,7 @@ import { relativeTime } from "@/lib/format";
 import type { ActivityEvent } from "@/lib/api/types";
 
 /**
- * What LOOP has actually seen.
+ * What Kriyā AI has actually seen.
  *
  * The point of this screen is falsifiability. Every discovery downstream is
  * derived from these rows, so a person can check that the platform is working
@@ -50,7 +50,7 @@ export default function ActivityPage() {
     <div className="pb-16">
       <PageHeader
         eyebrow="Activity"
-        title="What LOOP has seen"
+        title="What Kriyā AI has seen"
         subtitle="Every discovery is derived from these rows. No page contents, no keystrokes, no passwords — which application, which action, on what kind of thing, and for how long."
       />
 
@@ -59,7 +59,7 @@ export default function ActivityPage() {
           <Tile
             label="Events stored"
             value={(system.data?.event_count ?? activity.data?.total ?? 0).toLocaleString()}
-            hint="Everything LOOP has observed so far"
+            hint="Everything Kriyā AI has observed so far"
           />
           <Tile
             label="Work sessions"

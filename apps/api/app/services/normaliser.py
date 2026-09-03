@@ -92,7 +92,7 @@ def canonical_key(name: str) -> str:
 
 #: What real exports call each canonical field, in preference order.
 #:
-#: The console promises that LOOP "maps common column names for you", and this
+#: The console promises that Kriyā AI "maps common column names for you", and this
 #: table is that promise. It is ordered: an explicit `user_id` always beats a
 #: `role`, so a file carrying both is read the precise way.
 _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {

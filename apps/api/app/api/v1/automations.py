@@ -263,7 +263,7 @@ async def export_to_n8n(
 ) -> N8nExport:
     """This automation as an importable n8n workflow.
 
-    LOOP decides what is worth automating and whether it has earned the right
+    Kriyā AI decides what is worth automating and whether it has earned the right
     to act; n8n has the connectors and the credential handling to carry it out.
     No credential is ever written into the exported workflow — every node that
     needs an account is listed in `needs_credentials` for a person to wire up
@@ -299,7 +299,7 @@ async def push_to_n8n(
     Approving does not start anything. The workflow is created **inactive and
     without credentials**, so the person still has to choose which account each
     node uses and switch it on inside n8n. That is the boundary that matters:
-    LOOP can decide a workflow is worth running, but it cannot connect itself
+    Kriyā AI can decide a workflow is worth running, but it cannot connect itself
     to somebody's Jira.
 
     Failure here is reported rather than swallowed. A button that says "approved"
@@ -398,7 +398,7 @@ async def push_to_n8n(
         )
 
     workflow_id = str(created.get("id", ""))
-    # Recording this is what makes approval mean something in LOOP rather than
+    # Recording this is what makes approval mean something in Kriyā AI rather than
     # being a button that fires and forgets: the automation now points at the
     # thing that will run it, and the console can follow how it gets on.
     automation.n8n_workflow_id = workflow_id
@@ -455,7 +455,7 @@ async def n8n_runs(
 
     Exporting a workflow and then losing sight of it is the failure mode worth
     designing against: the person is left switching between two tools to find
-    out whether the thing LOOP recommended works. So LOOP asks n8n and reports
+    out whether the thing Kriyā AI recommended works. So Kriyā AI asks n8n and reports
     what it says, naming the node that failed rather than only that something
     did.
     """
@@ -474,7 +474,7 @@ async def n8n_runs(
             ok=False,
             workflow_id=workflow_id,
             configure_url=configure_url,
-            message="No n8n API key is set, so LOOP cannot read its run history.",
+            message="No n8n API key is set, so Kriyā AI cannot read its run history.",
         )
 
     headers = {"X-N8N-API-KEY": settings.n8n_api_key.strip()}

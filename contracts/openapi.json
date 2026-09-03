@@ -2010,7 +2010,7 @@
         "type": "object"
       },
       "MonitorableToolOut": {
-        "description": "An application LOOP knows how to read activity out of.",
+        "description": "An application Kriy\u0101 AI knows how to read activity out of.",
         "properties": {
           "api": {
             "title": "Api",
@@ -4115,7 +4115,7 @@
   },
   "info": {
     "description": "Detects repetitive enterprise workflows from activity logs, converts them into automations, and promotes those automations from suggested to autonomous through a measured trust ladder.",
-    "title": "LOOP \u2014 Workflow Intelligence Platform",
+    "title": "Kriy\u0101 AI \u2014 Workflow Intelligence Platform",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -4488,7 +4488,7 @@
     },
     "/api/v1/automations/{automation_id}/n8n": {
       "get": {
-        "description": "This automation as an importable n8n workflow.\n\nLOOP decides what is worth automating and whether it has earned the right\nto act; n8n has the connectors and the credential handling to carry it out.\nNo credential is ever written into the exported workflow \u2014 every node that\nneeds an account is listed in `needs_credentials` for a person to wire up\nin n8n itself.",
+        "description": "This automation as an importable n8n workflow.\n\nKriy\u0101 AI decides what is worth automating and whether it has earned the right\nto act; n8n has the connectors and the credential handling to carry it out.\nNo credential is ever written into the exported workflow \u2014 every node that\nneeds an account is listed in `needs_credentials` for a person to wire up\nin n8n itself.",
         "operationId": "export_to_n8n_api_v1_automations__automation_id__n8n_get",
         "parameters": [
           {
@@ -4541,7 +4541,7 @@
         ]
       },
       "post": {
-        "description": "Approve this automation by creating it in n8n, and say where to finish it.\n\nApproving does not start anything. The workflow is created **inactive and\nwithout credentials**, so the person still has to choose which account each\nnode uses and switch it on inside n8n. That is the boundary that matters:\nLOOP can decide a workflow is worth running, but it cannot connect itself\nto somebody's Jira.\n\nFailure here is reported rather than swallowed. A button that says \"approved\"\nwhile nothing was created is worse than one that says why it could not be.",
+        "description": "Approve this automation by creating it in n8n, and say where to finish it.\n\nApproving does not start anything. The workflow is created **inactive and\nwithout credentials**, so the person still has to choose which account each\nnode uses and switch it on inside n8n. That is the boundary that matters:\nKriy\u0101 AI can decide a workflow is worth running, but it cannot connect itself\nto somebody's Jira.\n\nFailure here is reported rather than swallowed. A button that says \"approved\"\nwhile nothing was created is worse than one that says why it could not be.",
         "operationId": "push_to_n8n_api_v1_automations__automation_id__n8n_post",
         "parameters": [
           {
@@ -4596,7 +4596,7 @@
     },
     "/api/v1/automations/{automation_id}/n8n/runs": {
       "get": {
-        "description": "How the exported workflow is actually getting on inside n8n.\n\nExporting a workflow and then losing sight of it is the failure mode worth\ndesigning against: the person is left switching between two tools to find\nout whether the thing LOOP recommended works. So LOOP asks n8n and reports\nwhat it says, naming the node that failed rather than only that something\ndid.",
+        "description": "How the exported workflow is actually getting on inside n8n.\n\nExporting a workflow and then losing sight of it is the failure mode worth\ndesigning against: the person is left switching between two tools to find\nout whether the thing Kriy\u0101 AI recommended works. So Kriy\u0101 AI asks n8n and reports\nwhat it says, naming the node that failed rather than only that something\ndid.",
         "operationId": "n8n_runs_api_v1_automations__automation_id__n8n_runs_get",
         "parameters": [
           {
@@ -5278,7 +5278,7 @@
     },
     "/api/v1/connect/providers": {
       "get": {
-        "description": "Every account LOOP can read, with its current state.",
+        "description": "Every account Kriy\u0101 AI can read, with its current state.",
         "operationId": "list_providers_api_v1_connect_providers_get",
         "responses": {
           "200": {
@@ -5300,7 +5300,7 @@
     },
     "/api/v1/connect/{provider_key}": {
       "delete": {
-        "description": "Disconnect an account and delete every event it contributed.\n\nDeliberately destructive. A person who disconnects an account has withdrawn\nconsent, and leaving the events behind would mean LOOP kept a record of\ntheir inbox after being told to stop reading it. Detection is re-run so the\nfindings reflect only what remains.",
+        "description": "Disconnect an account and delete every event it contributed.\n\nDeliberately destructive. A person who disconnects an account has withdrawn\nconsent, and leaving the events behind would mean Kriy\u0101 AI kept a record of\ntheir inbox after being told to stop reading it. Detection is re-run so the\nfindings reflect only what remains.",
         "operationId": "disconnect_api_v1_connect__provider_key__delete",
         "parameters": [
           {
@@ -5480,7 +5480,7 @@
     },
     "/api/v1/connect/{provider_key}/sync": {
       "post": {
-        "description": "Pull recent activity, store it as events, then re-run detection.\n\nDetection runs here rather than on a button elsewhere because of what the\nperson actually asked for: connect an account and have LOOP notice the\nrepetitive parts. Making them press a second button to find that out would\nbe making them do the work the tool exists to do.",
+        "description": "Pull recent activity, store it as events, then re-run detection.\n\nDetection runs here rather than on a button elsewhere because of what the\nperson actually asked for: connect an account and have Kriy\u0101 AI notice the\nrepetitive parts. Making them press a second button to find that out would\nbe making them do the work the tool exists to do.",
         "operationId": "sync_api_v1_connect__provider_key__sync_post",
         "parameters": [
           {
@@ -5590,7 +5590,7 @@
     },
     "/api/v1/demo/seed-exceptions": {
       "post": {
-        "description": "Generate genuine high-value exceptions so rule learning has evidence.\n\nRuns the automation against real historical instances and queues the ones\nits guard actually held back. The rule LOOP later proposes is therefore\nlearned from real decisions, not seeded with a pre-written answer.",
+        "description": "Generate genuine high-value exceptions so rule learning has evidence.\n\nRuns the automation against real historical instances and queues the ones\nits guard actually held back. The rule Kriy\u0101 AI later proposes is therefore\nlearned from real decisions, not seeded with a pre-written answer.",
         "operationId": "seed_exceptions_api_v1_demo_seed_exceptions_post",
         "parameters": [
           {
@@ -5687,7 +5687,7 @@
     },
     "/api/v1/domains": {
       "get": {
-        "description": "The teams LOOP knows about, and whether their tools are being watched.\n\nThis is the honest answer to \"what do I need to onboard?\". A domain whose\ntools have produced no events is a domain LOOP is blind to, however good the\ndetection is \u2014 so the gap is reported per tool rather than as one number.",
+        "description": "The teams Kriy\u0101 AI knows about, and whether their tools are being watched.\n\nThis is the honest answer to \"what do I need to onboard?\". A domain whose\ntools have produced no events is a domain Kriy\u0101 AI is blind to, however good the\ndetection is \u2014 so the gap is reported per tool rather than as one number.",
         "operationId": "list_domains_api_v1_domains_get",
         "responses": {
           "200": {
@@ -5760,7 +5760,7 @@
     },
     "/api/v1/exceptions/{exception_id}/resolve": {
       "post": {
-        "description": "Record a human decision, then look for a rule worth learning.\n\nThe decision is the training signal: enough matching decisions on the same\ninput shape and LOOP proposes the branch that would have handled them.",
+        "description": "Record a human decision, then look for a rule worth learning.\n\nThe decision is the training signal: enough matching decisions on the same\ninput shape and Kriy\u0101 AI proposes the branch that would have handled them.",
         "operationId": "resolve_exception_api_v1_exceptions__exception_id__resolve_post",
         "parameters": [
           {
@@ -6437,7 +6437,7 @@
     },
     "/api/v1/tools": {
       "get": {
-        "description": "Applications LOOP knows how to read activity out of.\n\nDeliberately separate from the execution connectors: those act on a system,\nthese read what already happened, and the API is usually a different one\nentirely. A tool reports connected only when every credential it needs is\nactually present in the environment.",
+        "description": "Applications Kriy\u0101 AI knows how to read activity out of.\n\nDeliberately separate from the execution connectors: those act on a system,\nthese read what already happened, and the API is usually a different one\nentirely. A tool reports connected only when every credential it needs is\nactually present in the environment.",
         "operationId": "list_tools_api_v1_tools_get",
         "responses": {
           "200": {

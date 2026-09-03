@@ -53,7 +53,7 @@ def normalise_database_url(url: str) -> str:
 
 
 class Settings(BaseSettings):
-    """Every tunable in LOOP. See .env.example for documentation of each."""
+    """Every tunable in Kriyā AI. See .env.example for documentation of each."""
 
     model_config = SettingsConfigDict(
         env_prefix="LOOP_",
@@ -172,7 +172,7 @@ class Settings(BaseSettings):
     #: A path that escapes it is refused rather than clamped, because a flow
     #: definition is partly model-generated and "clamp it back inside" quietly
     #: turns a wrong path into a plausible-looking right one.
-    files_root: str = "~/LOOP-Invoices"
+    files_root: str = "~/Kriya-Invoices"
     #: Describe the move rather than perform it.
     files_dry_run: bool = True
 
@@ -184,7 +184,7 @@ class Settings(BaseSettings):
     #: differ: the API talks to `http://n8n:5678` over the compose network,
     #: which resolves nowhere in a browser, so a link built from `n8n_base_url`
     #: lands on DNS_PROBE_FINISHED_NXDOMAIN. Empty means the two are the same,
-    #: which is true whenever LOOP is not containerised.
+    #: which is true whenever Kriyā AI is not containerised.
     n8n_public_url: str = ""
     #: Where `files_root` is mounted inside the n8n container, per
     #: docker-compose.yml. An exported workflow runs in that container, so a
@@ -223,7 +223,7 @@ class Settings(BaseSettings):
     patch_auto_apply_confidence: float = 0.9
     exception_rule_min_samples: int = 3
 
-    # Where the two halves of LOOP live. Used to build the OAuth redirect URI
+    # Where the two halves of Kriyā AI live. Used to build the OAuth redirect URI
     # and to send the browser back to the console after a provider callback.
     api_base_url: str = "http://localhost:8000"
     console_url: str = "http://localhost:3000"

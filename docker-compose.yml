@@ -17,7 +17,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Where automations actually run. LOOP works out what repeats and whether it
+  # Where automations actually run. Kriyā AI works out what repeats and whether it
   # is safe to hand over; n8n already has the connectors and the credential
   # handling, so a discovered workflow is exported into it rather than having a
   # twelfth connector written by hand.
@@ -33,14 +33,14 @@ services:
       N8N_PROTOCOL: http
       WEBHOOK_URL: http://localhost:5678/
       GENERIC_TIMEZONE: ${LOOP_TIMEZONE:-Asia/Kolkata}
-      # The public REST API is what LOOP pushes workflows to.
+      # The public REST API is what Kriyā AI pushes workflows to.
       N8N_PUBLIC_API_DISABLED: "false"
       N8N_DIAGNOSTICS_ENABLED: "false"
     volumes:
       - loop-n8n:/home/node/.n8n
       # Invoices live on the host, so the workflow n8n runs can reach the same
       # files the automation was detected from.
-      - ${LOOP_FILES_ROOT:-~/LOOP-Invoices}:/data/invoices
+      - ${LOOP_FILES_ROOT:-~/Kriya-Invoices}:/data/invoices
 
   api:
     build:
@@ -87,7 +87,7 @@ services:
     # The same invoices n8n sees, at the same path, so a file automation
     # resolves identically on both sides of the export.
     volumes:
-      - ${LOOP_FILES_ROOT:-~/LOOP-Invoices}:/data/invoices
+      - ${LOOP_FILES_ROOT:-~/Kriya-Invoices}:/data/invoices
     # Seed on boot so a clean clone has data to show immediately. Set
     # LOOP_SEED_ON_BOOT=false once the database holds real observed activity —
     # otherwise every restart replaces it with the synthetic set.

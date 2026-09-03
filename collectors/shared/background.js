@@ -156,7 +156,7 @@ async function flush() {
     await serialise(async () => {
       await chrome.storage.local.set({ [QUEUE_KEY]: [] });
     });
-    await setStats({ lastError: "paused from the LOOP console", queued: 0 });
+    await setStats({ lastError: "paused from the Kriyā AI console", queued: 0 });
     return;
   }
 

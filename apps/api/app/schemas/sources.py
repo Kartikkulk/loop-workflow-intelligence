@@ -211,7 +211,7 @@ class DomainList(BaseModel):
 
 
 class MonitorableToolOut(BaseModel):
-    """An application LOOP knows how to read activity out of."""
+    """An application Kriyā AI knows how to read activity out of."""
 
     key: str
     label: str

@@ -153,7 +153,7 @@ def upload(events: list[dict], api: str) -> dict:
         with urllib.request.urlopen(request, timeout=300) as response:
             return json.load(response)
     except urllib.error.URLError as exc:
-        raise SystemExit(f"could not reach the LOOP API at {api}: {exc}") from exc
+        raise SystemExit(f"could not reach the Kriyā AI API at {api}: {exc}") from exc
 
 
 def main() -> int:

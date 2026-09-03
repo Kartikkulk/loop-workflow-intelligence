@@ -1,6 +1,6 @@
-# How LOOP Works
+# How Kriyā AI Works
 
-LOOP watches how people work, spots the tasks they repeat, and turns the safe
+Kriyā AI watches how people work, spots the tasks they repeat, and turns the safe
 ones into automations. This doc follows the data from start to finish, in plain
 language.
 
@@ -16,7 +16,7 @@ events. Nothing else is stored as the "truth".
 
 ## Step 1 — Where the data comes from
 
-LOOP collects **events**. An event is just: a user, a time, an app, and an
+Kriyā AI collects **events**. An event is just: a user, a time, an app, and an
 action. For example:
 
 ```
@@ -32,13 +32,13 @@ Events arrive four ways:
 - **Plain English** — you describe a task and the AI turns it into events
 - **Demo data** — synthetic events so the app has something to show
 
-Privacy note: LOOP records the *name* of a field (like "amount"), never the
+Privacy note: Kriyā AI records the *name* of a field (like "amount"), never the
 value you typed. It's metadata, not surveillance.
 
 ## Step 2 — Group events into tasks
 
 A raw event stream is just noise until you cut it into individual **task
-instances** — one run of one task. LOOP splits the stream when:
+instances** — one run of one task. Kriyā AI splits the stream when:
 - the person is idle for more than 15 minutes, or
 - they clearly switch to something unrelated (new tab, different app).
 
@@ -58,7 +58,7 @@ similar fingerprints.
 
 ## Step 4 — Find the repeats (this is the core AI/algorithm)
 
-LOOP compares all the fingerprints and groups the matching ones into a
+Kriyā AI compares all the fingerprints and groups the matching ones into a
 **workflow**. It does this in two passes:
 1. Exact matches get grouped instantly.
 2. Near-matches (same steps, slightly different order) get grouped by comparing
@@ -67,12 +67,12 @@ LOOP compares all the fingerprints and groups the matching ones into a
 A group only counts as a real workflow if it happened **at least 8 times** and
 has **at least 3 steps**. That filters out one-off noise.
 
-Result: from thousands of messy events, LOOP surfaces a handful of clear,
+Result: from thousands of messy events, Kriyā AI surfaces a handful of clear,
 repeated workflows — without anyone telling it what to look for.
 
 ## Step 5 — Score each workflow
 
-For every workflow LOOP calculates:
+For every workflow Kriyā AI calculates:
 
 - **Time cost** — how many hours a year this eats:
   `hours = task length × how often × 48 weeks × number of people`
@@ -80,7 +80,7 @@ For every workflow LOOP calculates:
   it the same way every time, it scores high. If the steps jump around or it
   needs human judgement, it scores low.
 
-If automatability drops below 0.4, LOOP flags it **DO NOT AUTOMATE** — and it
+If automatability drops below 0.4, Kriyā AI flags it **DO NOT AUTOMATE** — and it
 reaches that conclusion from the data, not from a label someone set. Knowing when
 *not* to automate is a feature, not a gap.
 
@@ -99,7 +99,7 @@ The AI is kept on a leash here:
 
 ## Step 7 — Prove it's safe (the trust ladder)
 
-This is the heart of LOOP. A new automation does **not** get to act. It climbs a
+This is the heart of Kriyā AI. A new automation does **not** get to act. It climbs a
 ladder, one rung at a time:
 
 ```
@@ -122,12 +122,12 @@ Two rules make it trustworthy:
 ## Step 8 — Keep it working
 
 Automations don't usually fail on day one — they fail weeks later when someone
-renames a column. LOOP handles that:
+renames a column. Kriyā AI handles that:
 
-- **Self-healing** — if a field stops matching, LOOP looks at the current data,
+- **Self-healing** — if a field stops matching, Kriyā AI looks at the current data,
   guesses the new name, and auto-fixes it *only* if it's confident and the step
   is safe.
-- **Learning from exceptions** — when the automation stops and asks a human, LOOP
+- **Learning from exceptions** — when the automation stops and asks a human, Kriyā AI
   watches the answers. After a few similar cases it suggests a rule to handle them
   — but a human always approves it.
 

@@ -82,7 +82,7 @@ class StepResult:
 
 @runtime_checkable
 class Connector(Protocol):
-    """Every system LOOP can touch implements exactly this."""
+    """Every system Kriyā AI can touch implements exactly this."""
 
     name: str
     # True when execute() has no observable effect outside the process.

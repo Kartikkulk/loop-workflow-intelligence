@@ -60,7 +60,7 @@ export default function AutomationDetailPage() {
             className="link ml-auto text-2xs"
             href={`/clusters/${automation.cluster_id}`}
           >
-            See what LOOP observed →
+            See what Kriyā AI observed →
           </Link>
         </div>
 
@@ -68,7 +68,7 @@ export default function AutomationDetailPage() {
 
         <Panel
           title="What it does"
-          hint="Built from the steps LOOP watched people repeat, in the order they did them."
+          hint="Built from the steps Kriyā AI watched people repeat, in the order they did them."
         >
           <FlowDefinition automation={automation} />
         </Panel>

@@ -1,14 +1,14 @@
-# LOOP — Workflow Intelligence
+# Kriyā AI
 
-**Turn the work people repeat into work that runs itself.**
+**From Repetitive Work to Intelligent Action.**
 
-LOOP watches how work actually gets done, discovers the business processes people
+Kriyā AI watches how work actually gets done, discovers the business processes people
 repeat, chooses the right way to automate each one, builds it, validates it — and
 waits for a human to approve before anything runs.
 
 It does not ask people to describe their repetitive work. People are poor
 witnesses to their own habits, and the person doing a task most often is the
-least likely to report it away. LOOP reads the activity log instead.
+least likely to report it away. Kriyā AI reads the activity log instead.
 
 ```
 Observe → Discover → Review → Build → Validate → Approve → Automate
@@ -33,7 +33,7 @@ make dev                  # API on :8000, console on :3000
 
 Open **http://localhost:3000**.
 
-That is the whole setup. Every AI feature has a deterministic fallback, so LOOP
+That is the whole setup. Every AI feature has a deterministic fallback, so Kriyā AI
 runs fully with no model installed — the prose is plainer, the numbers are
 identical.
 
@@ -50,7 +50,7 @@ docker compose down           # if a previous stack is still up
 
 ## The five-minute demo
 
-This is the story the product exists to tell: LOOP finds a repetitive process
+This is the story the product exists to tell: Kriyā AI finds a repetitive process
 in historical activity, decides how to automate it, and stops for approval.
 
 ```bash
@@ -66,7 +66,7 @@ make dev                      # leave running
    spanning `browser → jira`, with the variables it detected
    (`{{customer}}`, `{{issue}}`, `{{ticket}}`) and the one field that never
    changed — `priority = High`.
-4. **Build the automation.** LOOP recommends **Hybrid** and says why: the
+4. **Build the automation.** Kriyā AI recommends **Hybrid** and says why: the
    support portal has no usable API so a browser is the only way in, while Jira
    has one and an API call survives a redesign that would break a click.
 5. **Validate.** Nine checks against the observed activity — a step naming a
@@ -88,7 +88,7 @@ make demo                     # back to the known-good starting state
 
 ## Optional extras
 
-None of these are needed to run or evaluate LOOP.
+None of these are needed to run or evaluate Kriyā AI.
 
 <details>
 <summary><b>Run the AI on a local model</b></summary>
@@ -102,7 +102,7 @@ ollama pull qwen2.5:7b-instruct     # or qwen3:8b
 ```
 
 Set `LOOP_LLM_MODEL` in `.env` to match. If Ollama cannot answer and
-`LOOP_OPENAI_API_KEY` is set, LOOP tries OpenAI next; with neither, it falls
+`LOOP_OPENAI_API_KEY` is set, Kriyā AI tries OpenAI next; with neither, it falls
 back to a deterministic heuristic. The **System** page shows which is live.
 
 </details>
@@ -110,7 +110,7 @@ back to a deterministic heuristic. The **System** page shows which is live.
 <details>
 <summary><b>Execute approved automations in n8n</b></summary>
 
-LOOP works out *what* repeats and whether handing it over is safe. n8n already
+Kriyā AI works out *what* repeats and whether handing it over is safe. n8n already
 has the connectors and the credential handling, so an approved automation is
 exported into it rather than growing a twelfth connector here.
 
@@ -169,7 +169,7 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com
 
 **1. Database.** Cloud SQL bills by the hour even when idle, so use a free
 Postgres instead — [Neon](https://neon.tech) or [Supabase](https://supabase.com).
-Take the connection string; LOOP rewrites the driver prefix itself.
+Take the connection string; Kriyā AI rewrites the driver prefix itself.
 
 **2. Deploy the API**, from the repository root:
 

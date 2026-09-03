@@ -388,7 +388,7 @@ function EffortBand({
         <p className="text-sm leading-relaxed text-mist-200">
           People here spend{" "}
           <strong className="tnum font-semibold text-mist-100">{hours(burden)} hours a year</strong>{" "}
-          doing jobs LOOP watched them repeat — about{" "}
+          doing jobs Kriyā AI watched them repeat — about{" "}
           <strong className="tnum font-semibold text-mist-100">
             {days.toLocaleString()} working days
           </strong>
@@ -397,7 +397,7 @@ function EffortBand({
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="eyebrow">LOOP could take over</p>
+            <p className="eyebrow">Kriyā AI could take over</p>
             <p className="metric mt-1.5 text-2xl text-accent-400">
               {hours(possible)}
               <span className="ml-1.5 text-xs font-normal tracking-normal text-mist-500">

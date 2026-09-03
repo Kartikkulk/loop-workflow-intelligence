@@ -7,7 +7,7 @@ import { useApprovalCount, useSystem } from "@/lib/api/queries";
 /**
  * Seven destinations, in the order the product actually happens.
  *
- * The order is the story: LOOP watches, you see what it saw, it finds
+ * The order is the story: Kriyā AI watches, you see what it saw, it finds
  * something, you approve it, it runs. Connections and Settings sit below
  * because they are set up once and then forgotten.
  *
@@ -17,7 +17,7 @@ import { useApprovalCount, useSystem } from "@/lib/api/queries";
  */
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", hint: "What's happening" },
-  { href: "/activity", label: "Activity", hint: "What LOOP has seen" },
+  { href: "/activity", label: "Activity", hint: "What Kriyā AI has seen" },
   { href: "/discovery", label: "Discoveries", hint: "Repetitive work found" },
   { href: "/approvals", label: "Approval", hint: "Needs your yes" },
   { href: "/automations", label: "Automation", hint: "Running now" },
@@ -47,9 +47,9 @@ export function Nav() {
         <Link href="/dashboard" className="block">
           <div className="flex items-center gap-2">
             <LoopMark />
-            <span className="text-sm font-semibold tracking-tight text-mist-100">LOOP</span>
+            <span className="text-sm font-semibold tracking-tight text-mist-100">Kriyā AI</span>
           </div>
-          <p className="mt-1.5 text-2xs leading-snug text-mist-500">Workflow intelligence</p>
+          <p className="mt-1.5 text-2xs leading-snug text-mist-500">From Repetitive Work to Intelligent Action</p>
         </Link>
       </div>
 

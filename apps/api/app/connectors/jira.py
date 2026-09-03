@@ -103,13 +103,13 @@ def _compose_note(available: dict[str, Any]) -> str | None:
     if number:
         parts.append(f"Filed invoice {number}")
     if isinstance(amount, (int, float)):
-        # Stored in minor units everywhere in LOOP; shown in rupees here.
+        # Stored in minor units everywhere in Kriyā AI; shown in rupees here.
         parts.append(f"total INR {amount / 100:,.2f}")
     if filed:
         parts.append(f"saved to {filed}")
     if not parts:
         return None
-    return " — ".join(parts) + " (filed automatically by LOOP)"
+    return " — ".join(parts) + " (filed automatically by Kriyā AI)"
 
 
 class JiraConnector:
@@ -206,7 +206,7 @@ class JiraConnector:
 
         summary = _first(step.inputs, "summary", "title") or _first(
             available, "summary", "title", "subject"
-        ) or "Update from LOOP"
+        ) or "Update from Kriyā AI"
         description = _first(step.inputs, "description", "body") or _first(
             available, "description", "body"
         ) or ""

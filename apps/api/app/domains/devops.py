@@ -1,7 +1,7 @@
 """Platform engineering — the overnight build report, typed out by hand.
 
 The simplest workflow in the seed, kept deliberately trivial so that the honest
-answer to "what does LOOP do?" can be demonstrated on one screen.
+answer to "what does Kriyā AI do?" can be demonstrated on one screen.
 
 Every morning, whoever is on rota opens the overnight pipeline result, writes
 the same page on the wiki, and pastes the link into the team channel. Three

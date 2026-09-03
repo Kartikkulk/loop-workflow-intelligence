@@ -4,7 +4,7 @@
 Clears everything downstream of the event log, rewrites the invoice PDFs into
 the inbox, uploads the activity log, runs detection, and builds the automation
 from whatever it found. What you are left with is the moment before the demo
-starts: a pile of unfiled invoices and a workflow LOOP has just discovered.
+starts: a pile of unfiled invoices and a workflow Kriyā AI has just discovered.
 
     make invoices
 """

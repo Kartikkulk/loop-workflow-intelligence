@@ -85,7 +85,7 @@ def parse_invoice(text: str) -> dict[str, Any]:
     amounts = _AMOUNT.findall(text)
     if amounts:
         cleaned = amounts[-1].replace(",", "")
-        # Money is carried in minor units everywhere else in LOOP, so the rupee
+        # Money is carried in minor units everywhere else in Kriyā AI, so the rupee
         # figure on the page is converted rather than stored as it reads.
         # Keeping it as a float would put a float in the ledger.
         with contextlib.suppress(ValueError):

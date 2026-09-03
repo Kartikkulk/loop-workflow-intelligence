@@ -116,7 +116,7 @@ async def resolve_exception(
     """Record a human decision, then look for a rule worth learning.
 
     The decision is the training signal: enough matching decisions on the same
-    input shape and LOOP proposes the branch that would have handled them.
+    input shape and Kriyā AI proposes the branch that would have handled them.
     """
     case = await session.get(ExceptionCase, exception_id)
     if case is None:

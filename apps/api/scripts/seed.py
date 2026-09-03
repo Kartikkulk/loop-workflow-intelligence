@@ -79,7 +79,7 @@ def export_fixtures(out_dir: Path) -> tuple[Path, Path]:
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description="Rebuild the LOOP demo database.")
+    parser = argparse.ArgumentParser(description="Rebuild the Kriyā AI demo database.")
     parser.add_argument("--export", action="store_true", help="also write CSV/JSONL fixtures")
     parser.add_argument(
         "--out", default="fixtures", help="directory for exported fixtures (default: fixtures)"

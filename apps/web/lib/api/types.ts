@@ -626,7 +626,7 @@ export interface ToolInventory {
 export interface Provider {
   key: string;
   label: string;
-  /** What LOOP reads once connected, in plain words. */
+  /** What Kriyā AI reads once connected, in plain words. */
   reads: string;
   scopes: string[];
   /** True once this person has supplied their own client id and secret. */

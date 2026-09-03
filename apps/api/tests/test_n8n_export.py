@@ -1,9 +1,9 @@
-"""Translating a LOOP automation into an n8n workflow.
+"""Translating a Kriyā AI automation into an n8n workflow.
 
-The rule these tests hold: the exported workflow must carry LOOP's safety
+The rule these tests hold: the exported workflow must carry Kriyā AI's safety
 decisions with it. A workflow that arrived in n8n without the guard, or with a
 credential baked in, would be worse than not exporting at all — it would look
-like the automation LOOP approved while behaving like a different one.
+like the automation Kriyā AI approved while behaving like a different one.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def test_the_nodes_are_chained_in_order():
 
 
 def test_the_guard_sits_in_front_of_the_irreversible_step():
-    """The hold LOOP measured has to be enforced by whatever runs the work."""
+    """The hold Kriyā AI measured has to be enforced by whatever runs the work."""
     workflow = to_n8n_workflow(INVOICE)
     names = [node["name"] for node in workflow["nodes"]]
     guard = _named(workflow, "policy limit")
@@ -67,7 +67,7 @@ def test_the_guard_sits_in_front_of_the_irreversible_step():
 
 
 def test_the_guard_condition_is_inverted_so_it_continues_when_under_the_limit():
-    """LOOP says 'hold when over'; n8n needs 'carry on when not over'.
+    """Kriyā AI says 'hold when over'; n8n needs 'carry on when not over'.
 
     Emitting the condition unchanged would invert the policy: everything cheap
     would be held and every expensive invoice would sail through.

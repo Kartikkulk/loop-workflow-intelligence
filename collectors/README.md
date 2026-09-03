@@ -1,6 +1,6 @@
 # Collectors
 
-How LOOP observes real activity.
+How Kriyā AI observes real activity.
 
 ```
 collectors/

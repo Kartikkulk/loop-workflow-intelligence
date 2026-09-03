@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Push a discovered automation into a running n8n as a real workflow.
 
-The division of labour: LOOP works out what repeats and whether it has earned
+The division of labour: Kriyā AI works out what repeats and whether it has earned
 the right to act. n8n has the connectors and the credential handling to carry
 it out. This is the seam between them.
 
@@ -66,7 +66,7 @@ def main() -> int:
     try:
         listing = _request(f"{loop_api}/api/v1/automations")
     except urllib.error.URLError as exc:
-        print(f"could not reach LOOP at {loop_api}: {exc}", file=sys.stderr)
+        print(f"could not reach Kriyā AI at {loop_api}: {exc}", file=sys.stderr)
         return 1
 
     items = listing.get("items") or []

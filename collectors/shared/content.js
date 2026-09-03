@@ -14,7 +14,7 @@
  */
 
 (() => {
-  // Never observe the LOOP console itself: it would record the act of reading
+  // Never observe the Kriyā AI console itself: it would record the act of reading
   // the report as work, which is both noise and faintly absurd.
   const SELF_HOSTS = ["localhost:3000", "127.0.0.1:3000"];
   if (SELF_HOSTS.some((h) => location.host === h)) return;

@@ -17,9 +17,9 @@ import { Reveal } from "@/components/landing/reveal";
  */
 
 export const metadata = {
-  title: "LOOP — Workflow Intelligence",
+  title: "Kriyā AI — From Repetitive Work to Intelligent Action",
   description:
-    "LOOP watches how work actually gets done, finds the patterns people repeat, chooses the right way to automate them, and waits for approval before anything runs.",
+    "Kriyā AI watches how work actually gets done, finds the patterns people repeat, chooses the right way to automate them, and waits for approval before anything runs.",
 };
 
 const PROBLEM_CARDS = [
@@ -70,8 +70,8 @@ export default function LandingPage() {
           <span aria-hidden className="relative flex h-3.5 w-3.5">
             <span className="absolute inset-0 animate-pulse-ring rounded-full border-2 border-good-500" />
           </span>
-          <span className="text-sm font-semibold tracking-tight text-mist-100">LOOP</span>
-          <span className="hidden text-2xs text-mist-600 sm:inline">Workflow Intelligence</span>
+          <span className="text-sm font-semibold tracking-tight text-mist-100">Kriyā AI</span>
+          <span className="hidden text-2xs text-mist-600 sm:inline">From Repetitive Work to Intelligent Action</span>
           <nav className="ml-auto hidden items-center gap-5 md:flex">
             {[
               { href: "#how", label: "How it works" },
@@ -110,7 +110,7 @@ export default function LandingPage() {
           <div className="grid items-center gap-12 lg:grid-cols-[1.02fr_1fr] lg:gap-16">
             <div>
               <p className="eyebrow mb-5 text-good-400" style={{ animation: "fade-up 600ms ease-out 60ms both" }}>
-                Workflow intelligence
+                From repetitive work to intelligent action
               </p>
               <h1
                 className="text-balance text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-mist-100 sm:text-[3.5rem]"
@@ -123,7 +123,7 @@ export default function LandingPage() {
                 className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-mist-400"
                 style={{ animation: "fade-up 700ms ease-out 280ms both" }}
               >
-                LOOP watches how work actually gets done and turns repetitive work into approved
+                Kriyā AI watches how work actually gets done and turns repetitive work into approved
                 automations. It finds the patterns people repeat, estimates what can be handed
                 over, chooses the right automation approach, and builds it for review.
               </p>
@@ -199,13 +199,13 @@ export default function LandingPage() {
       <section id="how" className="scroll-mt-16 border-b border-ink-800 bg-ink-900/30">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <Reveal>
-            <p className="eyebrow mb-3 text-good-400">What LOOP does</p>
+            <p className="eyebrow mb-3 text-good-400">What Kriyā AI does</p>
             <h2 className="text-balance text-3xl font-semibold tracking-tight text-mist-100 sm:text-4xl">
-              LOOP starts with the work.
+              Kriyā AI starts with the work.
               <span className="block text-mist-500">Not the workflow.</span>
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-mist-400">
-              You don&apos;t have to know what should be automated. LOOP discovers it.
+              You don&apos;t have to know what should be automated. Kriyā AI discovers it.
             </p>
           </Reveal>
 
@@ -255,12 +255,12 @@ export default function LandingPage() {
           <Reveal>
             <p className="eyebrow mb-3 text-good-400">The difference</p>
             <h2 className="text-balance text-3xl font-semibold tracking-tight text-mist-100 sm:text-4xl">
-              LOOP doesn&apos;t just generate workflows.
+              Kriyā AI doesn&apos;t just generate workflows.
               <span className="block text-mist-500">It decides how the work should be automated.</span>
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-mist-400">
               Some work belongs in an API workflow. Some requires browser automation. Some is
-              better handled locally. LOOP chooses based on what it actually observed.
+              better handled locally. Kriyā AI chooses based on what it actually observed.
             </p>
           </Reveal>
 
@@ -282,7 +282,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="lg:border-l lg:border-ink-700 lg:pl-5">
-                    <p className="eyebrow mb-2 text-mist-600">LOOP decides</p>
+                    <p className="eyebrow mb-2 text-mist-600">Kriyā AI decides</p>
                     <p className="text-2xs leading-relaxed text-mist-400">{route.because}</p>
                   </div>
                   <div className="rounded-lg border border-good-500/30 bg-good-500/[0.07] px-4 py-3">
@@ -311,7 +311,7 @@ export default function LandingPage() {
           <div className="mt-12 grid gap-5 md:grid-cols-2">
             <Reveal>
               <div className="h-full rounded-xl border border-ink-700 bg-ink-950 p-6">
-                <p className="eyebrow mb-4 text-mist-600">Before LOOP · every time</p>
+                <p className="eyebrow mb-4 text-mist-600">Before Kriyā AI · every time</p>
                 <ol className="space-y-2">
                   {BEFORE.map((step, index) => (
                     <li key={step} className="flex items-center gap-3">
@@ -324,7 +324,7 @@ export default function LandingPage() {
             </Reveal>
             <Reveal delay={140}>
               <div className="h-full rounded-xl border border-good-500/25 bg-good-500/[0.04] p-6">
-                <p className="eyebrow mb-4 text-good-400">With LOOP · once</p>
+                <p className="eyebrow mb-4 text-good-400">With Kriyā AI · once</p>
                 <ol className="space-y-2">
                   {AFTER.map((step, index) => (
                     <li key={step} className="flex items-center gap-3">
@@ -348,7 +348,7 @@ export default function LandingPage() {
               <span className="block text-mist-500">You decide whether it runs.</span>
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-mist-400">
-              LOOP never turns an observation into an uncontrolled production action. Generated
+              Kriyā AI never turns an observation into an uncontrolled production action. Generated
               automations are reviewed, validated and approved before execution.
             </p>
           </Reveal>
@@ -394,10 +394,10 @@ export default function LandingPage() {
           <Reveal delay={400}>
             <div className="mt-5 rounded-xl border border-good-500/25 bg-good-500/[0.05] px-6 py-5 text-center">
               <p className="text-xs font-semibold tracking-tight text-good-300">
-                LOOP automation planner
+                Kriyā AI automation planner
               </p>
               <p className="mt-1.5 text-2xs text-mist-400">
-                LOOP chooses, from the connectors the work was observed touching — and explains
+                Kriyā AI chooses, from the connectors the work was observed touching — and explains
                 why. You can overrule it, and it will tell you when a choice cannot run.
               </p>
             </div>
@@ -447,7 +447,7 @@ export default function LandingPage() {
               Already have activity data?
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-mist-400">
-              Upload it. LOOP finds the patterns. A CSV goes through exactly the same
+              Upload it. Kriyā AI finds the patterns. A CSV goes through exactly the same
               normalisation, sessionisation and clustering as a live collector — so nobody has to
               perform the task five times during a demo to prove detection works.
             </p>
@@ -514,15 +514,15 @@ export default function LandingPage() {
               Stop asking people what should be automated.
             </h2>
             <p className="mt-6 text-lg font-medium leading-relaxed text-mist-300">
-              Watch the work. Find the loop. Let LOOP build it.
+              Watch the work. Find the loop. Let Kriyā AI build it.
             </p>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-mist-500">
-              LOOP turns the repetitive work already happening across your organisation into
+              Kriyā AI turns the repetitive work already happening across your organisation into
               reviewed, validated and approved automations.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Link className="btn-primary px-6 py-2.5 text-xs" href="/dashboard">
-                Explore LOOP
+                Explore Kriyā AI
               </Link>
               <Link className="btn-ghost px-6 py-2.5 text-xs" href="/discovery">
                 View the workflow
@@ -536,8 +536,8 @@ export default function LandingPage() {
       <footer className="border-t border-ink-800">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-9">
           <div>
-            <p className="text-xs font-semibold tracking-tight text-mist-200">LOOP</p>
-            <p className="text-2xs text-mist-600">Workflow intelligence. Runs locally.</p>
+            <p className="text-xs font-semibold tracking-tight text-mist-200">Kriyā AI</p>
+            <p className="text-2xs text-mist-600">From repetitive work to intelligent action.</p>
           </div>
           <nav className="ml-auto flex flex-wrap gap-x-5 gap-y-2">
             {[

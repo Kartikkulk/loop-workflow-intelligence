@@ -57,7 +57,7 @@ export default function ApprovalsPage() {
       <PageHeader
         eyebrow="Step 3 of 4"
         title="Waiting on your decision"
-        subtitle="Nothing here is running. LOOP has built these from the work it observed, and each one needs a person to say yes before it can act — that is the whole safety model, not a formality."
+        subtitle="Nothing here is running. Kriyā AI has built these from the work it observed, and each one needs a person to say yes before it can act — that is the whole safety model, not a formality."
       />
 
       <div className="space-y-6 px-8 pt-6">
@@ -101,12 +101,12 @@ export default function ApprovalsPage() {
         {/* ── 1. workflows proposed ─────────────────────────────────── */}
         <Panel
           title="Workflows proposed for automation"
-          hint="LOOP built each of these from a pattern it observed. Review builds a draft in n8n — switched off, no accounts attached — so you can open it, change anything, then approve."
+          hint="Kriyā AI built each of these from a pattern it observed. Review builds a draft in n8n — switched off, no accounts attached — so you can open it, change anything, then approve."
         >
           {proposed.length === 0 ? (
             <Empty
               title="No workflows waiting"
-              hint="Everything LOOP proposed has been decided. New proposals appear here as it observes more work."
+              hint="Everything Kriyā AI proposed has been decided. New proposals appear here as it observes more work."
               action={
                 <Link className="btn-ghost" href="/dashboard">
                   See what was discovered
@@ -125,12 +125,12 @@ export default function ApprovalsPage() {
         {/* ── 2. changes to running automations ─────────────────────── */}
         <Panel
           title="Changes to approve"
-          hint="A source system changed, or LOOP learned a rule from how you resolved past cases. Both edit a flow definition, so both need signing off."
+          hint="A source system changed, or Kriyā AI learned a rule from how you resolved past cases. Both edit a flow definition, so both need signing off."
         >
           {openPatches.length === 0 ? (
             <Empty
               title="No changes proposed"
-              hint="LOOP proposes a change when a field stops resolving, or when three similar cases were resolved the same way."
+              hint="Kriyā AI proposes a change when a field stops resolving, or when three similar cases were resolved the same way."
             />
           ) : (
             <ul className="divide-y divide-ink-700">
@@ -144,7 +144,7 @@ export default function ApprovalsPage() {
         {/* ── 3. individual cases ───────────────────────────────────── */}
         <Panel
           title="Cases the automation escalated"
-          hint="Each decision you make here is training data. Three matching decisions on the same kind of input and LOOP proposes the rule that would have handled them."
+          hint="Each decision you make here is training data. Three matching decisions on the same kind of input and Kriyā AI proposes the rule that would have handled them."
         >
           {openExceptions.length === 0 ? (
             <Empty
@@ -230,7 +230,7 @@ function ProposedRow({ automation }: { automation: AutomationSummary }) {
           Two deliberate steps. First "Review" builds a draft in n8n, switched
           off and with no accounts attached, so a person can open it, change
           anything, and see exactly what will run. Only then does "Approve" give
-          the final sign-off. Building and approving are split on purpose: LOOP
+          the final sign-off. Building and approving are split on purpose: Kriyā AI
           decides the work is worth automating, and a person decides — after
           looking — what it may connect to and whether it is right. */}
       <div className="flex flex-wrap items-center gap-3 border-t border-ink-800 px-4 py-3">
