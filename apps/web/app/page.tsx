@@ -67,11 +67,11 @@ export default function LandingPage() {
       {/* ── header ──────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-ink-800/70 bg-ink-950/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3.5">
-          <span aria-hidden className="relative flex h-5 w-5">
+          <span aria-hidden className="relative flex h-4 w-4">
             <span className="absolute inset-0 animate-pulse-ring rounded-full border-2 border-good-500" />
           </span>
           <span className="flex flex-col leading-none">
-            <span className="text-2xl font-semibold tracking-tight text-mist-100 sm:text-3xl">
+            <span className="text-lg font-semibold tracking-tight text-mist-100 sm:text-xl">
               Kriyā AI
             </span>
             <span className="mt-1 hidden text-2xs text-mist-600 sm:inline">
