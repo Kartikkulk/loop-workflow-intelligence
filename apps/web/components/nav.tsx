@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProfileMenu } from "@/components/profile-menu";
 import { usePathname } from "next/navigation";
 import { useApprovalCount, useSystem } from "@/lib/api/queries";
 
@@ -96,6 +97,8 @@ export function Nav() {
           ))}
         </div>
       </div>
+
+      <ProfileMenu />
 
       <div className="space-y-2 border-t border-ink-700 px-5 py-4 text-2xs text-mist-500">
         <Row label="Events seen" value={(system?.event_count ?? 0).toLocaleString()} />

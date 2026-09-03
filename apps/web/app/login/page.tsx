@@ -61,22 +61,19 @@ export default function LoginPage() {
             <label className="eyebrow mb-2 block text-mist-500" htmlFor="who">
               Who are you
             </label>
-            <div id="who" className="grid grid-cols-2 gap-1.5">
+            <select
+              id="who"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              className="w-full appearance-none rounded-md border border-ink-700 bg-ink-900 px-3 py-2.5 text-xs text-mist-100 focus:border-good-500/50 focus:outline-none"
+            >
+              <option value="">Select your name…</option>
               {(users.data?.users ?? []).map((option) => (
-                <button
-                  key={option.username}
-                  type="button"
-                  onClick={() => setUsername(option.username)}
-                  className={`rounded-md border px-3 py-2 text-left text-2xs transition-colors ${
-                    username === option.username
-                      ? "border-good-500/50 bg-good-500/10 text-good-200"
-                      : "border-ink-700 bg-ink-900 text-mist-400 hover:border-ink-600 hover:text-mist-200"
-                  }`}
-                >
+                <option key={option.username} value={option.username}>
                   {option.name}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           <div>
