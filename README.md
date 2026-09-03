@@ -1,285 +1,219 @@
-# LOOP — Workflow Intelligence Platform
+# LOOP — Workflow Intelligence
 
-LOOP watches how people actually work, finds the tasks they repeat, turns the
-good candidates into runnable automations — and then makes each automation
-**earn** the right to run unattended, one measured rung at a time.
+**Turn the work people repeat into work that runs itself.**
 
-Finding repetitive work is the easy half. The hard half is switching the
-automation on, and nobody signs off on that because a dashboard claimed 94%
-accuracy. So the centre of LOOP is the **trust ladder**: an automation proves
-itself against real human work before it gets more autonomy, and is demoted
-automatically the moment it stops proving itself.
+LOOP watches how work actually gets done, discovers the business processes people
+repeat, chooses the right way to automate each one, builds it, validates it — and
+waits for a human to approve before anything runs.
 
----
+It does not ask people to describe their repetitive work. People are poor
+witnesses to their own habits, and the person doing a task most often is the
+least likely to report it away. LOOP reads the activity log instead.
 
-## Quick start with Docker
-
-**You need:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-(and nothing else — no Python, no Node, no API keys).
-
-```bash
-git clone https://github.com/Kartikkulk/loop-workflow-intelligence.git
-cd loop-workflow-intelligence
-cp .env.example .env
-docker compose up -d --build
 ```
-
-Then open **<http://localhost:3000>**.
-
-The first build takes a few minutes (it compiles the console and installs the
-Python API). On first boot the API generates the demo dataset and runs detection
-by itself, so there is data on screen the moment it comes up.
-
-Watch it come up:
-
-```bash
-docker compose logs -f api
-```
-
-It is ready when you see `LOOP api ready`.
-
-### What you get
-
-| Service | URL | What it is |
-|---|---|---|
-| **Console** | <http://localhost:3000> | The app — start here |
-| API | <http://localhost:8000/docs> | Interactive API docs |
-| n8n | <http://localhost:5678> | Where automations actually run |
-| Postgres | `localhost:5432` | `loop` / `loop` / `loop` |
-
-### Everyday commands
-
-```bash
-docker compose logs -f api      # follow the API logs
-docker compose restart api      # restart after changing .env
-docker compose down             # stop everything (keeps the data)
-docker compose down -v          # stop and wipe the database too
-docker compose up -d --build    # rebuild after changing code
+Observe → Discover → Review → Build → Validate → Approve → Automate
+                                                     ↑
+                                          nothing runs before here
 ```
 
 ---
 
-## First look
+## Quick start
 
-1. **Discovery** — the workflows LOOP found, ranked by how much time they cost.
-   Note the *"Not recommended for automation"* section at the bottom: that one is
-   flagged from the data, not from a label.
-2. Open a workflow → the step graph, who does it, and an automatability score
-   with every component of the variance shown.
-3. **Automations → Trust ladder** — the five rungs, the live confidence bar, and
-   the replay panel with its failures open by default.
-4. **Impact** — projected hours against hours actually recovered.
-
-For a scripted five-minute walkthrough, see **[DEMO.md](DEMO.md)**.
-
----
-
-## Running without Docker
-
-Slightly faster for development, since both sides hot-reload.
-
-**You need:** Node ≥ 18.18, Python ≥ 3.11, and
-[uv](https://docs.astral.sh/uv/).
+**Requirements:** Python 3.11+, Node 18+, `make`. Nothing else is mandatory —
+no Docker, no API keys, no model.
 
 ```bash
-make setup     # create the venv, install everything, write .env
-make seed      # generate the demo data and run detection
-make dev       # API on :8000, console on :3000
+git clone <this-repo> && cd AI-Pilot
+cp .env.example .env      # every value is already the default; you can change nothing
+make setup                # creates the Python venv, installs both workspaces
+make seed                 # generates demo activity and runs detection
+make dev                  # API on :8000, console on :3000
 ```
 
-This path uses SQLite, so there is no database to install. `make demo` resets
-everything to the known-good starting state.
+Open **http://localhost:3000**.
+
+That is the whole setup. Every AI feature has a deterministic fallback, so LOOP
+runs fully with no model installed — the prose is plainer, the numbers are
+identical.
+
+### If a port is busy
+
+`make dev` needs 3000 and 8000. Docker Desktop is a common squatter:
+
+```bash
+lsof -ti:3000 -ti:8000        # see what holds them
+docker compose down           # if a previous stack is still up
+```
 
 ---
 
-## Optional: run the AI on a local model
+## The five-minute demo
 
-Every AI-backed feature has a deterministic fallback, so **the whole product
-works with no model installed** — the wording is plainer, the numbers are
-identical. You will see `llm exhausted retries, using fallback` in the API logs
-when this is happening. That is the designed behaviour, not an error.
+This is the story the product exists to tell: LOOP finds a repetitive process
+in historical activity, decides how to automate it, and stops for approval.
 
-For better prose, run an open-source model locally. Nothing leaves your machine:
+```bash
+make dev                      # leave running
+```
+
+1. **Sources → Add activity data → Download an example CSV.**
+   Five recorded support escalations — the same process, different customers.
+2. **Upload that CSV back.** It goes through exactly the same normalisation,
+   sessionisation and clustering as a live collector. There is no separate
+   demo path.
+3. **Discoveries** now shows one workflow: *5 occurrences, ~91% similarity*,
+   spanning `browser → jira`, with the variables it detected
+   (`{{customer}}`, `{{issue}}`, `{{ticket}}`) and the one field that never
+   changed — `priority = High`.
+4. **Build the automation.** LOOP recommends **Hybrid** and says why: the
+   support portal has no usable API so a browser is the only way in, while Jira
+   has one and an API call survives a redesign that would break a click.
+5. **Validate.** Nine checks against the observed activity — a step naming a
+   system nobody used is reported as a fabrication, not accepted.
+6. **Dry run.** Ten steps, zero side effects. The engine forces mock connectors
+   in replay mode, so this cannot touch a real system.
+7. **Approve.** Only now is anything permitted to run.
+
+Nobody has to perform the task five times on stage. The CSV is the five
+historical observations.
+
+### Reset between runs
+
+```bash
+make demo                     # back to the known-good starting state
+```
+
+---
+
+## Optional extras
+
+None of these are needed to run or evaluate LOOP.
+
+<details>
+<summary><b>Run the AI on a local model</b></summary>
+
+Better prose and better task naming. Nothing leaves the machine.
 
 ```bash
 brew install ollama
 ollama serve
-ollama pull qwen2.5:7b-instruct
+ollama pull qwen2.5:7b-instruct     # or qwen3:8b
 ```
 
-**If you are running the Docker stack**, start Ollama so the container can reach
-it — by default it listens only on loopback, which the API container cannot see:
+Set `LOOP_LLM_MODEL` in `.env` to match. If Ollama cannot answer and
+`LOOP_OPENAI_API_KEY` is set, LOOP tries OpenAI next; with neither, it falls
+back to a deterministic heuristic. The **System** page shows which is live.
 
-```bash
-OLLAMA_HOST=0.0.0.0:11434 ollama serve
-```
+</details>
 
-The console's **System** page shows whether the local model is being reached.
+<details>
+<summary><b>Execute approved automations in n8n</b></summary>
 
----
-
-## Optional: let automations run in n8n
-
-LOOP works out *what* repeats and whether it is safe to hand over; n8n already
-has the connectors and credential handling, so an approved automation is
+LOOP works out *what* repeats and whether handing it over is safe. n8n already
+has the connectors and the credential handling, so an approved automation is
 exported into it rather than growing a twelfth connector here.
 
-1. Open <http://localhost:5678> and create an account (local only).
-2. Go to **Settings → n8n API** and create an API key.
-3. Put it in `.env` as `LOOP_N8N_API_KEY=...`, then `docker compose restart api`.
-
-The key is deliberately separate from every other credential, so pushing a
-workflow never borrows access that was granted for reading data.
-
-Automations that touch files are confined to one root, `LOOP_FILES_ROOT`
-(default `~/LOOP-Invoices`). A path that escapes it is refused rather than
-quietly clamped back inside — a flow definition is partly model-generated, and
-clamping turns a wrong path into a plausible-looking right one. Compose mounts
-that same directory into both the API and n8n, so a file step resolves
-identically on both sides of an export. `LOOP_FILES_DRY_RUN=true` (the default)
-means steps report what they *would* have done and move nothing.
-
----
-
-## What's in the demo data
-
-90 days of synthetic activity across 7 teams. From a seeded, reproducible run:
-
-- **18,273 events** → **7 workflows detected**
-- **6 recommended**, **1 flagged DO NOT AUTOMATE**
-- **1,248 projected annual hours** of repetitive task time
-
-The flagged one earns that flag from the data — step order varies across
-virtually every instance, and the content is judgement-laden. Nothing in the
-seed specification labels it unautomatable; the variance detector has to reach
-that conclusion on its own. A system that recommends automating everything is
-not giving advice, it is selling software.
-
-**Backtests are reported honestly.** The invoice automation replayed against
-history:
-
-```
-214 triggers · 200 correct · accuracy 0.9345 · 17 withheld by guard · 0 errors
-
-   6×  invoice denominated in AED; the flow has no currency-conversion rule
-   5×  invoice denominated in USD; the flow has no currency-conversion rule
-   3×  invoice denominated in EUR; the flow has no currency-conversion rule
+```bash
+docker compose up -d n8n            # http://localhost:5678
 ```
 
-Accuracy is truncated, never rounded up, and the failure modes are printed next
-to it. Naming your own three failure modes is more convincing than a
-suspiciously round 100%.
+Create an API key in n8n (Settings → n8n API), put it in `LOOP_N8N_API_KEY`.
+Exported workflows arrive **switched off** — you wire up accounts and enable
+them in n8n yourself.
 
----
+</details>
 
-## Adding a team's workflow
+<details>
+<summary><b>Run the whole stack in Docker</b></summary>
 
-The platform is domain-agnostic. A team's repetitive work is **one file** in
-`apps/api/app/domains/`:
-
-```python
-DOMAIN = DomainPack(
-    key="sales", label="Sales",
-    tools=["gmail", "crm", "sheets"],
-    people=["u_rohit", "u_neha", "u_imran", "u_divya"],
-    workflow_name="Inbound lead to CRM record",
-    per_person_per_week=9.0,
-    steps=[
-        Step("gmail", "read",   "enquiry_email",    50, fields=["sender"]),
-        Step("crm",   "search", "existing_contact", 55, fields=["customer"]),
-        Step("crm",   "create", "lead_record",      95, fields=["customer"]),
-        Step("gmail", "send",   "acknowledgement",  40, fields=["recipient"]),
-    ],
-)
+```bash
+docker compose up --build           # console :3000, API :8000, Postgres, n8n
 ```
 
-The registry finds it automatically — there is no list to edit, so two people
-adding a domain on the same day do not conflict. See
-[`apps/api/app/domains/README.md`](apps/api/app/domains/README.md).
+Note the containers use Postgres, not the local SQLite file — the two hold
+different data.
+
+</details>
+
+<details>
+<summary><b>Watch your own activity</b></summary>
+
+`collectors/` holds a Chrome/Edge extension. It records which application was
+used and what kind of action was taken — never what was typed. Field *names*
+are collected, values are not; URLs are stripped of parameter values; copied
+text is hashed in the page so a copy can be matched to a paste without the text
+ever being transmitted.
+
+```bash
+make collectors                     # builds into collectors/dist/
+```
+
+Then load it unpacked and paste the token from **Sources**.
+
+</details>
 
 ---
 
 ## Tests
 
 ```bash
-make check              # ruff + tsc + eslint + pytest + API contract check
-npm run test:collector  # the browser collector, in real Chrome
+make check          # ruff, tsc, eslint, pytest, API contract — what CI runs
+make test           # pytest only
 ```
 
-187 backend tests and 33 collector checks. The ones worth knowing about: guard
-expressions are not evaluated as code (`__import__('os').system(...)` returns
-`False`); `replay` and `shadow` can never produce a real side effect; a critical
-mismatch blocks promotion even at >90% average; and no field value, page title
-or query-string value ever appears in a transmitted collector signal.
+278 tests. `make check` must pass before anything is merged.
 
 ---
 
-## How LOOP observes
+## How it works
 
-A platform that can only be *fed* logs is a report generator. LOOP can also
-watch, through onboarded sources:
+| Stage | Where |
+|---|---|
+| Normalise any activity source into canonical events | `apps/api/app/services/normaliser.py` |
+| Group events into task instances | `services/sessioniser.py` |
+| Cluster instances into repeated workflows | `services/clustering.py` |
+| Score effort, variance and automatability | `services/scoring.py` |
+| Tell inputs from constants (`{{customer}}` vs a guard) | `services/variables.py` |
+| Turn a cluster into a runnable flow | `services/generator.py` |
+| Choose n8n / Playwright / Python / Hybrid | `services/execution_planner.py` |
+| Emit the runnable artefact | `services/codegen/` |
+| Check it against what was observed | `services/validation.py` |
+| Run it — replay, shadow or live | `services/engine.py` |
 
-| Source | Coverage | Effort | Status |
-|---|---|---|---|
-| Describe a task in prose | ~10% | seconds | ✅ |
-| Upload an activity log | ~25% | minutes | ✅ |
-| **Browser extension** | **~70%** | **~2 min/person** | **✅** |
-| Connect an app account (OAuth) | ~45% | hours + admin | interfaces declared |
-| Desktop agent | ~95% | days + IT rollout | not built |
-
-The tiers overlap heavily, so the console reports the best connected tier rather
-than the sum. The browser extension is the highest-leverage one: it is the only
-tier that sees data **copied out of one system and pasted into another**, which
-is the problem statement verbatim. It matches a *hash* of the copied value, so
-it proves the value moved without ever receiving it.
-
-**Privacy is implemented, not promised.** Metadata only by default (the *name*
-of the field you filled, never its value); query values stripped from URLs on
-both the collector and the server; consent stored as a row that ingestion
-checks; pause honoured within 30 seconds; and revoking a source deletes every
-event it reported. See **[collectors/README.md](collectors/README.md)** for
-install steps and the collector API.
-
----
-
-## Known limitations
-
-Stated plainly, because a reviewer will find them anyway.
-
-- **Execution connectors are mocked.** The interfaces are real and the live
-  classes declare their APIs and credentials, but nothing has run against a
-  production Gmail or ERP. *Observation* is separate — the browser collector
-  does watch real activity.
-- **The demo data is synthetic.** Deliberately structured — optional steps,
-  occasional reordering, real anomalies, a genuine schema change at day 60 — but
-  not a real company's log.
-- **Shadow runs are drawn from history, not live observation.** The comparison
-  is identical to what a live deployment performs; only the source of the "human
-  action" differs.
-- **The interruption cost (4 min/switch) is a conservative literature
-  estimate**, not measured here. It is reported separately from raw task time
-  precisely so it can be argued with.
-- **Screen-recording ingestion needs a local vision model.** It is the one
-  feature with no deterministic fallback, so it is disabled rather than faked.
-- **Migrations use `create_all`, not Alembic**, so a clean clone runs in one
-  command. The models are Alembic-compatible.
-- **No authentication.** Single-tenant, single-user, local only.
+`ARCHITECTURE.md` explains the design decisions behind these.
+`CONTRIBUTING.md` covers conventions and the review bar.
 
 ---
 
 ## Layout
 
 ```
-apps/api/                 FastAPI backend
-  app/domains/            ONE FILE PER TEAM — add a workflow, change nothing else
-  app/services/           detection, scoring, generation, engine, trust, healing
-  app/connectors/         the Connector protocol, real + mock implementations
-  app/llm/                Ollama client, prompts on disk, fallback contract
-apps/web/                 Next.js 15 console
-  lib/api/                typed clients — nothing else calls fetch
-collectors/               the browser extension (one shared MV3 codebase)
-docker-compose.yml        Postgres + n8n + API + console
+apps/api/        FastAPI backend, detection pipeline, code generators
+apps/web/        Next.js console and landing page
+collectors/      Browser extension and desktop recorder
+contracts/       Committed OpenAPI contract — regenerate with `make contract`
+scripts/         Demo and data-generation helpers
 ```
 
-**[ARCHITECTURE.md](ARCHITECTURE.md)** has the data flow and the reasoning
-behind each design decision. **[DEMO.md](DEMO.md)** is the run sheet.
+---
+
+## Known limitations
+
+Stated plainly, because a demo that hides them is worth less than one that
+does not.
+
+- **Selectors cannot be generated.** An activity log records *that* a control
+  was used, not how to find it again. Generated browser automations ship with a
+  named selector table to fill in, and refuse to run on a placeholder rather
+  than clicking the wrong thing.
+- **Detection holds a long transaction.** Scoring makes one model call per
+  cluster inside a database transaction. SQLite is in WAL mode so reads and
+  other writers are not blocked, but this should be restructured before real
+  concurrency.
+- **Low-occurrence discovery is a demo setting.** `LOOP_DISCOVERY_MODE=demo`
+  lowers the *detection* floor so a handful of repeats is visible. It changes no
+  safety gate. Production keeps the full statistical floor.
+- **A small local model degrades quality, not safety.** Weak models invent step
+  names and drop guards; the validator catches both, and the guard the
+  observation earned is restored rather than lost.

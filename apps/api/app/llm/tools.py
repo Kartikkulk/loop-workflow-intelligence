@@ -156,3 +156,26 @@ READ_FRAMES: dict[str, Any] = {
         "required": ["workflow_name", "frames"],
     },
 }
+
+
+#: The three ways LOOP can actually run an approved automation. Kept as an
+#: enum in the schema so the model cannot invent a fourth backend that nothing
+#: downstream knows how to generate code for.
+EXECUTION_METHODS = ["n8n", "playwright", "python", "hybrid"]
+
+CHOOSE_EXECUTOR: dict[str, Any] = {
+    "name": "choose_execution_method",
+    "description": (
+        "Choose which runtime should execute an approved automation, given the "
+        "systems its steps touch and what each runtime can reach."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "method": {"type": "string", "enum": EXECUTION_METHODS},
+            "rationale": {"type": "string"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        },
+        "required": ["method", "rationale", "confidence"],
+    },
+}

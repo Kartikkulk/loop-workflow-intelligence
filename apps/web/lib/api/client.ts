@@ -95,7 +95,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
-        ...(init?.body ? { "content-type": "application/json" } : {}),
+        // Never set this for FormData. The browser has to write
+        // `multipart/form-data; boundary=…` itself, and the boundary is what
+        // tells the server where each part starts — overriding it with
+        // application/json left FastAPI unable to see the file at all, so a
+        // perfectly good CSV came back as "body.file: Field required".
+        ...(init?.body && !(init.body instanceof FormData)
+          ? { "content-type": "application/json" }
+          : {}),
         ...init?.headers,
       },
       cache: "no-store",

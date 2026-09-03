@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -43,6 +44,17 @@ _ACTION_ALIASES = {
     "click": "navigate",
     "goto": "navigate",
     "visit": "navigate",
+    # Verbs a UI collector emits for typing into a field or picking a value.
+    # Without these the action stays as the raw word, which is outside the
+    # canonical vocabulary and so cannot be compared across two recordings.
+    "fill": "update",
+    "set": "update",
+    "enter": "update",
+    "type": "update",
+    "select": "update",
+    "choose": "update",
+    "submit": "create",
+    "copy": "extract",
 }
 
 _APP_ALIASES = {
@@ -65,6 +77,92 @@ _APP_ALIASES = {
     "edge": "browser",
     "acrobat": "pdf",
 }
+
+
+def canonical_key(name: str) -> str:
+    """Reduce a column heading to a comparable key.
+
+    `Record_ID`, `record id` and `RecordID` are the same column to a person and
+    were three different columns to this module, which is why a hand-written
+    export failed every row with "missing user_id" while visibly containing the
+    data.
+    """
+    return re.sub(r"[^a-z0-9]+", "_", str(name).strip().lower()).strip("_")
+
+
+#: What real exports call each canonical field, in preference order.
+#:
+#: The console promises that LOOP "maps common column names for you", and this
+#: table is that promise. It is ordered: an explicit `user_id` always beats a
+#: `role`, so a file carrying both is read the precise way.
+_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
+    "user_id": (
+        "user_id", "userid", "employee_id", "employee", "user", "person",
+        "performed_by", "actor", "agent", "owner", "who", "role",
+    ),
+    "team": ("team", "category", "department", "dept", "group", "function"),
+    "timestamp": (
+        "timestamp", "ts", "time", "datetime", "date", "occurred_at",
+        "start_time", "when",
+    ),
+    "app": ("app", "application", "tool", "system", "software", "platform", "connector"),
+    "action": ("action", "event", "activity", "task", "step", "operation"),
+    "object_type": (
+        "object_type", "object", "entity", "record_type", "document_type", "target",
+    ),
+    "object_id": (
+        "object_id", "record_id", "reference", "ref", "case_id", "ticket_id",
+        "document_id",
+    ),
+    "duration": (
+        "duration", "duration_ms", "duration_seconds", "time_spent", "elapsed",
+        "time_taken",
+    ),
+    "session_id": ("session_id", "run_id"),
+    "workflow": ("workflow", "ground_truth_workflow", "process", "process_name"),
+    "payload": ("payload",),
+}
+
+#: Every alias, for deciding which columns are already accounted for.
+_CLAIMED_COLUMNS = frozenset(
+    alias for aliases in _COLUMN_ALIASES.values() for alias in aliases
+)
+
+_DURATION = re.compile(
+    r"([0-9]+(?:\.[0-9]+)?)\s*"
+    r"(ms|millisecond|milliseconds|s|sec|secs|second|seconds"
+    r"|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?",
+    re.I,
+)
+
+_DURATION_SCALE_MS = {
+    "ms": 1, "millisecond": 1, "milliseconds": 1,
+    "s": 1000, "sec": 1000, "secs": 1000, "second": 1000, "seconds": 1000,
+    "m": 60_000, "min": 60_000, "mins": 60_000, "minute": 60_000, "minutes": 60_000,
+    "h": 3_600_000, "hr": 3_600_000, "hrs": 3_600_000,
+    "hour": 3_600_000, "hours": 3_600_000,
+}
+
+
+def parse_duration_ms(raw: object, *, bare_unit_ms: int = 1000) -> int:
+    """Read a duration written the way people write them.
+
+    A hand-kept log says "3 min" or "45s", not 180000. Refusing those cost the
+    whole row, and a row rejected for its duration is a row whose *workflow*
+    went undetected — so the parse is lenient and falls back to zero rather
+    than raising. `bare_unit_ms` is what a unitless number means, which differs
+    by column: `duration_ms` is milliseconds, a plain `duration` is seconds.
+    """
+    if raw in (None, ""):
+        return 0
+    if isinstance(raw, (int, float)):
+        return int(float(raw) * bare_unit_ms)
+    match = _DURATION.search(str(raw))
+    if not match:
+        return 0
+    value = float(match.group(1))
+    unit = (match.group(2) or "").lower()
+    return int(value * (_DURATION_SCALE_MS[unit] if unit else bare_unit_ms))
 
 
 class NormalisationError(ValueError):
@@ -135,6 +233,19 @@ _SPLIT_VERBS = {
     "search": "search", "find": "search", "lookup": "search",
     "delete": "delete", "remove": "delete",
     "navigate": "navigate", "goto": "navigate",
+    # Verbs a hand-kept log uses that a collector never emits. Without these a
+    # row like "Review resume" produces the token `ats:review_resume:unknown` —
+    # the verb and the object fused, which is exactly the opaque token that
+    # stops two instances of the same work from clustering. Only mappings whose
+    # canonical verb is unambiguous are listed; a word that could reasonably be
+    # two different actions is better left to fall through than guessed at.
+    "review": "read", "verify": "read", "validate": "read", "inspect": "read",
+    "approve": "update", "reject": "update", "close": "update",
+    "resolve": "update", "reconcile": "update", "confirm": "update",
+    "record": "create", "log": "create", "upload": "create", "attach": "create",
+    "schedule": "create", "generate": "create", "raise": "create",
+    "forward": "send", "escalate": "send", "share": "send",
+    "export": "extract", "fetch": "extract", "retrieve": "extract",
 }
 
 
@@ -224,14 +335,17 @@ def parse_timestamp(raw: str | datetime) -> datetime:
     return as_utc(parsed)
 
 
+#: What a unitless number means, per column name. Anything else is seconds.
+_BARE_DURATION_UNIT_MS = {"duration_ms": 1, "duration_seconds": 1000}
+
+
 def _duration_ms(row: dict) -> int:
-    if row.get("duration_seconds") not in (None, ""):
-        return int(float(row["duration_seconds"]) * 1000)
-    for key in ("duration_ms", "durationMs", "duration"):
+    """The step's duration in milliseconds, however the source wrote it."""
+    for key in _COLUMN_ALIASES["duration"]:
         if row.get(key) not in (None, ""):
-            value = float(row[key])
-            # A bare `duration` is assumed to be seconds.
-            return int(value if key != "duration" else value * 1000)
+            return parse_duration_ms(
+                row[key], bare_unit_ms=_BARE_DURATION_UNIT_MS.get(key, 1000)
+            )
     return 0
 
 
@@ -247,29 +361,50 @@ def _payload(row: dict) -> dict:
             return {"raw": raw}
     # Fall back to collecting any unrecognised columns — real exports always
     # carry extra fields, and drift detection needs them.
-    known = {
-        "id", "user_id", "userId", "team", "timestamp", "ts", "app", "application",
-        "action", "event", "object_type", "objectType", "object_id", "objectId",
-        "duration_ms", "durationMs", "duration", "payload", "session_id",
-        "sessionId", "workflow", "ground_truth_workflow", "notes",
+    return {
+        k: v
+        for k, v in row.items()
+        if k not in _CLAIMED_COLUMNS and k not in ("id", "notes") and v not in (None, "")
     }
-    return {k: v for k, v in row.items() if k not in known and v not in (None, "")}
 
 
-def normalise_row(row: dict, *, source: str = "upload") -> NormalisedEvent:
-    """Coerce one source row into a canonical event."""
-    # `employee_id` is what the activity collector calls this. Accepting the
-    # alias here rather than translating upstream is what lets the demo
-    # generator and a live collector post byte-identical events.
-    user_id = str(
-        row.get("user_id") or row.get("userId") or row.get("employee_id") or ""
-    ).strip()
+def _field(row: dict, canonical: str) -> object:
+    """The value for a canonical field, trying each known column name in turn."""
+    for alias in _COLUMN_ALIASES.get(canonical, (canonical,)):
+        value = row.get(alias)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def normalise_row(
+    row: dict, *, source: str = "upload", default_user_id: str | None = None
+) -> NormalisedEvent:
+    """Coerce one source row into a canonical event.
+
+    Column headings are canonicalised first, so `Record_ID`, `record id` and
+    `recordId` are one column rather than three, and a log exported from a
+    spreadsheet reads the same as one posted by the collector.
+    """
+    row = {canonical_key(k): v for k, v in row.items() if k is not None}
+
+    # `employee_id` is what the activity collector calls this; `role` is what a
+    # hand-kept log usually has instead. Accepting the aliases here rather than
+    # translating upstream is what lets the demo generator and a live collector
+    # post byte-identical events.
+    user_id = str(_field(row, "user_id") or default_user_id or "").strip()
     if not user_id:
-        raise NormalisationError("missing user_id")
+        raise NormalisationError(
+            "missing user_id: no column named user_id, employee, person or role"
+        )
 
-    app_raw = row.get("app") or row.get("application") or ""
-    action_raw = row.get("action") or row.get("event") or ""
-    object_type = str(row.get("object_type") or row.get("objectType") or "").strip()
+    app_raw = _field(row, "app") or ""
+    action_raw = _field(row, "action") or ""
+    # Normalised to the same shape `split_action` produces, so a log naming
+    # its objects ("Support Dashboard") clusters with one that does not
+    # ("support_dashboard"). Two spellings of one object type are two tokens,
+    # and two tokens never cluster.
+    object_type = canonical_key(str(_field(row, "object_type") or ""))
     if not object_type:
         # No explicit object: derive both halves from the compound action, so a
         # collector emitting whole gestures still produces a signature
@@ -278,38 +413,52 @@ def normalise_row(row: dict, *, source: str = "upload") -> NormalisedEvent:
         action_raw = derived_action
         object_type = derived_object or "unknown"
 
+    object_id = _field(row, "object_id")
+    session_id = _field(row, "session_id")
+    workflow = _field(row, "workflow")
     return NormalisedEvent(
         user_id=user_id,
-        team=str(row.get("team") or row.get("category") or "unknown").strip(),
-        timestamp=parse_timestamp(row.get("timestamp") or row.get("ts") or ""),
+        team=str(_field(row, "team") or "unknown").strip(),
+        timestamp=parse_timestamp(_field(row, "timestamp") or ""),
         app=canonical_app(str(app_raw)),
         action=canonical_action(str(action_raw)),
         object_type=object_type or "unknown",
-        object_id=(str(row["object_id"]) if row.get("object_id") else None)
-        or (str(row["objectId"]) if row.get("objectId") else None),
+        object_id=str(object_id) if object_id else None,
         duration_ms=_duration_ms(row),
         payload=_payload(row),
-        # `run_id` is the collector's name for one pass through a workflow,
-        # which is exactly what a session is here.
-        session_id=str(
-            row.get("session_id") or row.get("sessionId") or row.get("run_id") or ""
-        )
-        or None,
-        ground_truth_workflow=str(row.get("ground_truth_workflow") or row.get("workflow") or "")
-        or None,
+        session_id=str(session_id) if session_id else None,
+        ground_truth_workflow=str(workflow) if workflow else None,
         source=source,
         notes=str(row["notes"]) if row.get("notes") else None,
     )
 
 
+#: Attributed to activity recorded on one machine with nobody named in it.
+#: A laptop collector has exactly one subject, so demanding a user column would
+#: reject the most ordinary export there is. Applied per *file*, only when the
+#: header names no person at all — never row by row, where a missing value
+#: means a broken row rather than a single-subject log.
+LOCAL_USER_ID = "u_local"
+
+
+def _names_a_user(fieldnames: list[str] | None) -> bool:
+    keys = {canonical_key(name) for name in (fieldnames or []) if name}
+    return bool(keys & set(_COLUMN_ALIASES["user_id"]))
+
+
 def normalise_csv(text: str, *, source: str = "upload") -> tuple[list[NormalisedEvent], list[str]]:
     """Normalise a CSV upload. Returns (events, per-row error messages)."""
     reader = csv.DictReader(io.StringIO(text))
+    default_user = None if _names_a_user(reader.fieldnames) else LOCAL_USER_ID
     events: list[NormalisedEvent] = []
     errors: list[str] = []
     for index, row in enumerate(reader, start=2):
+        if not any(str(v or "").strip() for v in row.values()):
+            continue  # a blank line is formatting, not a broken row
         try:
-            events.append(normalise_row(dict(row), source=source))
+            events.append(
+                normalise_row(dict(row), source=source, default_user_id=default_user)
+            )
         except (NormalisationError, ValueError) as exc:
             errors.append(f"line {index}: {exc}")
     return events, errors
@@ -329,7 +478,10 @@ def normalise_jsonl(
             row = json.loads(stripped)
             if not isinstance(row, dict):
                 raise NormalisationError("line is not a JSON object")
-            events.append(normalise_row(row, source=source))
+            default_user = None if _names_a_user(list(row)) else LOCAL_USER_ID
+            events.append(
+                normalise_row(row, source=source, default_user_id=default_user)
+            )
         except (NormalisationError, ValueError) as exc:
             errors.append(f"line {index}: {exc}")
     return events, errors

@@ -19,8 +19,11 @@ export default function AutomationsPage() {
   const { data, isLoading, error } = useAutomations();
 
   const all = data?.items ?? [];
-  const built = all.filter((a) => a.n8n_workflow_id);
-  const proposed = all.filter((a) => !a.n8n_workflow_id);
+  // Approved is the final sign-off. A workflow may have a review draft in n8n
+  // (n8n_workflow_id set) and still be waiting for approval, so the split is by
+  // `approved`, not by whether a draft exists.
+  const built = all.filter((a) => a.approved);
+  const proposed = all.filter((a) => !a.approved);
 
   return (
     <div className="pb-16">

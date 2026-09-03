@@ -62,6 +62,14 @@ class ClusterScore:
     #: has to sit after every required field.
     potential: int = 0
     potential_factors: list[dict] = field(default_factory=list)
+    #: How strong the evidence is that this is a real repetitive workflow:
+    #: "early", "moderate" or "strong". In production mode everything that
+    #: clears the full floor is "strong"; demo mode is where the distinction
+    #: matters.
+    evidence_level: str = "strong"
+    #: True while the case rests on few observations — the console tells the
+    #: user more observations are recommended before acting.
+    requires_more_observation: bool = False
 
 
 def shannon_entropy(counts: Sequence[int]) -> float:
@@ -251,6 +259,21 @@ def branch_count(cluster: ClusterResult) -> int:
     return sum(1 for tokens in by_position.values() if len(tokens) > 1)
 
 
+#: Length above which a payload value is treated as prose rather than a field.
+#:
+#: One constant for both readers below, because they were 40 and 30 and so
+#: disagreed about the same string. A templated line like "Customer ABC reported
+#: Login failure" (35 characters) counted as free text for the sampler and not
+#: for the ratio, which sent every UI-activity cluster to the judgement scorer
+#: with nothing worth judging in it.
+#:
+#: Set where it separates a *field value* from human deliberation. A subject
+#: line or a name is below it; the kind of note where somebody weighs a customer
+#: relationship against a contract runs to hundreds of characters and is well
+#: above it. That second kind is the only thing this scorer exists to read.
+_FREE_TEXT_MIN_CHARS = 40
+
+
 def free_text_ratio(cluster: ClusterResult) -> float:
     """Share of events carrying substantial free-text content.
 
@@ -264,7 +287,11 @@ def free_text_ratio(cluster: ClusterResult) -> float:
             total += 1
             payload = event.payload or {}
             for key, value in payload.items():
-                if isinstance(value, str) and len(value) > 40 and key not in {"object_id", "id"}:
+                if (
+                    isinstance(value, str)
+                    and len(value) > _FREE_TEXT_MIN_CHARS
+                    and key not in {"object_id", "id"}
+                ):
                     texty += 1
                     break
     return texty / total if total else 0.0
@@ -276,7 +303,7 @@ def _text_samples(cluster: ClusterResult, limit: int = 8) -> list[str]:
     for instance in cluster.instances:
         for event in instance.events:
             for value in (event.payload or {}).values():
-                if isinstance(value, str) and len(value) > 30:
+                if isinstance(value, str) and len(value) > _FREE_TEXT_MIN_CHARS:
                     samples.append(value[:200])
                     if len(samples) >= limit:
                         return samples
@@ -361,6 +388,54 @@ def _heuristic_variance(
     return judgement, effort, reasoning
 
 
+def discovery_confidence(
+    *, occurrences: int, similarity: float, automatability: float
+) -> float:
+    """A weighted 0–1 confidence for a low-occurrence candidate.
+
+    Occurrence count is deliberately *not* the dominant term — the whole point
+    of demo mode is that two clean, near-identical runs are worth more than a
+    dozen ragged ones. Frequency contributes, but run-to-run similarity and
+    automation feasibility carry more weight, so two unrelated actions that
+    happen to be short cannot pass by volume alone.
+    """
+    strong = max(1, settings.discovery_strong_occurrences)
+    frequency_evidence = min(1.0, occurrences / strong)
+    score = (
+        0.25 * frequency_evidence
+        + 0.40 * max(0.0, min(1.0, similarity))
+        + 0.35 * max(0.0, min(1.0, automatability))
+    )
+    return round(max(0.0, min(1.0, score)), 3)
+
+
+def classify_evidence(
+    *, occurrences: int, similarity: float, confidence: float
+) -> tuple[str, bool]:
+    """Label the strength of the evidence and whether to keep observing.
+
+    Returns (evidence_level, requires_more_observation). "strong" only when the
+    workflow was seen enough times *and* consistently enough *and* the weighted
+    confidence is high; otherwise "moderate" or "early". Production-scale
+    clusters (well above the strong-occurrence bar) always land on "strong".
+    """
+    strong_n = settings.discovery_strong_occurrences
+    if (
+        occurrences >= strong_n
+        and similarity >= settings.discovery_strong_similarity
+        and confidence >= settings.discovery_strong_confidence
+    ):
+        return "strong", False
+    # Seen the strong number of times but a touch less consistent, or seen the
+    # minimum number of times but very consistently — real, but worth watching.
+    if occurrences >= strong_n or (
+        occurrences >= settings.discovery_min_occurrences
+        and similarity >= settings.discovery_strong_similarity
+    ):
+        return "moderate", True
+    return "early", True
+
+
 async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
     """Compute every F3 metric for one cluster."""
     entropy, variant_count, dominant_share = step_order_entropy(cluster)
@@ -373,23 +448,43 @@ async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
         entropy, spread, branches, text_ratio, steps
     )
 
-    scored = await llm.structured(
-        prompt=llm.load_prompt(
-            "score_variance",
-            name=name,
-            signature=signature_text(cluster.representative),
-            samples="\n".join(f"- {s}" for s in _text_samples(cluster)) or "(none observed)",
-            entropy=f"{entropy:.3f}",
-            variants=variant_count,
-            spread=f"{spread:.3f}",
-        ),
-        tool=SCORE_VARIANCE,
-        fallback=lambda: {
-            "judgement_ratio": heuristic_judgement,
-            "build_effort": heuristic_effort,
-            "reasoning": heuristic_reasoning,
-        },
-    )
+    samples = _text_samples(cluster)
+    heuristic = {
+        "judgement_ratio": heuristic_judgement,
+        "build_effort": heuristic_effort,
+        "reasoning": heuristic_reasoning,
+    }
+
+    if not samples and text_ratio <= 0.0:
+        # Nothing for a model to read, so nothing for it to judge.
+        #
+        # This call exists to estimate how much of a task's outcome depends on
+        # tone, relationship or discretion — and its only evidence is the free
+        # text observed during the work. A log of UI actions (click, read, fill,
+        # submit) carries none, so the model was being handed "(none observed)"
+        # and asked to judge it. It always answers "low", which is what the
+        # heuristic already says, and it took the better part of a minute on a
+        # local model to say it. That latency landed squarely on the CSV upload
+        # path, where a person is waiting on the response.
+        #
+        # Skipped only when there is genuinely no text. A workflow with real
+        # prose in it still gets read, because that is the case the estimate is
+        # actually for.
+        scored = heuristic
+    else:
+        scored = await llm.structured(
+            prompt=llm.load_prompt(
+                "score_variance",
+                name=name,
+                signature=signature_text(cluster.representative),
+                samples="\n".join(f"- {s}" for s in samples) or "(none observed)",
+                entropy=f"{entropy:.3f}",
+                variants=variant_count,
+                spread=f"{spread:.3f}",
+            ),
+            tool=SCORE_VARIANCE,
+            fallback=lambda: heuristic,
+        )
 
     judgement = max(0.0, min(1.0, float(scored.get("judgement_ratio", heuristic_judgement))))
     build_effort = max(1, min(5, int(scored.get("build_effort", heuristic_effort))))
@@ -440,6 +535,19 @@ async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
             f"across {len(users)} employee(s). {llm_reasoning}"
         )
 
+    occurrences = len(cluster.instances)
+    if settings.demo_mode:
+        confidence = discovery_confidence(
+            occurrences=occurrences, similarity=similarity, automatability=automatability
+        )
+        evidence_level, requires_more_observation = classify_evidence(
+            occurrences=occurrences, similarity=similarity, confidence=confidence
+        )
+    else:
+        # Production only ever shows clusters that cleared the full statistical
+        # floor, so the evidence is strong by construction.
+        evidence_level, requires_more_observation = "strong", False
+
     return ClusterScore(
         annual_hours=round(hours, 1),
         median_duration_ms=median_duration_ms(cluster),
@@ -465,6 +573,8 @@ async def score_cluster(cluster: ClusterResult, name: str) -> ClusterScore:
         do_not_automate=do_not_automate,
         reasoning=reasoning,
         is_organisational=len(users) > settings.org_user_threshold,
+        evidence_level=evidence_level,
+        requires_more_observation=requires_more_observation,
     )
 
 

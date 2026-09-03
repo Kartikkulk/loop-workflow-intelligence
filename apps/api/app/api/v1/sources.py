@@ -281,7 +281,16 @@ async def collect_events(
         raise HTTPException(403, "this source has not granted consent")
 
     allow_values = source.capture_scope is CaptureScope.WITH_VALUES
-    session_id = body.session_id or new_id("ses")
+    # Left unset when the client does not supply one, rather than minted here.
+    # A batch is a flush interval, not a unit of work: the browser collector
+    # flushes every 30 seconds, so stamping each batch with a fresh session id
+    # made `sessionise` cut a task wherever the timer happened to fire. One
+    # ticket update arrived as a 3-step instance plus a 1-step and a 2-step
+    # fragment of itself, and fragments never accumulate into a cluster. With
+    # this unset, instances are bounded by the things that really end a task —
+    # an idle gap or a context reset — and a client that does track sessions
+    # still gets an explicit split by sending `session_id`.
+    session_id = body.session_id
 
     accepted = 0
     reasons: list[str] = []

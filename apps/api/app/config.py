@@ -2,7 +2,9 @@
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # The repo root is wherever the shared .env lives. Searched rather than
@@ -13,6 +15,41 @@ _REPO_ROOT = next(
     (parent for parent in _APP_DIR.parents if (parent / ".env").is_file()),
     _APP_DIR.parent,
 )
+
+#: libpq understands these; asyncpg raises TypeError on them. `sslmode` has a
+#: direct equivalent, so it is translated; `channel_binding` has none, and is
+#: dropped rather than passed through to become a crash on startup.
+_LIBPQ_ONLY = {"sslmode": "ssl", "channel_binding": None}
+
+
+def normalise_database_url(url: str) -> str:
+    """Make a hosted provider's connection string usable by the async engine.
+
+    Neon, Supabase, Render and Heroku all hand out a libpq URL — `postgresql://`
+    with `?sslmode=require` — and every part of that is wrong here. The engine is
+    async, so it needs an explicit driver; asyncpg then rejects libpq's own
+    parameter names. Someone told to copy a URL from a dashboard should not have
+    to know that, so the rewrite happens here instead of in a README instruction.
+
+    A URL that already names a driver is returned untouched.
+    """
+    scheme, netloc, path, query, fragment = urlsplit(url)
+    if scheme not in ("postgres", "postgresql"):
+        return url
+
+    params = [
+        (_LIBPQ_ONLY.get(key, key), value)
+        for key, value in parse_qsl(query, keep_blank_values=True)
+        if _LIBPQ_ONLY.get(key, key) is not None
+    ]
+
+    # A PgBouncer pooler in transaction mode hands out a different backend per
+    # statement, so asyncpg's prepared-statement cache describes a session that
+    # is no longer there. Neon's pooled endpoint is the common case of this.
+    if "-pooler" in netloc and not any(k == "prepared_statement_cache_size" for k, _ in params):
+        params.append(("prepared_statement_cache_size", "0"))
+
+    return urlunsplit(("postgresql+asyncpg", netloc, path, urlencode(params), fragment))
 
 
 class Settings(BaseSettings):
@@ -26,14 +63,28 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: str = "ollama"
-    llm_model: str = "qwen2.5:7b-instruct"
+    llm_model: str = "qwen3:8b"
     ollama_base_url: str = "http://localhost:11434"
     ollama_vision_model: str = ""
     llm_cache: bool = True
     llm_max_retries: int = 3
 
+    # OpenAI, used only when Ollama cannot answer. Leave the key empty and
+    # nothing changes: calls that fail locally go on to the deterministic
+    # fallback exactly as before. Setting it buys a second chance before that,
+    # which matters when the local model is small enough to produce output that
+    # parses but is not usable.
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
+
     # Database
     database_url: str = "sqlite+aiosqlite:///./loop.db"
+
+    @field_validator("database_url")
+    @classmethod
+    def _accept_a_provider_url(cls, value: str) -> str:
+        return normalise_database_url(value)
 
     # Detection (F2)
     session_gap_minutes: int = 15
@@ -41,6 +92,60 @@ class Settings(BaseSettings):
     sequence_weight: float = 0.45
     set_weight: float = 0.30
     org_user_threshold: int = 3
+
+    #: How many times a pattern must be seen before it counts as an opportunity.
+    #: The default is about statistical support, not tidiness: annual hours are
+    #: projected from an observed weekly frequency, and a dozen observations
+    #: spread over a quarter give an estimate too noisy to put a number on.
+    #: Lower it when watching a live collector, where the point is to see
+    #: detection work at all rather than to project a year from it.
+    #:
+    #: In demo mode this floor is not used directly — `effective_min_instances`
+    #: drops it to `discovery_min_occurrences` so a task performed two or three
+    #: times can surface as an early candidate.
+    min_instances: int = 15
+    #: A two-step signature is usually a truncation artefact — a longer workflow
+    #: cut in half because an unrelated event landed in the middle of it.
+    min_signature_steps: int = 3
+
+    # ── low-occurrence discovery (demo) ──────────────────────────────────
+    #: "production" keeps the full statistical floor (min_instances). "demo"
+    #: lowers the floor so a task repeated two or three times is detectable,
+    #: which is what a live pitch can actually produce by hand. Demo mode
+    #: lowers *discovery* thresholds only — every safety gate (guards, connector
+    #: validation, dependency checks, dry-run, approval) is untouched.
+    discovery_mode: str = "demo"
+    #: Fewest repeats that can produce a candidate at all, in demo mode.
+    discovery_min_occurrences: int = 2
+    #: At or above this many repeats a demo candidate is "strong". Set to 5 so a
+    #: task has to be performed a handful of times — enough to be convincing on
+    #: stage — before it is presented as a proven pattern rather than an early one.
+    discovery_strong_occurrences: int = 5
+    #: A two-occurrence candidate needs at least this run-to-run similarity, so
+    #: two unrelated tasks that happen to be short are not called repetitive.
+    discovery_min_similarity: float = 0.70
+    #: Similarity at or above which a candidate is treated as strong evidence.
+    discovery_strong_similarity: float = 0.85
+    #: The weighted confidence a low-occurrence candidate must clear to show.
+    discovery_min_confidence: float = 0.60
+    #: Confidence at or above which a candidate is treated as strong evidence.
+    discovery_strong_confidence: float = 0.75
+
+    @property
+    def demo_mode(self) -> bool:
+        return self.discovery_mode.strip().lower() == "demo"
+
+    @property
+    def effective_min_instances(self) -> int:
+        """The instance floor detection actually applies.
+
+        Production uses the full statistical floor. Demo drops it to the
+        low-occurrence minimum so a hand-performed pattern is detectable — the
+        weaker evidence is then labelled `early`/`moderate` rather than hidden.
+        """
+        if self.demo_mode:
+            return max(1, self.discovery_min_occurrences)
+        return self.min_instances
 
     # Scoring (F3)
     interruption_cost_minutes: float = 4.0
@@ -75,6 +180,12 @@ class Settings(BaseSettings):
     #: (Settings > n8n API) and is separate from anything else here, so pushing
     #: a workflow never borrows a credential granted for reading data.
     n8n_base_url: str = "http://localhost:5678"
+    #: The same n8n, as a person's browser can reach it. Inside Docker the two
+    #: differ: the API talks to `http://n8n:5678` over the compose network,
+    #: which resolves nowhere in a browser, so a link built from `n8n_base_url`
+    #: lands on DNS_PROBE_FINISHED_NXDOMAIN. Empty means the two are the same,
+    #: which is true whenever LOOP is not containerised.
+    n8n_public_url: str = ""
     #: Where `files_root` is mounted inside the n8n container, per
     #: docker-compose.yml. An exported workflow runs in that container, so a
     #: host path in a file node resolves to nothing there — the translator has
@@ -138,10 +249,26 @@ class Settings(BaseSettings):
     def has_llm(self) -> bool:
         """True when an LLM provider is configured.
 
-        The default provider is local Ollama. If Ollama is not running, every
-        text LLM feature still falls back to deterministic heuristics.
+        The default provider is local Ollama, with OpenAI as a second chance if
+        a key is set. If neither can answer, every LLM feature still falls back
+        to deterministic heuristics, so this being False is never fatal.
         """
+        if self.has_openai_fallback:
+            return True
         return self.llm_provider.strip().lower() == "ollama" and bool(self.llm_model.strip())
+
+    @property
+    def has_openai_fallback(self) -> bool:
+        """True when an OpenAI key is configured to catch local failures."""
+        return bool(self.openai_api_key.strip()) and bool(self.openai_model.strip())
+
+    @property
+    def llm_description(self) -> str:
+        """What the health endpoint reports, including the standby provider."""
+        primary = f"{self.llm_provider}:{self.llm_model}"
+        if self.has_openai_fallback:
+            return f"{primary} (fallback openai:{self.openai_model})"
+        return primary
 
     @property
     def has_vision_llm(self) -> bool:
@@ -149,6 +276,17 @@ class Settings(BaseSettings):
         return self.llm_provider.strip().lower() == "ollama" and bool(
             self.ollama_vision_model.strip()
         )
+
+    @property
+    def n8n_link_base(self) -> str:
+        """The n8n address to put in front of a person, never to call.
+
+        Every URL that ends up in a link or an instruction has to be resolvable
+        from the browser, which is a different network from the one the API
+        calls n8n on. Use `n8n_base_url` for requests and this for anything a
+        person will click.
+        """
+        return (self.n8n_public_url or self.n8n_base_url).rstrip("/")
 
 
 @lru_cache

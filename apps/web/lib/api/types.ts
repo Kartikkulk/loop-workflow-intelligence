@@ -36,6 +36,12 @@ export interface ClusterSummary {
   priority: number;
   do_not_automate: boolean;
   reasoning: string;
+  /** How strong the evidence is: "early" | "moderate" | "strong". */
+  evidence_level: string;
+  /** True while the case rests on few observations. */
+  requires_more_observation: boolean;
+  /** Rejected on Discovery; hidden from the recommended list. */
+  dismissed: boolean;
   has_automation: boolean;
   automation_id: string | null;
 }
@@ -144,8 +150,10 @@ export interface AutomationSummary {
   annual_hours: number;
   step_count: number;
   created_at: string;
-  /** n8n's id, once approved and exported. Empty means still a proposal. */
+  /** n8n's id, once a review draft has been built there. Empty until then. */
   n8n_workflow_id: string;
+  /** Final human sign-off, after reviewing the draft in n8n. */
+  approved: boolean;
 }
 
 /**
@@ -160,17 +168,91 @@ export interface AutomationSummary {
  * all three, is what stops that happening again.
  */
 export function isAwaitingApproval(automation: AutomationSummary): boolean {
-  return !automation.n8n_workflow_id && !isRunning(automation);
+  return !automation.approved && !isRunning(automation);
 }
 
-/** A person said yes: it was built in n8n, or it has already climbed the ladder. */
+/** A person said yes — the final approval, after reviewing the n8n draft. */
 export function isApproved(automation: AutomationSummary): boolean {
-  return !isAwaitingApproval(automation);
+  return automation.approved || isRunning(automation);
+}
+
+/** A review draft has been built in n8n and is waiting to be opened/edited. */
+export function hasReviewDraft(automation: AutomationSummary): boolean {
+  return Boolean(automation.n8n_workflow_id);
 }
 
 /** Allowed to act on its own. Anything below ASSIST is built but switched off. */
 export function isRunning(automation: AutomationSummary): boolean {
   return automation.trust_level === "ASSIST" || automation.trust_level === "AUTONOMOUS";
+}
+
+export interface ExecutionPlan {
+  method: string;
+  rationale: string;
+  confidence: number;
+  decided_by: string;
+  alternative_method: string;
+  alternative_rationale: string;
+  factors: string[];
+}
+
+export interface ValidationFinding {
+  check: string;
+  detail: string;
+  step_id: string;
+  blocking: boolean;
+}
+
+export interface ValidationReport {
+  ok: boolean;
+  passed: string[];
+  findings: ValidationFinding[];
+  blocking_count: number;
+}
+
+export interface DryRunStep {
+  step_id: string;
+  connector: string;
+  action: string;
+  status: string;
+  outputs: Record<string, unknown>;
+  error: string | null;
+}
+
+export interface DryRunResult {
+  status: string;
+  steps: DryRunStep[];
+  would_have: string[];
+  held_by_guard: boolean;
+  guard_reason: string | null;
+  side_effects_performed: number;
+}
+
+export interface ObservedVariable {
+  name: string;
+  placeholder: string;
+  step_token: string;
+  key: string;
+  samples: string[];
+  distinct_count: number;
+  occurrences: number;
+}
+
+export interface ObservedConstant {
+  name: string;
+  step_token: string;
+  key: string;
+  value: string;
+  occurrences: number;
+}
+
+export interface GeneratedCode {
+  method: string;
+  filename: string;
+  source: string;
+  requirements: string[];
+  caveats: string[];
+  line_count: number;
 }
 
 export interface AutomationDetail extends AutomationSummary {
@@ -182,6 +264,7 @@ export interface AutomationDetail extends AutomationSummary {
   trust_history: { level: string; reason: string; at?: string }[];
   open_exception_count: number;
   pending_patch_count: number;
+  execution: ExecutionPlan | null;
 }
 
 export interface ReplayFailure {
@@ -252,11 +335,19 @@ export interface ActivityEvent {
   duration_ms: number;
   payload: Record<string, unknown>;
   session_id: string | null;
+  source: string;
+}
+
+export interface SourceFacet {
+  value: string;
+  count: number;
 }
 
 export interface ActivityPage {
   total: number;
   items: ActivityEvent[];
+  sources: SourceFacet[];
+  apps: SourceFacet[];
 }
 
 export interface N8nRun {
@@ -383,6 +474,15 @@ export interface SystemStatus {
   settings: Record<string, number | string>;
 }
 
+export interface DiscoveredWorkflow {
+  id: string;
+  name: string;
+  occurrences: number;
+  apps: string[];
+  annual_hours: number;
+  automatability: number;
+}
+
 export interface IngestResult {
   ok: boolean;
   events_ingested: number;
@@ -391,6 +491,9 @@ export interface IngestResult {
   source: string;
   clusters_detected: number;
   workflow_name: string | null;
+  workflows: DiscoveredWorkflow[];
+  sessions: number;
+  applications: number;
 }
 
 export interface BreakSchemaResult {

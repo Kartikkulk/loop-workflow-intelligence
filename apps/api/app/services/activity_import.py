@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.connection import Connection
 from app.services.ids import new_id
 from app.services.normaliser import NormalisedEvent, as_utc
-from app.services.oauth import OAuthError, valid_token
+from app.services.oauth import OAuthError, resolve_atlassian_site, valid_token
 from app.services.oauth_providers import OAuthProvider
 
 logger = logging.getLogger("loop.import")
@@ -200,44 +200,66 @@ async def _fetch_atlassian(
 ) -> list[NormalisedEvent]:
     """Issues the person touched, and what they did to them."""
     if not cloud_id:
-        raise OAuthError("Jira did not report a site. Reconnect the account.")
+        raise OAuthError(
+            "Atlassian did not list a Jira site for this account. The sign-in worked, "
+            "so this is about access rather than the connection: the integration needs "
+            "to be granted the site, which an admin does once from the site itself."
+        )
 
     events: list[NormalisedEvent] = []
     jql = f"assignee = currentUser() AND updated >= -{DEFAULT_WINDOW_DAYS}d ORDER BY updated DESC"
 
+    # `/rest/api/3/search` was removed by Atlassian, which answers it with 410
+    # and a note pointing here. The replacement pages by opaque token rather
+    # than by offset, so there is no total to read and the loop stops when
+    # Atlassian stops handing one back.
+    search_url = f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/search/jql"
+    page_token: str | None = None
+
     async with httpx.AsyncClient(timeout=30) as client:
-        found = await _get(
-            client,
-            f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/search",
-            token,
-            jql=jql,
-            maxResults=min(MAX_ITEMS, 100),
-            fields="updated,status,issuetype,project",
-        )
-        for issue in (found.get("issues") or [])[:MAX_ITEMS]:
-            fields = issue.get("fields") or {}
-            events.append(
-                NormalisedEvent(
-                    id=new_id("evt"),
-                    user_id=user_id,
-                    team="personal",
-                    timestamp=_iso(fields.get("updated")),
-                    app="jira",
-                    action="update",
-                    object_type=str(
-                        (fields.get("issuetype") or {}).get("name", "issue")
-                    ).lower().replace(" ", "_")[:40],
-                    object_id=str(issue.get("key"))[:128],
-                    duration_ms=120_000,
-                    payload={
-                        "project": str((fields.get("project") or {}).get("key", ""))[:32],
-                        "status": str((fields.get("status") or {}).get("name", ""))[:32],
-                    },
-                    session_id=None,
-                    source="api_connector",
+        while len(events) < MAX_ITEMS:
+            params = {
+                "jql": jql,
+                "maxResults": min(MAX_ITEMS - len(events), 100),
+                "fields": "updated,status,issuetype,project",
+            }
+            if page_token:
+                params["nextPageToken"] = page_token
+
+            found = await _get(client, search_url, token, **params)
+            issues = found.get("issues") or []
+            if not issues:
+                break
+
+            for issue in issues:
+                fields = issue.get("fields") or {}
+                events.append(
+                    NormalisedEvent(
+                        id=new_id("evt"),
+                        user_id=user_id,
+                        team="personal",
+                        timestamp=_iso(fields.get("updated")),
+                        app="jira",
+                        action="update",
+                        object_type=str(
+                            (fields.get("issuetype") or {}).get("name", "issue")
+                        ).lower().replace(" ", "_")[:40],
+                        object_id=str(issue.get("key"))[:128],
+                        duration_ms=120_000,
+                        payload={
+                            "project": str((fields.get("project") or {}).get("key", ""))[:32],
+                            "status": str((fields.get("status") or {}).get("name", ""))[:32],
+                        },
+                        session_id=None,
+                        source="api_connector",
+                    )
                 )
-            )
-    return events
+
+            page_token = found.get("nextPageToken")
+            if not page_token:
+                break
+
+    return events[:MAX_ITEMS]
 
 
 # ── Slack ───────────────────────────────────────────────────────────────────
@@ -297,6 +319,13 @@ async def fetch_activity(
         return await _fetch_microsoft(token, user_id, since)
     if provider.key == "atlassian":
         cloud_id = str((connection.extra or {}).get("cloud_id", ""))
+        if not cloud_id:
+            # An account connected before the site lookup existed has a working
+            # token and no cloud id. Resolving it here means those connections
+            # heal on the next sync instead of asking for an OAuth round trip
+            # that would not have been the reader's fault.
+            await resolve_atlassian_site(session, connection)
+            cloud_id = str((connection.extra or {}).get("cloud_id", ""))
         return await _fetch_atlassian(token, user_id, since, cloud_id)
     if provider.key == "slack":
         return await _fetch_slack(token, user_id, since)

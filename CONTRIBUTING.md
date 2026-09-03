@@ -37,17 +37,58 @@ make fixtures     # in another
 
 ## Who owns what
 
+**The rule that keeps us mergeable: you own a folder, and you only edit that
+folder.** If you need something from outside it, open an issue rather than
+reaching in.
+
+| Who | Owns |
+|---|---|
+| **Kartik** | Core platform — `apps/api/app/services`, `app/api`, `app/llm`, `apps/web`, `collectors/shared` |
+| **Anirudh** | `apps/api/app/domains/finance.py`, `customer_support.py` |
+| **Vijay** | `apps/api/app/domains/sales.py` **or** `hr.py` — pick one |
+| **Anushree** | `collectors/chrome/` |
+| **Gouri** | `collectors/edge/` |
+
 | Path | Owner | Rule |
 |---|---|---|
 | `apps/api/` | backend | Frontend does not edit. Open an issue instead. |
 | `apps/web/` | frontend | Backend does not edit. |
-| `collectors/` | integration | |
+| `collectors/shared/` | Kartik | Message before editing — shared by both browsers. |
 | `contracts/openapi.json` | both | **Generated.** Never hand-edit. |
 | `Makefile`, `docker-compose.yml`, `.github/` | integration | |
 | docs at the root | integration | |
 
 `.github/CODEOWNERS` auto-requests the right reviewer. **Put real GitHub handles
 in it before the first PR** or it is silently inert.
+
+### Domain owners (Anirudh, Vijay)
+
+A team's repetitive work is one file in `apps/api/app/domains/`. Read that
+folder's `README.md` — it is the whole API you need. Replace the `steps` with
+the real ones you observed, set `is_template=False` when it reflects reality,
+and run `make demo && make dev` to check your workflow appears on Discovery.
+**Do not touch `app/services/`** — if a domain needs something the core cannot
+express, open an issue.
+
+Keep `customer_support.py` freeform: it is the pack that proves the platform
+knows when *not* to automate, and a test fails if it stops being caught. If your
+real support work is highly repetitive, add it as a second domain instead.
+
+### Collector owners (Anushree, Gouri)
+
+Chrome and Edge are both Chromium on Manifest V3, so the observing logic is
+identical and lives once in `collectors/shared/`. Your folder holds only what
+genuinely differs (today, just the manifest). The work is not "write it twice":
+
+1. Get it loaded and reporting — `make collectors`, then load `dist/<yours>`
+   unpacked. This is the unverified part: Chrome 137 removed `--load-extension`,
+   so the browser plumbing has never been confirmed.
+2. Find where your browser actually differs (permissions, service-worker
+   lifecycle, `chrome.*` vs `browser.*`, packaging) and put that in your folder.
+3. Report what breaks — a precise bug report is worth more than code.
+
+If something must change in `collectors/shared/`, message Kartik rather than
+editing it.
 
 ## The API boundary
 

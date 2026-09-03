@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SignatureChips } from "@/components/workflow-graph";
 import {
@@ -15,7 +16,12 @@ import {
 } from "@/components/ui";
 import { ProportionBar, Sparkline, StateStripe, VariantBar } from "@/components/viz";
 import { IngestPanel } from "@/components/ingest-panel";
-import { useClusters } from "@/lib/api/queries";
+import {
+  useClusters,
+  useDismissCluster,
+  useGenerateAutomation,
+  useRestoreCluster,
+} from "@/lib/api/queries";
 import { duration, hours, percent, teamLabel } from "@/lib/format";
 import type { ClusterSummary } from "@/lib/api/types";
 
@@ -156,6 +162,20 @@ export default function DiscoveryPage() {
   );
 }
 
+function EvidenceBadge({ cluster }: { cluster: ClusterSummary }) {
+  const level = cluster.evidence_level;
+  if (level === "strong") {
+    return <Badge tone="good">Strong · seen {cluster.instance_count}×</Badge>;
+  }
+  if (level === "moderate") {
+    return <Badge tone="warn">Early · seen {cluster.instance_count}×</Badge>;
+  }
+  if (level === "early") {
+    return <Badge tone="warn">Early · seen {cluster.instance_count}×</Badge>;
+  }
+  return null;
+}
+
 function ClusterRow({
   cluster,
   maxHours,
@@ -163,8 +183,18 @@ function ClusterRow({
   cluster: ClusterSummary;
   maxHours: number;
 }) {
+  const router = useRouter();
+  const accept = useGenerateAutomation();
+  const dismiss = useDismissCluster();
   const strong = cluster.automatability >= 0.6;
   const variants = cluster.variance_breakdown;
+
+  function onAccept() {
+    accept.mutate(
+      { clusterId: cluster.id, override: cluster.do_not_automate },
+      { onSuccess: () => router.push("/approvals") },
+    );
+  }
 
   return (
     <li className="row-interactive">
@@ -176,6 +206,7 @@ function ClusterRow({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-medium text-mist-100">{cluster.name}</h3>
+                <EvidenceBadge cluster={cluster} />
                 {cluster.is_organisational && <Badge tone="accent">Organisational</Badge>}
                 {cluster.has_automation && <Badge tone="good">Automation built</Badge>}
               </div>
@@ -257,6 +288,44 @@ function ClusterRow({
           </div>
         </div>
       </Link>
+
+      {/* ── accept / reject ─────────────────────────────────────────────
+          Accept builds the automation and sends it to Approvals, where a
+          person decides how it runs (n8n) before anything acts. Reject hides
+          the candidate. Both sit outside the Link so a click here never
+          navigates to the detail page by accident. */}
+      <div className="flex flex-wrap items-center gap-3 border-t border-ink-800 px-4 py-3">
+        {cluster.has_automation ? (
+          <Link className="btn-ghost" href="/approvals">
+            Already accepted — see it in Approvals →
+          </Link>
+        ) : (
+          <>
+            <button className="btn-primary" disabled={accept.isPending} onClick={onAccept}>
+              {accept.isPending ? "Building…" : "Accept — send to Approvals"}
+            </button>
+            <button
+              className="btn-ghost"
+              disabled={dismiss.isPending}
+              onClick={() => dismiss.mutate({ id: cluster.id })}
+            >
+              {dismiss.isPending ? "Rejecting…" : "Reject"}
+            </button>
+            {cluster.requires_more_observation ? (
+              <span className="text-2xs text-mist-500">
+                Early pattern — you can preview it, more observations recommended.
+              </span>
+            ) : (
+              <span className="text-2xs text-mist-500">
+                Accepting builds it in n8n, switched off. You approve it next.
+              </span>
+            )}
+          </>
+        )}
+        {accept.error && (
+          <span className="text-2xs text-bad-400">Could not build: {String(accept.error)}</span>
+        )}
+      </div>
     </li>
   );
 }

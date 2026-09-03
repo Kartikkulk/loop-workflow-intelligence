@@ -49,7 +49,7 @@ export default function ClusterDetailPage() {
                 (or the next detection pass) re-links it automatically.
               </p>
               <div className="mt-3 flex gap-2">
-                <Link className="btn-primary" href="/">
+                <Link className="btn-primary" href="/dashboard">
                   Back to Discovery
                 </Link>
                 <Link className="btn-ghost" href="/automations">

@@ -19,11 +19,15 @@ from app.schemas.clusters import (
     ClusterList,
     ClusterSummary,
     ClusterUser,
+    DismissResult,
+    ObservedConstant,
+    ObservedVariable,
     SignatureVariant,
     SopOut,
     StepNode,
     VarianceOut,
 )
+from app.services.execution_planner import choose_execution_method
 from app.services.generator import generate_flow, generate_sop
 from app.services.ids import new_id
 from app.services.sessioniser import signature_hash
@@ -61,6 +65,9 @@ def _to_summary(cluster: Cluster, automation_id: str | None) -> ClusterSummary:
         priority=cluster.priority,
         do_not_automate=cluster.do_not_automate,
         reasoning=cluster.reasoning,
+        evidence_level=cluster.evidence_level,
+        requires_more_observation=cluster.requires_more_observation,
+        dismissed=cluster.dismissed,
         has_automation=automation_id is not None,
         automation_id=automation_id,
     )
@@ -77,8 +84,12 @@ async def list_clusters(session: AsyncSession = Depends(get_session)) -> Cluster
     clusters = list(result.scalars().all())
     index = await _automation_index(session)
 
+    # A rejected candidate drops off the recommended list but is not deleted —
+    # it can be restored, and re-detection would rediscover it anyway.
     recommended = [
-        _to_summary(c, index.get(c.id)) for c in clusters if not c.do_not_automate
+        _to_summary(c, index.get(c.id))
+        for c in clusters
+        if not c.do_not_automate and not c.dismissed
     ]
     not_recommended = [
         _to_summary(c, index.get(c.id)) for c in clusters if c.do_not_automate
@@ -179,6 +190,8 @@ async def get_cluster(
         users=users,
         step_graph=step_graph,
         variants=variants,
+        variables=[ObservedVariable(**v) for v in (cluster.variables or [])],
+        constants=[ObservedConstant(**c) for c in (cluster.constants or [])],
     )
 
 
@@ -269,8 +282,52 @@ async def generate_automation(
         automation.guards = flow["guards"]
         automation.generated_by = provenance
 
+    # Which runtime should run this is a separate question from what it does,
+    # and it is answered from the flow rather than configured: the connectors
+    # the steps touch decide what can physically execute them.
+    plan = await choose_execution_method(name=flow["name"], steps=flow["steps"])
+    automation.execution_method = plan.method
+    automation.execution_rationale = plan.rationale
+    automation.execution_confidence = plan.confidence
+    automation.execution_decided_by = plan.decided_by
+    automation.execution_alternative = plan.alternative_method
+    automation.execution_alternative_why = plan.alternative_rationale
+    automation.execution_factors = list(plan.factors)
+
     await session.flush()
 
     from app.api.v1.automations import build_automation_detail
 
     return await build_automation_detail(session, automation)
+
+
+@router.post("/{cluster_id}/dismiss", response_model=DismissResult)
+async def dismiss_cluster(
+    cluster_id: str, session: AsyncSession = Depends(get_session)
+) -> DismissResult:
+    """Reject a discovered workflow.
+
+    The candidate drops off the Discovery recommended list. It is not deleted —
+    detection is a pure function of the event log and would rediscover it — it is
+    flagged so the operator is not asked about the same one again. Reversible via
+    the restore endpoint.
+    """
+    cluster = await _get_cluster(session, cluster_id)
+    cluster.dismissed = True
+    await session.flush()
+    return DismissResult(
+        id=cluster.id, dismissed=True, message=f"'{cluster.name}' dismissed from discovery."
+    )
+
+
+@router.post("/{cluster_id}/restore", response_model=DismissResult)
+async def restore_cluster(
+    cluster_id: str, session: AsyncSession = Depends(get_session)
+) -> DismissResult:
+    """Undo a dismissal — the workflow returns to the recommended list."""
+    cluster = await _get_cluster(session, cluster_id)
+    cluster.dismissed = False
+    await session.flush()
+    return DismissResult(
+        id=cluster.id, dismissed=False, message=f"'{cluster.name}' restored to discovery."
+    )

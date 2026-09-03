@@ -18,6 +18,7 @@ from app.models.cluster import Cluster
 # The same restricted comparator the engine evaluates guards with, so the
 # generator rejects exactly the expressions the engine would refuse to run.
 from app.services.engine import _CONDITION
+from app.services.variables import Constant, guard_from_constants
 
 # What each observed step token contributes to a flow step: the fields it reads
 # and the fields it produces. Derived from the canonical action vocabulary, so a
@@ -46,13 +47,37 @@ _DEPENDS_BY_ACTION: dict[str, list[str]] = {
 
 _IRREVERSIBLE_ACTIONS = {"send", "delete"}
 
+#: Connectors whose effects stay on this machine. Creating a row in a local
+#: spreadsheet is undoable; creating a Jira issue is a notification to other
+#: people and an id that now exists in a system of record.
+_LOCAL_CONNECTORS = frozenset({"files", "pdf", "git", "desktop", "browser"})
+
+
+def _is_irreversible(step: dict[str, Any]) -> bool:
+    """Whether a step's effect can be taken back.
+
+    `send` and `delete` always count. `create` counts too when it lands in a
+    system other people can see — which is the case that matters here, because
+    an automation that files tickets into a shared tracker unsupervised is
+    exactly what the guard exists to hold.
+    """
+    action = str(step.get("type") or "")
+    connector = str(step.get("connector") or "")
+    if action in _IRREVERSIBLE_ACTIONS:
+        return True
+    return action == "create" and connector not in _LOCAL_CONNECTORS
+
 #: Payload keys that carry a monetary value, in minor units.
 #:
 #: `amount_inr` is deliberately absent even though invoices produce it. It is a
 #: decision field, so `source_payload` withholds it from the automation at run
 #: time; a guard naming it would parse, display, and never once fire. The guard
 #: has to name a value the automation can actually read while it is running.
-_MONEY_FIELDS = ("amount", "total", "value")
+#: `value` is deliberately absent. It is what a UI collector calls *every*
+#: field it captures, so treating it as money produced `value > 1000000` on a
+#: support workflow that has no money in it — a spend limit on a ticket, which
+#: displays convincingly and can never fire.
+_MONEY_FIELDS = ("amount", "total", "amount_due", "grand_total")
 
 
 def _money_field(produced: set[str]) -> str | None:
@@ -150,15 +175,32 @@ def _fallback_flow(cluster: Cluster) -> dict[str, Any]:
     first_parts = signature[0].split(":") if signature else []
     first_object = first_parts[2] if len(first_parts) > 2 else ""
 
-    irreversible = [
-        s["id"] for s in steps if s["type"] in _IRREVERSIBLE_ACTIONS
-    ]
+    irreversible = [s["id"] for s in steps if _is_irreversible(s)]
     guards: dict[str, Any] = {"irreversible": irreversible}
     approval_field = _money_field(produced)
     if approval_field:
         # 10,00,000 paise = 10,000 rupees. Above this a human signs off on
         # anything irreversible.
         guards["requires_approval_if"] = f"{approval_field} > 1000000"
+    else:
+        # No money in this workflow, but a field that held one value on every
+        # observed run is a condition the work was performed *under*. Five
+        # escalations all at `priority = High` say this automation is for
+        # high-priority tickets; anything else goes to a person.
+        observed_guard = guard_from_constants(
+            [
+                Constant(
+                    name=str(c.get("name", "")),
+                    step_token=str(c.get("step_token", "")),
+                    key=str(c.get("key", "")),
+                    value=str(c.get("value", "")),
+                    occurrences=int(c.get("occurrences", 0) or 0),
+                )
+                for c in (cluster.constants or [])
+            ]
+        )
+        if observed_guard:
+            guards["requires_approval_if"] = observed_guard
 
     return {
         "name": cluster.name,
@@ -183,23 +225,73 @@ def _sanitise_flow(raw: dict[str, Any], cluster: Cluster) -> dict[str, Any]:
     fallback = _fallback_flow(cluster)
     steps = raw.get("steps") or fallback["steps"]
 
+    signature = list(cluster.signature or [])
+    #: Every field name the event log actually carries, across all steps.
+    observed_vocabulary = {
+        field_name
+        for fields in (cluster.observed_fields or {}).values()
+        for field_name in fields
+    }
     produced: set[str] = set()
     cleaned: list[dict[str, Any]] = []
     for index, step in enumerate(steps, start=1):
         step = dict(step)
-        step.setdefault("id", f"s{index}")
+        token_index = index - 1
+
+        # Ids are positional, always. A model asked for a step id will often
+        # echo the signature token back — `jira:send:billing_note` — and that
+        # id then appears in `guards.irreversible` while the engine looks up a
+        # step called `s4`. The guard matches nothing and the hold silently
+        # stops applying, which is the worst way for a safety mechanism to fail.
+        step["id"] = f"s{index}"
         step.setdefault("type", "read")
-        step.setdefault("connector", "browser")
+
+        # *Which system* a step touches is a fact from the event log, not an
+        # opinion the model is entitled to. A smaller model will cheerfully
+        # rewrite `files` as `drive` and `jira` as `slack` because they are the
+        # same kind of thing — and the runtime choice, the credentials needed
+        # and the backtest are then all reasoning about a workflow nobody
+        # performed. The verb is left to the model, which reads intent well;
+        # the system it acts on comes from what was observed.
+        if token_index < len(signature):
+            parts = signature[token_index].split(":")
+            step["connector"] = parts[0] if parts else "browser"
+        else:
+            step.setdefault("connector", "browser")
+
         outputs = list(step.get("outputs") or _OUTPUTS_BY_ACTION.get(step["type"], ["result"]))
         # Union in the fields actually observed for this step. The model names
         # steps well but cannot know the source schema; the log does.
-        token_index = index - 1
-        signature = list(cluster.signature or [])
         if token_index < len(signature):
             for observed_field in (cluster.observed_fields or {}).get(signature[token_index], []):
                 if observed_field not in outputs:
                     outputs.append(observed_field)
-        depends = [d for d in (step.get("depends_on") or []) if d.split(".")[-1] in produced]
+        # A dependency has to name a field the *log* contains, not merely one an
+        # earlier step declared. Models name outputs descriptively — a step that
+        # was observed reading a portal becomes `support_portal_data` — and a
+        # later step then depends on it. That passes an internal-consistency
+        # check and fails on every real run, because no source system has a
+        # field by that name and nothing can ever produce a value for it. The
+        # invented names are harmless as labels; they are not allowed to carry
+        # data.
+        depends = [
+            d
+            for d in (step.get("depends_on") or [])
+            if d.split(".")[-1] in produced and d.split(".")[-1] in observed_vocabulary
+        ]
+        # A step with no dependencies is not a smaller automation, it is an
+        # unhealable one: F8 detects drift by watching which declared
+        # dependency stopped resolving, so a flow that declares none can never
+        # report drift and never proposes a patch. Smaller models routinely
+        # return `depends_on: []` for every step. Where the model offers
+        # nothing usable, take what the observed field log implies instead —
+        # which is what the deterministic path would have produced anyway.
+        if not depends and index - 1 < len(fallback["steps"]):
+            depends = [
+                d
+                for d in (fallback["steps"][index - 1].get("depends_on") or [])
+                if d.split(".")[-1] in produced
+            ]
         if index == 1:
             depends = []
         step["outputs"] = outputs
@@ -216,14 +308,31 @@ def _sanitise_flow(raw: dict[str, Any], cluster: Cluster) -> dict[str, Any]:
         # exist here. Silently keeping one would show a limit in the console
         # that nothing can ever trip.
         guards.pop("requires_approval_if", None)
+    # An empty string is not a guard, it is the absence of one. Models routinely
+    # emit `"requires_approval_if": ""` to satisfy the schema, and `setdefault`
+    # treats that key as already set — so the guard the observation earned was
+    # dropped without a word, and the automation shipped with a hold that
+    # protected nothing. Cleared here so "no guard" is genuinely absent.
+    if not str(guards.get("requires_approval_if") or "").strip():
+        guards.pop("requires_approval_if", None)
+
     if fallback_approval:
+        # `setdefault`, not an override. A model guard that named a real field
+        # survived the check above, and it is usually a *tighter* threshold than
+        # the default — overriding it would loosen the automation in the name of
+        # protecting it. A guard the model dropped entirely is caught by
+        # validation, which compares against what the observation implied.
         guards.setdefault("requires_approval_if", fallback_approval)
     else:
         guards.pop("requires_approval_if", None)
-    declared = guards.get("irreversible") or []
-    # Any step whose action is irreversible must be listed, whatever the model said.
+    # Rebuilt from the steps rather than merged with what the model declared.
+    # A model-supplied id that matches no step is not a harmless extra entry:
+    # the engine checks membership by id, so a guard listing `jira:send:note`
+    # while the step is called `s4` protects nothing at all.
+    valid_ids = {step["id"] for step in cleaned}
+    declared = [str(i) for i in (guards.get("irreversible") or []) if str(i) in valid_ids]
     for step in cleaned:
-        if step["type"] in _IRREVERSIBLE_ACTIONS and step["id"] not in declared:
+        if _is_irreversible(step) and step["id"] not in declared:
             declared.append(step["id"])
     guards["irreversible"] = declared
 

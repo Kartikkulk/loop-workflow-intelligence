@@ -76,4 +76,28 @@ class Cluster(Base, TimestampMixin):
     # meaningful rather than vacuous.
     observed_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
+    # Low-occurrence evidence (demo mode). How strong the case for this being a
+    # real repetitive workflow is, given how many times it was observed and how
+    # alike those observations were:
+    #   early    — seen the minimum number of times; preview only, watch more
+    #   moderate — seen a little more, or seen twice but very consistently
+    #   strong   — seen often enough (and consistently enough) to act on
+    # requires_more_observation is True for early/moderate, so the console can
+    # say "more observations recommended" without re-deriving the rule.
+    evidence_level: Mapped[str] = mapped_column(String(16), nullable=False, default="strong")
+    requires_more_observation: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    # Rejected on the Discovery screen. A dismissed workflow is not deleted —
+    # detection is a pure function of the event log and would just rediscover
+    # it on the next run — it is hidden from the recommended list so the operator
+    # is not asked about the same candidate twice. Reversible from the UI.
+    dismissed: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    #: Fields whose value changed run to run — the automation's inputs. Stored
+    #: on the cluster because they are an observation, not a generation choice:
+    #: re-running detection on the same log must produce the same variables.
+    variables: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    #: Fields that held one value on every run. A constant on a decision field
+    #: is where a guard comes from.
+    constants: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     sop_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)

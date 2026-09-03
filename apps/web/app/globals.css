@@ -146,3 +146,57 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Landing-page keyframes, declared here rather than in tailwind.config.ts.
+ *
+ * Tailwind only emits a `@keyframes` block when it finds the matching
+ * `animate-*` utility in the markup. These are driven from inline `style`
+ * attributes instead, because each element needs its own delay — so Tailwind
+ * never saw them, never emitted them, and every element that paired one with
+ * `opacity-0` stayed invisible. The page rendered completely blank.
+ *
+ * Declared unconditionally here, they cannot be tree-shaken away.
+ */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes draw-path {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes trace {
+  from { stroke-dashoffset: 220; }
+  to { stroke-dashoffset: -220; }
+}
+
+/*
+ * Anyone who has asked their system to reduce motion gets the finished state
+ * immediately. Without this the entry animations are the only thing that make
+ * the content visible, so disabling them must not hide the page.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

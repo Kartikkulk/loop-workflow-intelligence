@@ -160,7 +160,15 @@ def sessionise(events: Iterable[Event], gap_minutes: int | None = None) -> list[
             # including the one about to start. Testing it only when `current` is
             # non-empty let a reset become the *first* step of the next instance,
             # which polluted signatures with ambient noise.
-            if (event.app, event.action) in _RESET_TOKENS:
+            #
+            # Skipped entirely when the source declared a session. This heuristic
+            # exists to *infer* task boundaries from an unlabelled stream, where
+            # a stray `browser:read` really is someone glancing at a news page.
+            # A source that states which events form one task has answered the
+            # question the heuristic is guessing at, and guessing over the answer
+            # discards real steps: an agent reading a customer and an issue in a
+            # support portal is doing the work, not browsing.
+            if event.session_id is None and (event.app, event.action) in _RESET_TOKENS:
                 if current:
                     instances.append(
                         Instance(user_id=user_id, team=current[0].team, events=current)

@@ -322,7 +322,7 @@ async def system_status(session: AsyncSession = Depends(get_session)) -> SystemS
         connectors=[ConnectorOut(**c) for c in connector_inventory()],
         llm_available=llm.available,
         llm_model=(
-            f"{settings.llm_provider}:{settings.llm_model}"
+            settings.llm_description
             if llm.available
             else "none (deterministic fallback)"
         ),

@@ -6,6 +6,7 @@ import { Badge, Empty, ErrorNote, Meter, PageHeader, PageSkeleton, Panel, Stat }
 import { StateStripe } from "@/components/viz";
 import {
   useApplyPatch,
+  useApproveAutomation,
   useApproveToN8n,
   useAutomations,
   useExceptions,
@@ -14,7 +15,7 @@ import {
   useResolveException,
 } from "@/lib/api/queries";
 import { formatFieldValue, hours, percent, relativeTime } from "@/lib/format";
-import { isAwaitingApproval } from "@/lib/api/types";
+import { hasReviewDraft, isAwaitingApproval } from "@/lib/api/types";
 import type { AutomationSummary, ExceptionCase, Patch } from "@/lib/api/types";
 
 const DECISIONS = ["route_to_manager", "approve", "reject", "hold_for_clarification"];
@@ -100,14 +101,14 @@ export default function ApprovalsPage() {
         {/* ── 1. workflows proposed ─────────────────────────────────── */}
         <Panel
           title="Workflows proposed for automation"
-          hint="LOOP built each of these from a repetitive pattern it observed. Approving builds it in n8n — switched off, with no accounts attached — and hands you the link to finish wiring it up."
+          hint="LOOP built each of these from a pattern it observed. Review builds a draft in n8n — switched off, no accounts attached — so you can open it, change anything, then approve."
         >
           {proposed.length === 0 ? (
             <Empty
               title="No workflows waiting"
               hint="Everything LOOP proposed has been decided. New proposals appear here as it observes more work."
               action={
-                <Link className="btn-ghost" href="/">
+                <Link className="btn-ghost" href="/dashboard">
                   See what was discovered
                 </Link>
               }
@@ -164,8 +165,13 @@ export default function ApprovalsPage() {
 }
 
 function ProposedRow({ automation }: { automation: AutomationSummary }) {
-  const approve = useApproveToN8n();
-  const result = approve.data;
+  const buildDraft = useApproveToN8n();
+  const approve = useApproveAutomation();
+  const result = buildDraft.data;
+  // A draft exists once it has an n8n id — either built just now in this
+  // session, or on a previous visit (n8n_workflow_id already set).
+  const draftReady = Boolean(result?.ok) || hasReviewDraft(automation);
+  const configureUrl = result?.configure_url;
 
   return (
     <li>
@@ -220,57 +226,66 @@ function ProposedRow({ automation }: { automation: AutomationSummary }) {
         </div>
       </Link>
 
-      {/* ── the decision ───────────────────────────────────────────────
-          Approving creates the workflow in n8n, switched off and with no
-          accounts attached. That split is the point: LOOP decides the work is
-          worth automating, and a person decides what it may connect to. */}
+      {/* ── review, then approve ───────────────────────────────────────
+          Two deliberate steps. First "Review" builds a draft in n8n, switched
+          off and with no accounts attached, so a person can open it, change
+          anything, and see exactly what will run. Only then does "Approve" give
+          the final sign-off. Building and approving are split on purpose: LOOP
+          decides the work is worth automating, and a person decides — after
+          looking — what it may connect to and whether it is right. */}
       <div className="flex flex-wrap items-center gap-3 border-t border-ink-800 px-4 py-3">
+        {/* Step 1 — build the review draft */}
         <button
-          className="btn-primary"
-          disabled={approve.isPending || Boolean(result?.ok)}
-          onClick={() => approve.mutate({ id: automation.id, schedule: "hourly" })}
+          className={draftReady ? "btn-ghost" : "btn-primary"}
+          disabled={buildDraft.isPending}
+          onClick={() => buildDraft.mutate({ id: automation.id, schedule: "hourly" })}
         >
-          {approve.isPending
-            ? "Creating in n8n…"
-            : result?.ok
-              ? "Approved"
-              : "Approve — build it in n8n"}
+          {buildDraft.isPending
+            ? "Building draft in n8n…"
+            : draftReady
+              ? "Rebuild draft in n8n"
+              : "Review — build a draft in n8n"}
         </button>
 
-        {result?.ok && result.configure_url && (
-          <>
-            <a
-              className="btn-ghost"
-              href={result.configure_url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Configure the accounts in n8n →
-            </a>
-            <Link className="link text-2xs" href={`/automations/${automation.id}`}>
-              Watch how it gets on
-            </Link>
-          </>
+        {/* Step 2 — open it in n8n to inspect and edit */}
+        {draftReady && configureUrl && (
+          <a className="btn-ghost" href={configureUrl} target="_blank" rel="noreferrer">
+            Open in n8n to review &amp; edit →
+          </a>
+        )}
+        {draftReady && !configureUrl && (
+          <Link className="btn-ghost" href={`/automations/${automation.id}`}>
+            Open to review &amp; edit →
+          </Link>
         )}
 
-        {!result && (
+        {/* Step 3 — the final sign-off, only after a draft exists */}
+        {draftReady && (
+          <button
+            className="btn-primary"
+            disabled={approve.isPending}
+            onClick={() => approve.mutate({ id: automation.id })}
+          >
+            {approve.isPending ? "Approving…" : "Approve"}
+          </button>
+        )}
+
+        {!draftReady && (
           <span className="text-2xs text-mist-500">
-            It arrives switched off. You choose which accounts it may use.
+            The draft arrives switched off. Review and edit it in n8n before you approve.
           </span>
         )}
-
-        {result && !result.ok && (
-          <span className="text-2xs leading-relaxed text-warn-400">{result.message}</span>
-        )}
-
-        {result?.ok && (
-          <span className="text-2xs leading-relaxed text-mist-400">{result.message}</span>
+        {draftReady && (
+          <span className="text-2xs leading-relaxed text-mist-400">
+            {result?.message ??
+              "Draft is in n8n. Open it, make any changes, then approve to sign it off."}
+          </span>
         )}
       </div>
 
-      {approve.error && (
+      {(buildDraft.error || approve.error) && (
         <div className="px-4 pb-3">
-          <ErrorNote error={approve.error} />
+          <ErrorNote error={buildDraft.error ?? approve.error} />
         </div>
       )}
     </li>

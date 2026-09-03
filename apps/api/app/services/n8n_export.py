@@ -54,6 +54,17 @@ _NODE_TYPES: dict[str, tuple[str, float]] = {
 
 _NO_OP = ("n8n-nodes-base.noOp", 1)
 
+
+def node_type_for(connector: str) -> tuple[str, float] | None:
+    """The n8n node backing a LOOP connector, or None when nothing maps.
+
+    Public because the execution planner needs the same answer to decide
+    whether n8n could run a whole flow. Two copies of this table would drift,
+    and the planner would start recommending a backend that cannot run a step.
+    """
+    return _NODE_TYPES.get(connector)
+
+
 #: How often the workflow should wake up, per LOOP trigger type. A workflow
 #: nobody triggers does nothing, so a trigger is always emitted.
 _SCHEDULE_BY_TRIGGER = {
@@ -322,7 +333,7 @@ def to_n8n_workflow(
                 x += 220
 
         connector = str(step.get("connector", ""))
-        node_type, version = _NODE_TYPES.get(connector, _NO_OP)
+        node_type, version = node_type_for(connector) or _NO_OP
         if node_type == _NO_OP[0]:
             notes.append(
                 f"no n8n node is mapped for '{connector}'; step {step.get('id')} "

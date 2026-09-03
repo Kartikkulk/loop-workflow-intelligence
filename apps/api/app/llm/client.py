@@ -69,8 +69,113 @@ class LLMClient:
             detail = exc.read().decode(errors="replace")
             raise RuntimeError(f"ollama returned HTTP {exc.code}: {detail}") from exc
 
+    @staticmethod
+    def _to_openai(payload: dict[str, Any]) -> dict[str, Any]:
+        """Translate an Ollama chat payload into an OpenAI one.
+
+        Only the fields this client actually sends are translated; anything the
+        callers do not use is not invented here. JSON-schema output becomes
+        `json_object` mode rather than OpenAI's strict `json_schema`, because
+        strict mode rejects a schema that does not set `additionalProperties`
+        false on every level, and the schemas here are shared with Ollama.
+        The schema is already in the prompt, so the model still sees it.
+        """
+        messages: list[dict[str, Any]] = []
+        for message in payload.get("messages") or []:
+            images = message.get("images") or []
+            if not images:
+                messages.append(
+                    {"role": message.get("role", "user"), "content": message.get("content", "")}
+                )
+                continue
+            blocks: list[dict[str, Any]] = [
+                {"type": "text", "text": message.get("content", "")}
+            ]
+            blocks.extend(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{image}"},
+                }
+                for image in images
+            )
+            messages.append({"role": message.get("role", "user"), "content": blocks})
+
+        options = payload.get("options") or {}
+        translated: dict[str, Any] = {
+            "model": settings.openai_model,
+            "messages": messages,
+            "temperature": options.get("temperature", 0),
+        }
+        if options.get("num_predict"):
+            translated["max_tokens"] = int(options["num_predict"])
+        if payload.get("format"):
+            translated["response_format"] = {"type": "json_object"}
+        return translated
+
+    @staticmethod
+    def _openai_chat(payload: dict[str, Any]) -> dict[str, Any]:
+        """Call OpenAI and return the response in Ollama's shape.
+
+        Normalising here rather than at the call sites is what keeps the
+        fallback invisible: `structured`, `text` and `structured_multimodal`
+        read `message.content` and the token counts either way, so none of them
+        needed a branch for this.
+        """
+        url = settings.openai_base_url.rstrip("/") + "/chat/completions"
+        body = json.dumps(LLMClient._to_openai(payload)).encode()
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.openai_api_key.strip()}",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                raw = json.loads(response.read().decode())
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode(errors="replace")
+            raise RuntimeError(f"openai returned HTTP {exc.code}: {detail}") from exc
+
+        choices = raw.get("choices") or []
+        content = ""
+        if choices:
+            content = str((choices[0].get("message") or {}).get("content") or "")
+        usage = raw.get("usage") or {}
+        return {
+            "message": {"content": content},
+            "prompt_eval_count": int(usage.get("prompt_tokens") or 0),
+            "eval_count": int(usage.get("completion_tokens") or 0),
+            "_provider": "openai",
+        }
+
     async def _chat(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return await asyncio.to_thread(self._ollama_chat, payload)
+        """Ask the local model; fall back to OpenAI when it cannot answer.
+
+        The order is deliberate and not a preference about quality: the local
+        model costs nothing and sends nothing off the machine, so it is asked
+        first every time. OpenAI is a second chance before the deterministic
+        fallback, not a replacement for it — with no key set, behaviour is
+        exactly what it was.
+        """
+        local_error: Exception | None = None
+        if settings.llm_provider.strip().lower() == "ollama" and settings.llm_model.strip():
+            try:
+                return await asyncio.to_thread(self._ollama_chat, payload)
+            except Exception as exc:  # noqa: BLE001 — a second provider may still answer
+                local_error = exc
+                if not settings.has_openai_fallback:
+                    raise
+                logger.warning("ollama call failed (%s) — trying openai", exc)
+
+        if not settings.has_openai_fallback:
+            raise local_error or RuntimeError("no LLM provider is configured")
+
+        response = await asyncio.to_thread(self._openai_chat, payload)
+        logger.info("llm call served by openai model=%s", settings.openai_model)
+        return response
 
     def _record_usage(self, response: dict[str, Any]) -> None:
         self.call_count += 1
@@ -146,9 +251,11 @@ class LLMClient:
                     }
                 )
                 self._record_usage(response)
+                served_by = str(response.get("_provider") or "ollama")
                 logger.info(
-                    "llm call ok provider=ollama model=%s tool=%s in=%d out=%d",
-                    settings.llm_model,
+                    "llm call ok provider=%s model=%s tool=%s in=%d out=%d",
+                    served_by,
+                    settings.openai_model if served_by == "openai" else settings.llm_model,
                     tool["name"],
                     int(response.get("prompt_eval_count") or 0),
                     int(response.get("eval_count") or 0),

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import random
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +17,11 @@ from app.llm.tools import ACTIONS, APPS, SYNTHESISE_EVENTS
 from app.models.event import Event
 from app.schemas.ingest import (
     DescribeRequest,
+    DiscoveredWorkflow,
     EventOut,
     EventPage,
     IngestResult,
+    SourceFacet,
 )
 from app.services.ids import new_id
 from app.services.normaliser import NormalisedEvent, normalise_upload
@@ -51,6 +55,21 @@ async def _persist(session: AsyncSession, events: list[NormalisedEvent]) -> int:
     await session.flush()
     return len(events)
 
+
+def _summarise(clusters: list) -> list[DiscoveredWorkflow]:
+    """The discoveries, ordered so the strongest opportunity is first."""
+    ranked = sorted(clusters, key=lambda c: (-(c.annual_hours or 0), -(c.instance_count or 0)))
+    return [
+        DiscoveredWorkflow(
+            id=c.id,
+            name=c.name,
+            occurrences=c.instance_count,
+            apps=list(c.apps or []),
+            annual_hours=round(c.annual_hours or 0.0, 1),
+            automatability=round(c.automatability or 0.0, 2),
+        )
+        for c in ranked
+    ]
 
 @router.post("/upload", response_model=IngestResult)
 async def upload_events(
@@ -87,8 +106,28 @@ async def upload_events(
         errors=errors[:20],
         source="upload",
         clusters_detected=len(clusters),
+        sessions=len({e.session_id for e in events if e.session_id}),
+        applications=len({e.app for e in events}),
+        workflows=_summarise(clusters),
     )
 
+
+@router.get("/template.csv")
+async def activity_template() -> FileResponse:
+    """A working example of the activity CSV, downloadable from the console.
+
+    The shipped demo fixture rather than a hand-written sample of it: a template
+    that has drifted from what the parser accepts is worse than none, and this
+    one is exercised by the test suite on every run.
+    """
+    path = Path(__file__).resolve().parents[3] / "fixtures" / "support-escalation-demo.csv"
+    if not path.is_file():
+        raise HTTPException(404, "the activity template is missing from this build")
+    return FileResponse(
+        path,
+        media_type="text/csv",
+        filename="loop-activity-template.csv",
+    )
 
 @router.post("/describe", response_model=IngestResult)
 async def describe_workflow(
@@ -249,15 +288,48 @@ async def redetect(session: AsyncSession = Depends(get_session)) -> IngestResult
 async def list_events(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    source: str | None = Query(
+        default=None,
+        description="Only events from this source, e.g. 'upload' or 'browser_extension'.",
+    ),
+    app: str | None = Query(default=None, description="Only events in this application."),
     session: AsyncSession = Depends(get_session),
 ) -> EventPage:
-    """Browse the canonical event stream."""
-    total = await session.execute(select(func.count()).select_from(Event))
+    """Browse the canonical event stream, optionally filtered.
+
+    Filtering happens in the query rather than in the browser. The stream is the
+    whole event log — hundreds of thousands of rows on a real deployment — and a
+    filter applied to whichever page happened to load would silently only search
+    the most recent fifty events.
+    """
+    filters = []
+    if source:
+        filters.append(Event.source == source)
+    if app:
+        filters.append(Event.app == app)
+
+    total = await session.execute(select(func.count()).select_from(Event).where(*filters))
     result = await session.execute(
-        select(Event).order_by(Event.timestamp.desc()).limit(limit).offset(offset)
+        select(Event)
+        .where(*filters)
+        .order_by(Event.timestamp.desc())
+        .limit(limit)
+        .offset(offset)
     )
+
+    # Facets are counted across the entire log, unfiltered, so selecting one
+    # source does not make every other source disappear from the picker.
+    source_rows = await session.execute(
+        select(Event.source, func.count()).group_by(Event.source).order_by(func.count().desc())
+    )
+    app_rows = await session.execute(
+        select(Event.app, func.count()).group_by(Event.app).order_by(func.count().desc())
+    )
+
     return EventPage(
         total=int(total.scalar() or 0),
+        sources=[SourceFacet(value=v or "unknown", count=c) for v, c in source_rows],
+        apps=[SourceFacet(value=v or "unknown", count=c) for v, c in app_rows],
         items=[
             EventOut(
                 id=e.id,
@@ -270,6 +342,7 @@ async def list_events(
                 duration_ms=e.duration_ms,
                 payload=e.payload or {},
                 session_id=e.session_id,
+                source=e.source or "",
             )
             for e in result.scalars().all()
         ],

@@ -13,6 +13,10 @@ import { isAwaitingApproval } from "./types";
 import type {
   ActivityPage,
   AutomationDetail,
+  AutomationSummary,
+  DryRunResult,
+  GeneratedCode,
+  ValidationReport,
   N8nPushResult,
   N8nRunList,
   ObservationSource,
@@ -94,6 +98,26 @@ export function useAutomation(id: string) {
     queryKey: keys.automation(id),
     queryFn: () => http.get<AutomationDetail>(`/api/v1/automations/${id}`),
     enabled: Boolean(id),
+  });
+}
+
+export function useGeneratedCode(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["generated-code", id] as const,
+    queryFn: () => http.get<GeneratedCode>(`/api/v1/automations/${id}/code`),
+    enabled: enabled && Boolean(id),
+  });
+}
+
+export function useValidateAutomation(id: string) {
+  return useMutation({
+    mutationFn: () => http.post<ValidationReport>(`/api/v1/automations/${id}/validate`),
+  });
+}
+
+export function useDryRun(id: string) {
+  return useMutation({
+    mutationFn: () => http.post<DryRunResult>(`/api/v1/automations/${id}/dry-run`),
   });
 }
 
@@ -265,6 +289,36 @@ export function useGenerateAutomation() {
   });
 }
 
+/**
+ * Reject a discovered workflow from the Discovery screen.
+ *
+ * The candidate is hidden from the recommended list, not deleted — detection
+ * would rediscover it from the event log. Reversible with useRestoreCluster.
+ */
+export function useDismissCluster() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      http.post<{ id: string; dismissed: boolean; message: string }>(
+        `/api/v1/clusters/${id}/dismiss`,
+        {},
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.clusters }),
+  });
+}
+
+export function useRestoreCluster() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      http.post<{ id: string; dismissed: boolean; message: string }>(
+        `/api/v1/clusters/${id}/restore`,
+        {},
+      ),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.clusters }),
+  });
+}
+
 export function useReplay() {
   const client = useQueryClient();
   return useMutation({
@@ -340,6 +394,25 @@ export function useApproveToN8n() {
 }
 
 /**
+ * The final sign-off, pressed after reviewing (and possibly editing) the draft
+ * in n8n. Building the draft (useApproveToN8n) and approving it are two acts on
+ * purpose: a person gets to look at exactly what will run, change it in n8n, and
+ * only then confirm.
+ */
+export function useApproveAutomation() {
+  const client = useQueryClient();
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      http.post<AutomationSummary>(`/api/v1/automations/${id}/approve`, {}),
+    onSuccess: (_data, variables) => {
+      void client.invalidateQueries({ queryKey: keys.automation(variables.id) });
+      refresh();
+    },
+  });
+}
+
+/**
  * How the exported workflow is getting on inside n8n.
  *
  * Polled rather than fetched once: the interesting moment is the first run
@@ -354,10 +427,18 @@ export function useApproveToN8n() {
  * rather than take on trust. It is the evidence behind every discovery, and if
  * it is empty then nothing downstream is real either.
  */
-export function useActivity(limit = 100) {
+export function useActivity(limit = 100, source?: string, app?: string) {
+  // Filters go to the server, not to the fetched page. Filtering a page of 200
+  // in the browser would only ever search the most recent 200 events, which on
+  // a real log is a filter that quietly lies.
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (source) params.set("source", source);
+  if (app) params.set("app", app);
+  const query = params.toString();
+
   return useQuery({
-    queryKey: ["activity", limit] as const,
-    queryFn: () => http.get<ActivityPage>(`/api/v1/ingest/events?limit=${limit}`),
+    queryKey: ["activity", query] as const,
+    queryFn: () => http.get<ActivityPage>(`/api/v1/ingest/events?${query}`),
     refetchInterval: 5_000,
   });
 }

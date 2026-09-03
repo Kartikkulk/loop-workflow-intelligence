@@ -17,12 +17,16 @@ from app.db.session import SessionLocal, get_session
 from app.models.automation import Automation
 from app.models.cluster import Cluster
 from app.models.event import Event
-from app.models.execution import ShadowRun
+from app.models.execution import ExecutionMode, ShadowRun
 from app.models.governance import ExceptionCase, Patch
 from app.schemas.automations import (
     AutomationDetail,
     AutomationList,
     AutomationSummary,
+    DryRunResult,
+    DryRunStepOut,
+    ExecutionPlanOut,
+    GeneratedCodeOut,
     GuardsOut,
     N8nExport,
     N8nPushResult,
@@ -37,12 +41,18 @@ from app.schemas.automations import (
     ShadowRunOut,
     StepOut,
     TrustStateOut,
+    ValidationReportOut,
 )
 from app.services import trust
+from app.services.codegen import SUPPORTED_METHODS, generate_code
+from app.services.engine import engine
 from app.services.exception_learning import recompute_coverage
+from app.services.execution_planner import NO_API_CONNECTORS, choose_execution_method
 from app.services.n8n_export import SCHEDULES, to_n8n_workflow
 from app.services.replay import run_replay
 from app.services.shadow import run_as_dict
+from app.services.validation import validate
+from app.services.variables import Constant, guard_from_constants
 
 router = APIRouter(prefix="/automations", tags=["automations"])
 
@@ -82,6 +92,7 @@ def _to_summary(automation: Automation, annual_hours: float) -> AutomationSummar
         step_count=len(automation.steps or []),
         created_at=(automation.created_at or datetime.now(UTC)).isoformat(),
         n8n_workflow_id=automation.n8n_workflow_id or "",
+        approved=bool(automation.approved),
     )
 
 
@@ -118,6 +129,19 @@ async def build_automation_detail(
         trust_history=list(automation.trust_history or []),
         open_exception_count=int(open_exceptions.scalar() or 0),
         pending_patch_count=int(pending_patches.scalar() or 0),
+        execution=(
+            ExecutionPlanOut(
+                method=automation.execution_method,
+                rationale=automation.execution_rationale,
+                confidence=automation.execution_confidence,
+                decided_by=automation.execution_decided_by,
+                alternative_method=automation.execution_alternative,
+                alternative_rationale=automation.execution_alternative_why,
+                factors=list(automation.execution_factors or []),
+            )
+            if automation.execution_method
+            else None
+        ),
     )
 
 
@@ -170,6 +194,62 @@ _NEEDS_ACCOUNT = (
     "googleDrive", "github", "jenkins",
 )
 
+
+@router.get("/{automation_id}/code", response_model=GeneratedCodeOut)
+async def generated_code(
+    automation_id: str, session: AsyncSession = Depends(get_session)
+) -> GeneratedCodeOut:
+    """The runnable artefact for whichever runtime was chosen for this automation.
+
+    Generated on demand rather than stored. The flow definition changes when a
+    patch is accepted or the automation is regenerated, and a cached script
+    would then describe an automation that no longer exists — which is a far
+    worse failure than spending a few milliseconds rendering it again.
+
+    `n8n` has no source file: its artefact is the importable workflow JSON from
+    `GET /{id}/n8n`, so this reports that rather than inventing a second format.
+    """
+    automation = await _get_automation(session, automation_id)
+    method = automation.execution_method
+    if not method:
+        plan = await choose_execution_method(
+            name=automation.name, steps=list(automation.steps or [])
+        )
+        automation.execution_method = method = plan.method
+        automation.execution_rationale = plan.rationale
+        automation.execution_confidence = plan.confidence
+        automation.execution_decided_by = plan.decided_by
+        automation.execution_alternative = plan.alternative_method
+        automation.execution_alternative_why = plan.alternative_rationale
+        automation.execution_factors = list(plan.factors)
+        await session.flush()
+
+    if method not in SUPPORTED_METHODS:
+        raise HTTPException(
+            409,
+            {
+                "message": f"'{method}' does not produce a source file",
+                "hint": f"GET /api/v1/automations/{automation_id}/n8n returns its workflow JSON",
+            },
+        )
+
+    cluster = await _cluster_for(session, automation)
+    code = generate_code(
+        method=method,
+        name=automation.name,
+        description=automation.description,
+        cluster_id=automation.cluster_id,
+        steps=list(automation.steps or []),
+        guards=dict(automation.guards or {}),
+        variables=list(cluster.variables or []) if cluster else [],
+        constants=list(cluster.constants or []) if cluster else [],
+        browser_connectors=_browser_side(automation),
+        api_connectors=_api_side(automation),
+        occurrences=cluster.instance_count if cluster else 0,
+    )
+    if code is None:
+        raise HTTPException(500, f"no generator produced output for '{method}'")
+    return GeneratedCodeOut(**code.as_dict())
 
 @router.get("/{automation_id}/n8n", response_model=N8nExport)
 async def export_to_n8n(
@@ -243,13 +323,14 @@ async def push_to_n8n(
     ]
 
     base = settings.n8n_base_url.rstrip("/")
+    link_base = settings.n8n_link_base
     if not settings.n8n_api_key.strip():
         return N8nPushResult(
             ok=False,
             needs_credentials=needs,
             notes=notes,
             message=(
-                f"No n8n API key is set. Open {base}, then Settings > n8n API, "
+                f"No n8n API key is set. Open {link_base}, then Settings > n8n API, "
                 "create a key, and put it in .env as LOOP_N8N_API_KEY."
             ),
         )
@@ -327,7 +408,7 @@ async def push_to_n8n(
     return N8nPushResult(
         ok=True,
         workflow_id=workflow_id,
-        configure_url=f"{base}/workflow/{workflow_id}",
+        configure_url=f"{link_base}/workflow/{workflow_id}",
         needs_credentials=needs,
         notes=notes,
         message=(
@@ -339,6 +420,31 @@ async def push_to_n8n(
             )
         ),
     )
+
+
+@router.post("/{automation_id}/approve", response_model=AutomationSummary)
+async def approve_automation(
+    automation_id: str, session: AsyncSession = Depends(get_session)
+) -> AutomationSummary:
+    """Give an automation the final human sign-off, after it has been reviewed.
+
+    A draft must exist in n8n first (built by POST /{id}/n8n), so the person has
+    somewhere to open, inspect and edit it before confirming. Approving without a
+    draft is refused rather than silently allowed — the review step is the point.
+    """
+    automation = await _get_automation(session, automation_id)
+    if not (automation.n8n_workflow_id or "").strip():
+        raise HTTPException(
+            409,
+            {
+                "message": "Build a review draft in n8n before approving.",
+                "hint": f"POST /api/v1/automations/{automation_id}/n8n first",
+            },
+        )
+    automation.approved = True
+    await session.flush()
+    await session.commit()
+    return _to_summary(automation, await _cluster_hours(session, automation.cluster_id))
 
 
 @router.get("/{automation_id}/n8n/runs", response_model=N8nRunList)
@@ -356,12 +462,13 @@ async def n8n_runs(
     automation = await _get_automation(session, automation_id)
     workflow_id = automation.n8n_workflow_id
     base = settings.n8n_base_url.rstrip("/")
+    link_base = settings.n8n_link_base
 
     if not workflow_id:
         return N8nRunList(
             ok=False, message="Not exported yet. Approve it to build it in n8n."
         )
-    configure_url = f"{base}/workflow/{workflow_id}"
+    configure_url = f"{link_base}/workflow/{workflow_id}"
     if not settings.n8n_api_key.strip():
         return N8nRunList(
             ok=False,
@@ -441,6 +548,146 @@ async def n8n_runs(
         message=message,
     )
 
+
+def _browser_side(automation: Automation) -> list[str]:
+    """Connectors the browser half of a hybrid drives."""
+    return sorted(
+        {
+            str(step.get("connector"))
+            for step in (automation.steps or [])
+            if str(step.get("connector")) in NO_API_CONNECTORS
+        }
+    )
+
+
+def _api_side(automation: Automation) -> list[str]:
+    return sorted(
+        {
+            str(step.get("connector"))
+            for step in (automation.steps or [])
+            if str(step.get("connector")) not in NO_API_CONNECTORS
+        }
+    )
+
+
+def expected_guard_for(constants: list[dict], signature: list[str]) -> str:
+    """The guard the observation implies, for comparison against the generated one."""
+    return guard_from_constants(
+        [
+            Constant(
+                name=str(c.get("name", "")),
+                step_token=str(c.get("step_token", "")),
+                key=str(c.get("key", "")),
+                value=str(c.get("value", "")),
+                occurrences=int(c.get("occurrences", 0) or 0),
+            )
+            for c in constants
+        ]
+    )
+
+async def _cluster_for(session: AsyncSession, automation: Automation) -> Cluster | None:
+    result = await session.execute(select(Cluster).where(Cluster.id == automation.cluster_id))
+    return result.scalars().first()
+
+
+@router.post("/{automation_id}/validate", response_model=ValidationReportOut)
+async def validate_automation(
+    automation_id: str, session: AsyncSession = Depends(get_session)
+) -> ValidationReportOut:
+    """Check the automation against the activity that was actually observed.
+
+    Run before the approval screen is shown. The cluster's signature is the
+    source of truth: a step naming a system nobody was seen using is a
+    fabrication, however reasonable it looks, and is reported rather than
+    quietly accepted.
+    """
+    automation = await _get_automation(session, automation_id)
+    cluster = await _cluster_for(session, automation)
+    signature = list(cluster.signature or []) if cluster else []
+    variables = list(cluster.variables or []) if cluster else []
+    constants = list(cluster.constants or []) if cluster else []
+
+    method = automation.execution_method or "python"
+    code = generate_code(
+        method=method,
+        name=automation.name,
+        description=automation.description,
+        cluster_id=automation.cluster_id,
+        steps=list(automation.steps or []),
+        guards=dict(automation.guards or {}),
+        variables=variables,
+        constants=constants,
+        browser_connectors=_browser_side(automation),
+        api_connectors=_api_side(automation),
+        occurrences=cluster.instance_count if cluster else 0,
+    )
+
+    report = validate(
+        steps=list(automation.steps or []),
+        guards=dict(automation.guards or {}),
+        signature=signature,
+        method=method,
+        variables=variables,
+        source=code.source if code else "",
+        expected_guard=expected_guard_for(constants, signature),
+    )
+    return ValidationReportOut(**report.as_dict())
+
+
+@router.post("/{automation_id}/dry-run", response_model=DryRunResult)
+async def dry_run(
+    automation_id: str, session: AsyncSession = Depends(get_session)
+) -> DryRunResult:
+    """Run the automation once with every side effect suppressed.
+
+    Uses the same engine a live run uses, in replay mode. That is the point:
+    a dry run performed by a separate code path proves nothing about the thing
+    that will actually execute. Mock connectors are forced by the engine for
+    replay, so no configuration of this endpoint can make it touch a real
+    system.
+    """
+    automation = await _get_automation(session, automation_id)
+    cluster = await _cluster_for(session, automation)
+
+    # Feed it the fields the observed runs carried, so the dry run exercises
+    # the same shape of data a real trigger would.
+    source_payload: dict = {}
+    for constant in (cluster.constants or []) if cluster else []:
+        source_payload[constant.get("name", "")] = constant.get("value", "")
+    for variable in (cluster.variables or []) if cluster else []:
+        samples = variable.get("samples") or []
+        if samples:
+            source_payload[variable.get("name", "")] = samples[0]
+
+    result = await engine.run(
+        steps=list(automation.steps or []),
+        guards=dict(automation.guards or {}),
+        rules=list(automation.rules or []),
+        mode=ExecutionMode.REPLAY,
+        source_payload=source_payload,
+    )
+
+    by_id = {str(s.get("id")): s for s in (automation.steps or [])}
+    steps = [
+        DryRunStepOut(
+            step_id=r.step_id,
+            connector=str(by_id.get(r.step_id, {}).get("connector", "")),
+            action=str(by_id.get(r.step_id, {}).get("type", "")),
+            status=r.status,
+            outputs={k: v for k, v in (r.outputs or {}).items() if v is not None},
+            error=r.error,
+        )
+        for r in result.step_results
+    ]
+    return DryRunResult(
+        status=result.status,
+        steps=steps,
+        would_have=list(result.side_effects),
+        held_by_guard=result.needs_approval,
+        guard_reason=result.approval_reason,
+        # Replay forces mocks in the engine, so this is a statement of fact.
+        side_effects_performed=0,
+    )
 
 @router.post("/{automation_id}/replay", response_model=ReplayReportOut)
 async def replay_automation(

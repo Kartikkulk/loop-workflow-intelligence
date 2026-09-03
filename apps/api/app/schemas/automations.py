@@ -59,8 +59,28 @@ class AutomationSummary(BaseModel):
     annual_hours: float = 0.0
     step_count: int = 0
     created_at: str
-    #: n8n's id, once approved and exported. Empty means still a proposal.
+    #: n8n's id, once a review draft has been built there. Empty until then.
     n8n_workflow_id: str = ""
+    #: The final human sign-off, after reviewing (and maybe editing) the draft
+    #: in n8n. A draft can exist (n8n_workflow_id set) while this is still False.
+    approved: bool = False
+
+
+class ExecutionPlanOut(BaseModel):
+    """Which runtime was chosen to execute an automation, and why."""
+
+    method: str = Field(description="n8n, playwright or python.")
+    rationale: str = ""
+    confidence: float = 0.0
+    #: "llm" or "heuristic", so a reviewer knows what made the call.
+    decided_by: str = ""
+    #: What the connector rules would have chosen instead, when they disagree.
+    #: Empty when both agree. Shown at the approval gate rather than resolved
+    #: silently, because either choice has a real cost.
+    alternative_method: str = ""
+    alternative_rationale: str = ""
+    #: One line per observation behind the choice.
+    factors: list[str] = Field(default_factory=list)
 
 
 class AutomationDetail(AutomationSummary):
@@ -72,6 +92,21 @@ class AutomationDetail(AutomationSummary):
     trust_history: list[dict]
     open_exception_count: int = 0
     pending_patch_count: int = 0
+    execution: ExecutionPlanOut | None = None
+
+
+class GeneratedCodeOut(BaseModel):
+    """GET /api/v1/automations/{id}/code"""
+
+    method: str
+    filename: str
+    source: str = Field(description="The complete file, ready to write to disk and run.")
+    #: What has to exist before this will run.
+    requirements: list[str] = Field(default_factory=list)
+    #: Steps that could not be fully generated, and why. Empty means the file
+    #: is complete as it stands.
+    caveats: list[str] = Field(default_factory=list)
+    line_count: int = 0
 
 
 class AutomationList(BaseModel):
@@ -213,3 +248,52 @@ class SimulateShadowRequest(BaseModel):
         default=False,
         description="Deliberately pick a run the automation gets wrong, to demonstrate demotion.",
     )
+
+class ValidationFindingOut(BaseModel):
+    """One thing wrong with a generated automation."""
+
+    check: str
+    detail: str
+    step_id: str = ""
+    blocking: bool = True
+
+
+class ValidationReportOut(BaseModel):
+    """POST /api/v1/automations/{id}/validate"""
+
+    ok: bool = Field(
+        description="True only when nothing blocking was found. Never approximated."
+    )
+    passed: list[str] = Field(default_factory=list)
+    findings: list[ValidationFindingOut] = Field(default_factory=list)
+    blocking_count: int = 0
+
+
+class DryRunStepOut(BaseModel):
+    """What one step did during a dry run."""
+
+    step_id: str
+    connector: str = ""
+    action: str = ""
+    status: str
+    outputs: dict = Field(default_factory=dict)
+    error: str | None = None
+
+
+class DryRunResult(BaseModel):
+    """POST /api/v1/automations/{id}/dry-run
+
+    Every connector is forced to its mock during a dry run, by the engine rather
+    than by this endpoint, so no step can reach a real system however it is
+    configured.
+    """
+
+    status: str = Field(description="ok, needs_approval or failed.")
+    steps: list[DryRunStepOut] = Field(default_factory=list)
+    #: Side effects that a live run *would* have produced, and did not.
+    would_have: list[str] = Field(default_factory=list)
+    held_by_guard: bool = False
+    guard_reason: str | None = None
+    #: Restates the safety property in the response itself.
+    side_effects_performed: int = 0
+

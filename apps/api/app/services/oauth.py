@@ -169,8 +169,61 @@ async def complete(
     }
 
     await session.flush()
+    if provider.key == "atlassian":
+        await resolve_atlassian_site(session, connection)
     await _label_account(session, provider, connection)
     return connection
+
+
+async def resolve_atlassian_site(session: AsyncSession, connection: Connection) -> None:
+    """Record which Jira site this token can reach.
+
+    Atlassian is the one provider whose token says nothing about where to send
+    a request. One token may span several sites, so the cloud id lives behind
+    `accessible-resources` and has to be fetched separately — the token
+    response has no `cloud_id` to read, and never did. Skipping this step left
+    every Jira sync reporting that Jira "did not report a site" on a connection
+    that had in fact authorised perfectly well, which reconnecting could not
+    fix because reconnecting was never the missing part.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(
+                "https://api.atlassian.com/oauth/token/accessible-resources",
+                headers={"Authorization": f"Bearer {connection.access_token}"},
+            )
+        response.raise_for_status()
+        resources = response.json() or []
+    except Exception as exc:  # noqa: BLE001 — recorded for the UI, not raised
+        logger.info("could not list atlassian sites: %s", exc)
+        connection.last_error = (
+            "Connected, but LOOP could not ask Atlassian which Jira site to read. "
+            "Press Sync to try again."
+        )
+        await session.flush()
+        return
+
+    if not resources:
+        connection.last_error = (
+            "Connected, but this Atlassian account has no Jira site granted to the "
+            "integration. Open the site as an admin and install the app, or pick an "
+            "account that already has Jira."
+        )
+        await session.flush()
+        return
+
+    # A token can span several sites; prefer one that actually granted Jira.
+    chosen = next(
+        (r for r in resources if any("jira" in s for s in (r.get("scopes") or []))),
+        resources[0],
+    )
+    connection.extra = {
+        **(connection.extra or {}),
+        "cloud_id": str(chosen.get("id") or ""),
+        "site_url": str(chosen.get("url") or ""),
+    }
+    connection.last_error = None
+    await session.flush()
 
 
 async def _label_account(

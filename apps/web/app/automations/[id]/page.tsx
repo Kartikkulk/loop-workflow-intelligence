@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExecutionPlanPanel } from "@/components/execution-plan";
 import { FlowDefinition } from "@/components/flow-definition";
 import { Badge, ErrorNote, PageHeader, PageSkeleton, Panel } from "@/components/ui";
 import { useAutomation, useN8nRuns } from "@/lib/api/queries";
@@ -29,7 +30,8 @@ export default function AutomationDetailPage() {
   if (error) return <div className="p-8"><ErrorNote error={error} /></div>;
   if (!automation) return null;
 
-  const approved = Boolean(automation.n8n_workflow_id);
+  const approved = automation.approved;
+  const hasDraft = Boolean(automation.n8n_workflow_id);
 
   return (
     <div className="pb-16">
@@ -47,8 +49,8 @@ export default function AutomationDetailPage() {
 
       <div className="space-y-6 px-8 pt-6">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={approved ? "good" : "warn"}>
-            {approved ? "Built in n8n" : "Not approved yet"}
+          <Badge tone={approved ? "good" : hasDraft ? "accent" : "warn"}>
+            {approved ? "Approved" : hasDraft ? "In review — draft in n8n" : "Not approved yet"}
           </Badge>
           <span className="text-2xs text-mist-500">
             {automation.step_count} steps · found in {hours(automation.annual_hours)} hrs/yr of
@@ -70,6 +72,12 @@ export default function AutomationDetailPage() {
         >
           <FlowDefinition automation={automation} />
         </Panel>
+
+        <ExecutionPlanPanel
+          id={id}
+          plan={automation.execution}
+          guard={automation.guards.requires_approval_if}
+        />
 
         {automation.guards.requires_approval_if && (
           <Panel

@@ -15,21 +15,30 @@ import type { ActivityEvent } from "@/lib/api/types";
  * honest answer to "what are you collecting about me?" — the answer is these
  * columns and nothing else.
  */
+/** What each stored source value is called in the interface. */
+const SOURCE_LABELS: Record<string, string> = {
+  upload: "CSV / file upload",
+  browser_extension: "Browser collector",
+  desktop: "Desktop recorder",
+  connector: "Connected account",
+  seed: "Demo data",
+};
+
 export default function ActivityPage() {
-  const activity = useActivity(200);
-  const system = useSystem();
   const [app, setApp] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
+  const activity = useActivity(200, source ?? undefined, app ?? undefined);
+  const system = useSystem();
 
   // Memoised because `?? []` builds a fresh array each render, which would
   // make the useMemo below recompute on every one of them.
   const events = useMemo(() => activity.data?.items ?? [], [activity.data]);
-  const apps = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const event of events) counts.set(event.app, (counts.get(event.app) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [events]);
+  // Facets come from the server, counted across the whole log rather than the
+  // page in hand — so selecting a filter never makes the other options vanish.
+  const apps = activity.data?.apps ?? [];
+  const sources = activity.data?.sources ?? [];
 
-  const shown = app ? events.filter((e) => e.app === app) : events;
+  const shown = events;
   const sessions = new Set(events.map((e) => e.session_id ?? "")).size;
 
   if (activity.isLoading) return <PageSkeleton rows={4} />;
@@ -64,6 +73,40 @@ export default function ActivityPage() {
           />
         </div>
 
+        {sources.length > 0 && (
+          <Panel
+            title="By source"
+            hint="Where the events came from. Detection treats them identically — this is so you can see what you are looking at."
+          >
+            <div className="flex flex-wrap gap-2 px-4 py-3">
+              <button
+                className={`rounded-md border px-2.5 py-1 text-2xs transition-colors ${
+                  source === null
+                    ? "border-good-500/40 bg-good-500/10 text-good-300"
+                    : "border-ink-700 text-mist-400 hover:text-mist-200"
+                }`}
+                onClick={() => setSource(null)}
+              >
+                Every source
+              </button>
+              {sources.map((facet) => (
+                <button
+                  key={facet.value}
+                  className={`rounded-md border px-2.5 py-1 text-2xs transition-colors ${
+                    source === facet.value
+                      ? "border-good-500/40 bg-good-500/10 text-good-300"
+                      : "border-ink-700 text-mist-400 hover:text-mist-200"
+                  }`}
+                  onClick={() => setSource(facet.value)}
+                >
+                  {SOURCE_LABELS[facet.value] ?? facet.value}{" "}
+                  <span className="tnum text-mist-600">{facet.count}</span>
+                </button>
+              ))}
+            </div>
+          </Panel>
+        )}
+
         {apps.length > 0 && (
           <Panel title="By application" hint="Click one to filter the stream below.">
             <div className="flex flex-wrap gap-2 px-4 py-3">
@@ -77,17 +120,17 @@ export default function ActivityPage() {
               >
                 Everything
               </button>
-              {apps.map(([name, count]) => (
+              {apps.map((facet) => (
                 <button
-                  key={name}
+                  key={facet.value}
                   className={`rounded-md border px-2.5 py-1 text-2xs transition-colors ${
-                    app === name
+                    app === facet.value
                       ? "border-accent-500/40 bg-accent-500/10 text-accent-300"
                       : "border-ink-700 text-mist-400 hover:text-mist-200"
                   }`}
-                  onClick={() => setApp(name)}
+                  onClick={() => setApp(facet.value)}
                 >
-                  {name} <span className="tnum text-mist-600">{count}</span>
+                  {facet.value} <span className="tnum text-mist-600">{facet.count}</span>
                 </button>
               ))}
             </div>

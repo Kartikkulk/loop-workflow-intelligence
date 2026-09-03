@@ -76,8 +76,32 @@ class Automation(Base, TimestampMixin):
     coverage: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     generated_by: Mapped[str] = mapped_column(String(32), nullable=False, default="heuristic")
 
-    #: n8n's id for this workflow, once it has been approved and exported.
-    #: Its presence is what "approved" means: LOOP decided the work was worth
-    #: automating and handed it to the thing that will run it. Empty until then.
+    #: Which runtime was chosen to execute this, and why. Decided after the
+    #: flow exists, because the choice follows from the connectors its steps
+    #: actually touch — a workflow with one browser step can only be driven by
+    #: a browser however tidy the rest of it looks.
+    execution_method: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    execution_rationale: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    execution_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    #: "llm" or "heuristic", so a reviewer knows which made the call.
+    execution_decided_by: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    #: What the connector rules would have chosen, when they disagreed with the
+    #: model. Empty when both agree.
+    execution_alternative: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    execution_alternative_why: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    #: The observations behind the choice, shown to the reviewer. A
+    #: recommendation with no visible reasoning is indistinguishable from a guess.
+    execution_factors: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
+    #: n8n's id for this workflow, once a review draft has been built there.
+    #: Its presence means the workflow exists in n8n (switched off) for a person
+    #: to open and edit; it is the *review* draft, not the final sign-off. Empty
+    #: until "Review in n8n" is pressed.
     n8n_workflow_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    #: The final human sign-off, pressed after reviewing (and possibly editing)
+    #: the draft in n8n. Building the draft and approving it are deliberately two
+    #: acts: a person gets to look at what will run, change it in n8n, and only
+    #: then confirm. An automation is "awaiting approval" while it has a draft
+    #: but this is still False.
+    approved: Mapped[bool] = mapped_column(default=False, nullable=False)
     trust_history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     logger.info(
         "LOOP api ready — db=%s llm=%s connectors=%s",
         settings.database_url.split("://")[0],
-        f"{settings.llm_provider}:{settings.llm_model}"
+        settings.llm_description
         if llm.available
         else "deterministic fallback",
         "mock" if settings.enable_mock_connectors else "live",
@@ -102,7 +102,7 @@ async def health() -> Health:
         status="ok" if database == "ok" else "degraded",
         database=database,
         llm=(
-            f"{settings.llm_provider}:{settings.llm_model}"
+            settings.llm_description
             if llm.available
             else "deterministic fallback (no local model)"
         ),
@@ -116,7 +116,7 @@ async def llm_usage() -> LlmUsage:
     """Running LLM usage. Local Ollama models report zero hosted spend."""
     return LlmUsage(
         available=llm.available,
-        model=f"{settings.llm_provider}:{settings.llm_model}" if llm.available else "none",
+        model=settings.llm_description if llm.available else "none",
         calls=llm.call_count,
         fallbacks=llm.fallback_count,
         input_tokens=llm.total_input_tokens,

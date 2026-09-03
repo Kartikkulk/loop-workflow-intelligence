@@ -46,11 +46,19 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    # Everything else in .env reaches the API through this — detection floors,
+    # scoring weights, credentials. The explicit values below still win, and
+    # they are the ones whose host-shaped form is wrong inside a container.
+    env_file:
+      - path: .env
+        required: false
     environment:
-      LOOP_DATABASE_URL: postgresql+asyncpg://loop:loop@postgres:5432/loop
+      # Falls back to the bundled Postgres, but a hosted URL in .env wins — the
+      # point of pointing at Neon is that the data outlives `docker compose down`.
+      LOOP_DATABASE_URL: ${LOOP_DATABASE_URL:-postgresql+asyncpg://loop:loop@postgres:5432/loop}
       LOOP_ENABLE_MOCK_CONNECTORS: "true"
       LOOP_LLM_PROVIDER: ollama
-      LOOP_LLM_MODEL: ${LOOP_LLM_MODEL:-qwen2.5:7b-instruct}
+      LOOP_LLM_MODEL: ${LOOP_LLM_MODEL:-qwen2.5:1.5b-instruct}
       # Deliberately NOT ${LOOP_OLLAMA_BASE_URL}. That variable holds the host's
       # view — localhost:11434 — which inside this container resolves to the
       # container itself, so reading it here would silently point the API at
@@ -63,8 +71,12 @@ services:
       # point the API at itself. The key comes from .env — pushing a workflow
       # needs it, and it is created inside n8n rather than shipped with the repo.
       LOOP_N8N_BASE_URL: http://n8n:5678
+      # The same n8n as the browser reaches it. `n8n:5678` is resolvable only
+      # on the compose network, so a link built from it fails in the browser.
+      LOOP_N8N_PUBLIC_URL: ${LOOP_N8N_PUBLIC_URL:-http://localhost:5678}
       LOOP_N8N_API_KEY: ${LOOP_N8N_API_KEY:-}
       LOOP_FILES_ROOT: /data/invoices
+      LOOP_SEED_ON_BOOT: ${LOOP_SEED_ON_BOOT:-true}
     ports:
       - "8000:8000"
     depends_on:
@@ -76,9 +88,11 @@ services:
     # resolves identically on both sides of the export.
     volumes:
       - ${LOOP_FILES_ROOT:-~/LOOP-Invoices}:/data/invoices
-    # Seed on first boot so a clean clone has data to show immediately.
+    # Seed on boot so a clean clone has data to show immediately. Set
+    # LOOP_SEED_ON_BOOT=false once the database holds real observed activity —
+    # otherwise every restart replaces it with the synthetic set.
     command: >
-      sh -c "python scripts/seed.py &&
+      sh -c "if [ \"$$LOOP_SEED_ON_BOOT\" != \"false\" ]; then python scripts/seed.py; fi &&
              python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   web:

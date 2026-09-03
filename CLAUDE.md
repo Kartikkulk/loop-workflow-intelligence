@@ -13,7 +13,7 @@ Hackathon project. Optimise for a working demo, not for scale.
   Query v5, Recharts. Tailwind v4 requires Node 20; this machine runs Node 18.
 - Backend: Python 3.11+, FastAPI, Pydantic v2, SQLAlchemy 2.0 (async)
 - DB: SQLite by default (zero infra), Postgres 16 via Docker Compose
-- LLM: a local model through Ollama (`qwen2.5:7b-instruct`), structured output
+- LLM: a local model through Ollama (`qwen2.5:1.5b-instruct`), structured output
   via JSON-schema `format`, with a deterministic fallback for every call so the
   product runs with no model installed and nothing ever leaves the machine
 - ML: scikit-learn + rapidfuzz. sentence-transformers is optional

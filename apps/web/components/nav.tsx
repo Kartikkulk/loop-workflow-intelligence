@@ -16,7 +16,7 @@ import { useApprovalCount, useSystem } from "@/lib/api/queries";
  * nothing sends anyone to a screen of graphs.
  */
 const LINKS = [
-  { href: "/", label: "Dashboard", hint: "What's happening" },
+  { href: "/dashboard", label: "Dashboard", hint: "What's happening" },
   { href: "/activity", label: "Activity", hint: "What LOOP has seen" },
   { href: "/discovery", label: "Discoveries", hint: "Repetitive work found" },
   { href: "/approvals", label: "Approval", hint: "Needs your yes" },
@@ -33,13 +33,18 @@ export function Nav() {
   const { data: system } = useSystem();
   const pending = useApprovalCount();
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => pathname.startsWith(href);
+
+  // The landing page is not part of the console and carries no sidebar. Hidden
+  // here rather than by giving the marketing route its own layout, so the
+  // console's data providers stay mounted and moving between the two does not
+  // refetch everything.
+  if (pathname === "/") return null;
 
   return (
     <nav className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-ink-700 bg-ink-950">
       <div className="border-b border-ink-700 px-5 py-5">
-        <Link href="/" className="block">
+        <Link href="/dashboard" className="block">
           <div className="flex items-center gap-2">
             <LoopMark />
             <span className="text-sm font-semibold tracking-tight text-mist-100">LOOP</span>

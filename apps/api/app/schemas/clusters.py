@@ -1,6 +1,6 @@
 """F2/F3 — cluster response models."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class VarianceOut(BaseModel):
@@ -46,6 +46,15 @@ class ClusterSummary(BaseModel):
     priority: float
     do_not_automate: bool
     reasoning: str
+    #: Strength of the evidence that this is a real repetitive workflow:
+    #: "early", "moderate" or "strong". Lets the console distinguish a
+    #: two-occurrence demo candidate from a proven workflow.
+    evidence_level: str = "strong"
+    #: True while the case rests on few observations — the UI recommends
+    #: watching more before acting, and never auto-executes.
+    requires_more_observation: bool = False
+    #: Rejected on the Discovery screen. Hidden from the recommended list.
+    dismissed: bool = False
     has_automation: bool = False
     automation_id: str | None = None
 
@@ -56,6 +65,10 @@ class ClusterDetail(ClusterSummary):
     users: list["ClusterUser"]
     step_graph: list["StepNode"]
     variants: list["SignatureVariant"]
+    #: Fields the automation must take as inputs, with sample observed values.
+    variables: list["ObservedVariable"] = Field(default_factory=list)
+    #: Fields that held one value on every run — the evidence behind a guard.
+    constants: list["ObservedConstant"] = Field(default_factory=list)
 
 
 class ClusterUser(BaseModel):
@@ -101,6 +114,36 @@ class SopOut(BaseModel):
     name: str
     markdown: str
     generated_by: str
+
+
+class DismissResult(BaseModel):
+    """POST /api/v1/clusters/{id}/dismiss and /restore"""
+
+    id: str
+    dismissed: bool
+    message: str
+
+class ObservedVariable(BaseModel):
+    """A field whose value changed run to run, so the automation parameterises it."""
+
+    name: str
+    placeholder: str = Field(description="e.g. {{customer}}")
+    step_token: str
+    key: str
+    samples: list[str] = Field(default_factory=list)
+    distinct_count: int = 0
+    occurrences: int = 0
+
+
+class ObservedConstant(BaseModel):
+    """A field that held the same value on every observed run."""
+
+    name: str
+    step_token: str
+    key: str
+    value: str
+    occurrences: int = 0
+
 
 
 ClusterDetail.model_rebuild()

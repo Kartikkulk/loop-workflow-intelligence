@@ -7,34 +7,25 @@ tests.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.automation import Automation
 from app.models.cluster import Cluster, TaskInstance
 from app.models.event import Event
 from app.services.clustering import ClusterResult, cluster_instances
-from app.services.scoring import score_cluster, variance_as_dict
+from app.services.scoring import discovery_confidence, score_cluster, variance_as_dict
 from app.services.sessioniser import Instance, sessionise, signature_hash
+from app.services.variables import METADATA_KEYS
+from app.services.variables import detect as detect_variables
 
 logger = logging.getLogger("loop.pipeline")
 
-# A workflow seen fewer times than this is not yet an opportunity.
-#
-# The floor is about statistical support, not tidiness. Annual hours are
-# projected from an observed weekly frequency, and a dozen observations spread
-# over a quarter gives a frequency estimate too noisy to put a number on. It
-# also keeps the ranking free of one-off fragments that would bury real signal.
-MIN_INSTANCES = 15
-
-# A two-step signature is almost always a truncation artefact: a longer workflow
-# that got cut in half because an unrelated event landed in the middle of it.
-# Surfacing those as separate opportunities double-counts the same work and
-# clutters the ranking with 2-hour "workflows".
-MIN_SIGNATURE_STEPS = 3
 
 
 # Above this step-order entropy, a cluster has no stable first or last step, so
@@ -132,6 +123,23 @@ DECISION_FIELDS = frozenset({"status", "amount_inr", "approval", "note"})
 _FIELD_ALIASES = {"Vendor": "vendor", "Supplier Name": "vendor"}
 
 
+def field_name_for(step_token: str, key: str) -> str:
+    """Name a step's field after what it holds, not after the column it arrived in.
+
+    A UI collector labels every captured datum `value`, so a ten-step workflow
+    produced ten fields all called `value`. They then collide: each step's
+    output overwrites the last, and a later step depending on `value` resolves
+    to whichever step ran most recently rather than the one it read from. Naming
+    by the step's object type — the `value` on `browser:read:customer` is the
+    customer — makes the dependency graph mean what it says, and matches the
+    names variable detection gives the same fields.
+    """
+    if key not in ("value", "target"):
+        return key
+    parts = step_token.split(":")
+    object_type = parts[2] if len(parts) > 2 else ""
+    return object_type or key
+
 def observed_fields_by_token(group: ClusterResult) -> dict[str, list[str]]:
     """Collect the payload keys observed for each step token in a cluster.
 
@@ -145,9 +153,14 @@ def observed_fields_by_token(group: ClusterResult) -> dict[str, list[str]]:
             token = event.step_token
             bucket = collected.setdefault(token, set())
             for key in (event.payload or {}):
-                if key == "workflow_hint":
+                # Collector bookkeeping — which tab, which hostname, which DOM
+                # control — describes how the observation was made, not what the
+                # work moved. Letting it through made `domain` a step output and
+                # then a dependency, so every run failed resolving a field no
+                # step could ever produce.
+                if key in METADATA_KEYS:
                     continue
-                bucket.add(_FIELD_ALIASES.get(key, key))
+                bucket.add(_FIELD_ALIASES.get(key, field_name_for(token, key)))
     return {token: sorted(keys) for token, keys in collected.items()}
 
 
@@ -174,31 +187,79 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
     logger.info("detection: %d events -> %d task instances", len(events), len(instances))
 
     groups: list[ClusterResult] = cluster_instances(instances)
+    min_instances = settings.effective_min_instances
+    min_steps = settings.min_signature_steps
     groups = [
-        g
-        for g in groups
-        if g.size >= MIN_INSTANCES and len(g.representative) >= MIN_SIGNATURE_STEPS
+        g for g in groups if g.size >= min_instances and len(g.representative) >= min_steps
     ]
     logger.info(
-        "detection: %d clusters above the floor (>=%d instances, >=%d steps)",
+        "detection: %d clusters above the floor (>=%d instances, >=%d steps, mode=%s)",
         len(groups),
-        MIN_INSTANCES,
-        MIN_SIGNATURE_STEPS,
+        min_instances,
+        min_steps,
+        settings.discovery_mode,
     )
+
+    # A rejected candidate must stay rejected across a re-detection. Cluster ids
+    # are a deterministic function of the signature, so the same workflow keeps
+    # the same id — capture which ids were dismissed before the wipe and
+    # reinstate the flag on the rebuilt rows below.
+    dismissed_before = await session.execute(select(Cluster.id).where(Cluster.dismissed.is_(True)))
+    dismissed_ids = {row[0] for row in dismissed_before}
 
     # Replace rather than merge: detection is a pure function of the event log.
     await session.execute(delete(TaskInstance))
     await session.execute(delete(Cluster))
     await session.flush()
 
+    # Scored first, and all at once. Each cluster's score costs one model call,
+    # and running them in sequence made detection take as long as the slowest
+    # model multiplied by the number of workflows found — two minutes for three
+    # clusters on a local 8B, during which an upload appears to have hung. The
+    # scores are independent of one another, so there was never a reason to wait
+    # for one before starting the next.
+    provisional_names = [
+        _pretty_name(list(group.representative), "Repetitive workflow") for group in groups
+    ]
+    scores = await asyncio.gather(
+        *(score_cluster(group, name) for group, name in zip(groups, provisional_names, strict=True))
+    )
+    logger.info("detection: scored %d clusters concurrently", len(scores))
+
     created: list[Cluster] = []
     used_ids: set[str] = set()
-    for group in groups:
+    for group, provisional_name, score in zip(groups, provisional_names, scores, strict=True):
         signature = list(group.representative)
-        # Scored first: the final name depends on how stable the step order
-        # turns out to be, which scoring is what measures.
-        provisional_name = _pretty_name(signature, "Repetitive workflow")
-        score = await score_cluster(group, provisional_name)
+
+        # Low-occurrence gate. In demo mode the instance floor is dropped to two
+        # or three, so a weak floor must be balanced by a real signal: a couple
+        # of runs only count as a pattern if they are genuinely alike and the
+        # workflow is plausibly automatable. Two unrelated short tasks that fell
+        # into one cluster clear the count but not this, and are dropped. This
+        # gate never runs in production — those clusters already have dozens of
+        # instances of statistical support.
+        if settings.demo_mode and score.instance_count < settings.discovery_strong_occurrences:
+            similarity = score.variance.sequence_similarity
+            confidence = discovery_confidence(
+                occurrences=score.instance_count,
+                similarity=similarity,
+                automatability=score.automatability,
+            )
+            if (
+                similarity < settings.discovery_min_similarity
+                or confidence < settings.discovery_min_confidence
+            ):
+                logger.info(
+                    "detection: dropped low-occurrence candidate %r "
+                    "(occurrences=%d, similarity=%.2f, confidence=%.2f) — "
+                    "below the demo gate",
+                    provisional_name,
+                    score.instance_count,
+                    similarity,
+                    confidence,
+                )
+                continue
+
         name = _pretty_name(
             signature,
             "Repetitive workflow",
@@ -215,6 +276,12 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
                 suffix += 1
             cluster_id = f"{cluster_id}_{suffix}"
         used_ids.add(cluster_id)
+
+        # Which fields are inputs and which are constants is a property of the
+        # observed runs, so it is computed here with detection rather than at
+        # generation time — two generations of one cluster must not disagree
+        # about what the workflow's parameters are.
+        group_variables, group_constants = detect_variables(group.instances)
 
         cluster = Cluster(
             id=cluster_id,
@@ -237,10 +304,15 @@ async def run_detection(session: AsyncSession) -> list[Cluster]:
             potential_factors=score.potential_factors,
             variance_breakdown=variance_as_dict(score.variance),
             observed_fields=observed_fields_by_token(group),
+            variables=[v.as_dict() for v in group_variables],
+            constants=[c.as_dict() for c in group_constants],
             build_effort=score.build_effort,
             priority=score.priority,
             do_not_automate=score.do_not_automate,
             reasoning=score.reasoning,
+            evidence_level=score.evidence_level,
+            requires_more_observation=score.requires_more_observation,
+            dismissed=cluster_id in dismissed_ids,
         )
         session.add(cluster)
         created.append(cluster)
