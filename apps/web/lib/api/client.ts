@@ -50,6 +50,38 @@ async function mockRequest<T>(path: string, method: string): Promise<T> {
   );
 }
 
+/**
+ * The signed-in token, held in localStorage.
+ *
+ * Not a cookie, because the console and the API are different sites in every
+ * deployment — `run.app` is a public suffix — which makes a session cookie a
+ * third-party one. Safari drops those by default, so sign-in appeared to work
+ * and then bounced straight back to the login screen. A bearer token is not
+ * subject to any of that.
+ *
+ * Wrapped in try/catch: localStorage throws outright in a private window and
+ * in some embedded webviews, and failing to read a token must not take the
+ * whole console down with it.
+ */
+const TOKEN_KEY = "loop_token";
+
+export function getToken(): string {
+  try {
+    return localStorage.getItem(TOKEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function setToken(token: string): void {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* a browser that refuses storage still works, it just forgets the session */
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -95,6 +127,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
+        ...(typeof window !== "undefined" && getToken()
+          ? { authorization: `Bearer ${getToken()}` }
+          : {}),
         // Never set this for FormData. The browser has to write
         // `multipart/form-data; boundary=…` itself, and the boundary is what
         // tells the server where each part starts — overriding it with

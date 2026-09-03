@@ -146,9 +146,9 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """
     factory = SessionLocal
     if settings.require_login:
-        from app.auth import read_cookie
+        from app.auth import resolve_user
 
-        username = read_cookie(request.cookies.get(SESSION_COOKIE_NAME))
+        username = resolve_user(request)
         if not username:
             # Refused, not served from the default database. Falling back to
             # the shared one meant an unauthenticated caller was handed whatever

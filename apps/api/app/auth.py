@@ -103,3 +103,24 @@ def database_url_for(username: str) -> str:
         raise ValueError(f"unsafe username: {username!r}")
     root = settings.data_dir.rstrip("/")
     return f"sqlite+aiosqlite:///{root}/loop-{username}.db"
+
+
+def resolve_user(request) -> str | None:
+    """The signed-in user for a request, from either the header or the cookie.
+
+    The bearer header comes first, and is what every deployment actually uses.
+    A cookie shared between two different sites is a third-party cookie, and
+    Safari discards those by default — `run.app` is on the Public Suffix List,
+    so the console and the API are genuinely cross-site and the cookie never
+    survived the redirect back. The token carries the same signed value, in a
+    place no browser filters.
+
+    The cookie is still honoured so that a same-origin deployment, and local
+    development, keep working without JavaScript having to hold a token.
+    """
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        username = read_cookie(header[7:].strip())
+        if username:
+            return username
+    return read_cookie(request.cookies.get(SESSION_COOKIE))

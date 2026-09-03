@@ -15,7 +15,7 @@ from app.auth import (
     check_password,
     display_name,
     issue_cookie,
-    read_cookie,
+    resolve_user,
 )
 from app.config import settings
 
@@ -35,6 +35,9 @@ class CurrentUser(BaseModel):
     username: str = ""
     name: str = ""
     signed_in: bool = False
+    #: Send this back as `Authorization: Bearer <token>`. It is the same signed
+    #: value as the cookie, for the browsers that will not keep a cross-site one.
+    token: str = ""
     #: False when this deployment does not ask anyone to sign in, so the console
     #: knows to skip the sign-in screen entirely rather than guessing.
     login_required: bool = True
@@ -84,6 +87,7 @@ async def login(body: LoginRequest, response: Response) -> CurrentUser:
         name=display_name(username),
         signed_in=True,
         login_required=settings.require_login,
+        token=issue_cookie(username),
     )
 
 
@@ -96,7 +100,7 @@ async def logout(response: Response) -> CurrentUser:
 @router.get("/me", response_model=CurrentUser)
 async def me(request: Request) -> CurrentUser:
     """Who the caller is. The console asks this before rendering anything."""
-    username = read_cookie(request.cookies.get(SESSION_COOKIE))
+    username = resolve_user(request)
     if not username:
         return CurrentUser(login_required=settings.require_login)
     return CurrentUser(

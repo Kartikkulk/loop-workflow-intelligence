@@ -670,6 +670,8 @@ export interface CurrentUser {
   name: string;
   signed_in: boolean;
   login_required: boolean;
+  /** Sent back as `Authorization: Bearer`. Empty except on the login response. */
+  token: string;
 }
 
 export interface UserOption {

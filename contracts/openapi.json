@@ -1142,6 +1142,11 @@
             "title": "Signed In",
             "type": "boolean"
           },
+          "token": {
+            "default": "",
+            "title": "Token",
+            "type": "string"
+          },
           "username": {
             "default": "",
             "title": "Username",

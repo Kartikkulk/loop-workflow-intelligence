@@ -8,7 +8,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
-import { http } from "./client";
+import { http, setToken } from "./client";
 import { isAwaitingApproval } from "./types";
 import type {
   ActivityPage,
@@ -87,7 +87,10 @@ export function useLogin() {
   return useMutation({
     mutationFn: (body: { username: string; password: string }) =>
       http.post<CurrentUser>("/api/v1/auth/login", body),
-    onSuccess: () => client.invalidateQueries(),
+    onSuccess: (user) => {
+      setToken(user.token);
+      void client.invalidateQueries();
+    },
   });
 }
 
@@ -95,7 +98,10 @@ export function useLogout() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => http.post<CurrentUser>("/api/v1/auth/logout"),
-    onSuccess: () => client.invalidateQueries(),
+    onSuccess: () => {
+      setToken("");
+      void client.invalidateQueries();
+    },
   });
 }
 
