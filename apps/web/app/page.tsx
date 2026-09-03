@@ -70,8 +70,12 @@ export default function LandingPage() {
           <span aria-hidden className="relative flex h-3.5 w-3.5">
             <span className="absolute inset-0 animate-pulse-ring rounded-full border-2 border-good-500" />
           </span>
-          <span className="text-sm font-semibold tracking-tight text-mist-100">Kriyā AI</span>
-          <span className="hidden text-2xs text-mist-600 sm:inline">From Repetitive Work to Intelligent Action</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-lg font-semibold tracking-tight text-mist-100">Kriyā AI</span>
+            <span className="mt-1 hidden text-2xs text-mist-600 sm:inline">
+              From Repetitive Work to Intelligent Action
+            </span>
+          </span>
           <nav className="ml-auto hidden items-center gap-5 md:flex">
             {[
               { href: "#how", label: "How it works" },

@@ -48,7 +48,7 @@ export function Nav() {
         <Link href="/dashboard" className="block">
           <div className="flex items-center gap-2">
             <LoopMark />
-            <span className="text-sm font-semibold tracking-tight text-mist-100">Kriyā AI</span>
+            <span className="text-base font-semibold tracking-tight text-mist-100">Kriyā AI</span>
           </div>
           <p className="mt-1.5 text-2xs leading-snug text-mist-500">From Repetitive Work to Intelligent Action</p>
         </Link>

@@ -46,8 +46,12 @@ export default function LoginPage() {
           <span aria-hidden className="relative flex h-3.5 w-3.5">
             <span className="absolute inset-0 animate-pulse-ring rounded-full border-2 border-good-500" />
           </span>
-          <span className="text-sm font-semibold tracking-tight text-mist-100">Kriyā AI</span>
-          <span className="text-2xs text-mist-600">From Repetitive Work to Intelligent Action</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-xl font-semibold tracking-tight text-mist-100">Kriyā AI</span>
+            <span className="mt-1.5 text-2xs text-mist-600">
+              From Repetitive Work to Intelligent Action
+            </span>
+          </span>
         </div>
 
         <h1 className="text-2xl font-semibold tracking-tight text-mist-100">Sign in</h1>
