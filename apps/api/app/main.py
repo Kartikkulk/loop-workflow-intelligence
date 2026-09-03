@@ -69,8 +69,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    # The console is a separate origin in development; SSE needs this to work.
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    # The console is a separate origin in development and in most deployments;
+    # SSE needs this to work. Built from configuration rather than hard-coded,
+    # because a deployed console lives at neither localhost address.
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

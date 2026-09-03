@@ -227,6 +227,25 @@ class Settings(BaseSettings):
     # and to send the browser back to the console after a provider callback.
     api_base_url: str = "http://localhost:8000"
     console_url: str = "http://localhost:3000"
+    #: Extra browser origins allowed to call this API, comma-separated.
+    #:
+    #: `console_url` is always allowed, so a normal deployment sets that alone.
+    #: This exists for the cases where the console is reachable at more than one
+    #: address — a Cloud Run revision URL alongside a custom domain, say — and
+    #: an origin missing from the list fails as a CORS error in the browser
+    #: with a working API behind it, which is a miserable thing to debug.
+    extra_cors_origins: str = ""
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Every browser origin permitted to call this API."""
+        origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            self.console_url.strip().rstrip("/"),
+        ]
+        origins += [o.strip().rstrip("/") for o in self.extra_cors_origins.split(",")]
+        return sorted({o for o in origins if o})
 
     # Personal OAuth app registrations. Empty by default and expected to stay
     # that way: the normal path is to type them into the Sources page, which

@@ -15,4 +15,8 @@ COPY apps/api/scripts ./scripts
 RUN pip install --upgrade pip && pip install ".[postgres]"
 
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Shell form on purpose: Cloud Run, Fly and Heroku all inject $PORT and expect
+# the process to bind it. The exec form would pass the literal string "${PORT}"
+# to uvicorn. Defaulted so `docker run` locally still lands on 8000.
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -155,6 +155,72 @@ Then load it unpacked and paste the token from **Sources**.
 
 ---
 
+## Deploying to Google Cloud
+
+Cloud Run, because it scales to zero — the service costs nothing while nobody is
+looking at it, and the always-free tier covers demo traffic outright. Both
+images honour `$PORT`, so they run there unmodified.
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com
+```
+
+**1. Database.** Cloud SQL bills by the hour even when idle, so use a free
+Postgres instead — [Neon](https://neon.tech) or [Supabase](https://supabase.com).
+Take the connection string; LOOP rewrites the driver prefix itself.
+
+**2. Deploy the API**, from the repository root:
+
+```bash
+gcloud run deploy loop-api \
+  --source . --dockerfile apps/api/Dockerfile \
+  --region asia-south1 --allow-unauthenticated \
+  --set-env-vars "LOOP_DATABASE_URL=postgresql://...,LOOP_ENABLE_MOCK_CONNECTORS=true"
+```
+
+Note the URL it prints.
+
+**3. Deploy the console**, passing that URL in as a *build* argument. Next
+inlines `NEXT_PUBLIC_*` at build time, so setting it as a runtime variable does
+nothing — the bundle would still be calling `localhost:8000`:
+
+```bash
+gcloud run deploy loop-web \
+  --source . --dockerfile apps/web/Dockerfile \
+  --region asia-south1 --allow-unauthenticated \
+  --build-env-vars "NEXT_PUBLIC_API_BASE=https://loop-api-xxxx.run.app"
+```
+
+**4. Let the API accept the console's origin**, or every request fails as a
+browser CORS error with a working API behind it:
+
+```bash
+gcloud run services update loop-api --region asia-south1 \
+  --set-env-vars "LOOP_CONSOLE_URL=https://loop-web-xxxx.run.app"
+```
+
+Open the console URL, then **Sources → Download an example CSV → upload it**.
+Discovery runs in well under a second and the database starts empty, so there
+is no seeding step.
+
+### Cost
+
+At demo traffic this stays inside the always-free tier. Set a hard ceiling
+anyway, so a scraper cannot spend your credit:
+
+```bash
+gcloud run services update loop-api --region asia-south1 --max-instances 3
+gcloud run services update loop-web --region asia-south1 --max-instances 3
+```
+
+Ollama cannot run here — it needs several GB of RAM and a much larger instance.
+Leave it unset and every AI feature falls back to its deterministic path
+(identical numbers, plainer prose), or set `LOOP_OPENAI_API_KEY` as a secret.
+
+---
+
 ## Tests
 
 ```bash
