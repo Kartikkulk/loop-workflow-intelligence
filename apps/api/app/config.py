@@ -236,6 +236,19 @@ class Settings(BaseSettings):
     #: with a working API behind it, which is a miserable thing to debug.
     extra_cors_origins: str = ""
 
+    # ── sign-in (demo deployment) ────────────────────────────────────────
+    #: Shared password for the named demo users. One password for everyone is
+    #: a deliberate demo trade-off, not an oversight — see app/auth.py.
+    demo_password: str = "Loop@123"
+    #: Signs the session cookie. Change it and every existing cookie stops
+    #: verifying, which is how you sign everybody out.
+    session_secret: str = "loop-demo-session-secret-change-me"
+    #: Where each user's database file lives. One file per person.
+    data_dir: str = "./data"
+    #: With sign-in off, everything shares one database and no login is asked
+    #: for — which is what local development and the test suite want.
+    require_login: bool = False
+
     @property
     def cors_origins(self) -> list[str]:
         """Every browser origin permitted to call this API."""

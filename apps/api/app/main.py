@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.v1 import (
+    auth,
     automations,
     clusters,
     connect,
@@ -79,6 +80,7 @@ app.add_middleware(
 )
 
 v1 = APIRouter(prefix="/api/v1")
+v1.include_router(auth.router)
 v1.include_router(ingest.router)
 v1.include_router(clusters.router)
 v1.include_router(automations.router)

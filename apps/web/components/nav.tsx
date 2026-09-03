@@ -39,7 +39,7 @@ export function Nav() {
   // here rather than by giving the marketing route its own layout, so the
   // console's data providers stay mounted and moving between the two does not
   // refetch everything.
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname === "/login") return null;
 
   return (
     <nav className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-ink-700 bg-ink-950">

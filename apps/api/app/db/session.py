@@ -1,11 +1,23 @@
 """Async engine, session factory and the FastAPI session dependency."""
 
+import asyncio
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
+from fastapi import HTTPException, Request
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.config import settings
+
+#: Duplicated from app.auth to avoid importing it at module scope, which would
+#: be circular — auth reads settings, settings is imported here.
+SESSION_COOKIE_NAME = "loop_session"
 
 _is_sqlite = settings.database_url.startswith("sqlite")
 
@@ -31,30 +43,32 @@ engine = create_async_engine(
     connect_args=_connect_args,
 )
 
+def _apply_sqlite_pragmas(dbapi_connection, _record) -> None:
+    """Put SQLite into WAL, on every connection.
+
+    The default rollback journal takes a lock that blocks *readers* for the
+    whole of a write transaction, so while detection scored its clusters the
+    console could not load a page. WAL lets readers carry on against the last
+    committed state while one writer works, which is exactly the shape of this
+    application: one long write, many short reads.
+
+    Named rather than a decorated closure so the per-user engines built below
+    can register the same listener.
+    """
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_SECONDS * 1000}")
+        # NORMAL is the documented companion to WAL: durable across process
+        # crashes, and only at risk from an OS-level crash mid-write.
+        cursor.execute("PRAGMA synchronous=NORMAL")
+    finally:
+        cursor.close()
+
+
 if _is_sqlite:
+    event.listen(engine.sync_engine, "connect", _apply_sqlite_pragmas)
 
-    @event.listens_for(engine.sync_engine, "connect")
-    def _apply_sqlite_pragmas(dbapi_connection, _record) -> None:
-        """Put SQLite into WAL, on every connection.
-
-        The default rollback journal takes a lock that blocks *readers* for the
-        whole of a write transaction, so while detection scored its clusters the
-        console could not load a page. WAL lets readers carry on against the
-        last committed state while one writer works, which is exactly the shape
-        of this application: one long write, many short reads.
-
-        Set per connection because it is a connection-level pragma; the journal
-        mode itself is persisted in the database file.
-        """
-        cursor = dbapi_connection.cursor()
-        try:
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_SECONDS * 1000}")
-            # NORMAL is the documented companion to WAL: durable across process
-            # crashes, and only at risk from an OS-level crash mid-write.
-            cursor.execute("PRAGMA synchronous=NORMAL")
-        finally:
-            cursor.close()
 
 SessionLocal = async_sessionmaker(
     bind=engine,
@@ -64,9 +78,86 @@ SessionLocal = async_sessionmaker(
 )
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency yielding a transactional session."""
-    async with SessionLocal() as session:
+# ── per-user databases ──────────────────────────────────────────────────────
+#
+# One database file per signed-in person, resolved per request. Every endpoint
+# already depends on `get_session`, so isolating there isolates all of them at
+# once — there is no query anywhere that can forget to scope itself, because
+# scoping is not a filter it applies but the connection it is handed.
+
+_user_engines: dict[str, AsyncEngine] = {}
+_user_sessionmakers: dict[str, async_sessionmaker] = {}
+_engine_lock = asyncio.Lock()
+
+
+def _build_engine(url: str) -> AsyncEngine:
+    """An engine with this project's SQLite pragmas already applied."""
+    built = create_async_engine(
+        url,
+        echo=False,
+        future=True,
+        connect_args=(
+            {"check_same_thread": False, "timeout": _BUSY_TIMEOUT_SECONDS}
+            if url.startswith("sqlite")
+            else {}
+        ),
+    )
+    if url.startswith("sqlite"):
+        event.listen(built.sync_engine, "connect", _apply_sqlite_pragmas)
+    return built
+
+
+async def sessionmaker_for(username: str) -> async_sessionmaker:
+    """The session factory for one user, creating their database on first use.
+
+    Guarded by a lock because two simultaneous first requests from the same
+    person would otherwise both see no engine and both run `create_all`.
+    """
+    if username in _user_sessionmakers:
+        return _user_sessionmakers[username]
+
+    async with _engine_lock:
+        if username in _user_sessionmakers:  # settled while waiting
+            return _user_sessionmakers[username]
+
+        from app.auth import database_url_for
+
+        Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
+        built = _build_engine(database_url_for(username))
+        async with built.begin() as conn:
+            from app import models  # noqa: F401 — registers every table
+            from app.db.base import Base
+
+            await conn.run_sync(Base.metadata.create_all)
+
+        _user_engines[username] = built
+        _user_sessionmakers[username] = async_sessionmaker(
+            bind=built, class_=AsyncSession, expire_on_commit=False, autoflush=False
+        )
+        return _user_sessionmakers[username]
+
+
+async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency yielding a transactional session.
+
+    With sign-in enabled the session is bound to the requesting user's own
+    database; with it off — local development and the tests — everything shares
+    the one configured database, exactly as before.
+    """
+    factory = SessionLocal
+    if settings.require_login:
+        from app.auth import read_cookie
+
+        username = read_cookie(request.cookies.get(SESSION_COOKIE_NAME))
+        if not username:
+            # Refused, not served from the default database. Falling back to
+            # the shared one meant an unauthenticated caller was handed whatever
+            # happened to be in it — which on a deployment with sign-in turned
+            # on is precisely the data sign-in exists to separate.
+            raise HTTPException(401, "Sign in to use LOOP.")
+        factory = await sessionmaker_for(username)
+
+    async with factory() as session:
         try:
             yield session
             await session.commit()

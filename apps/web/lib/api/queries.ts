@@ -12,6 +12,8 @@ import { http } from "./client";
 import { isAwaitingApproval } from "./types";
 import type {
   ActivityPage,
+  CurrentUser,
+  UserList,
   AutomationDetail,
   AutomationSummary,
   DryRunResult,
@@ -60,6 +62,42 @@ export const keys = {
 };
 
 type Options<T> = Omit<UseQueryOptions<T>, "queryKey" | "queryFn">;
+
+export function useCurrentUser() {
+  return useQuery({
+    queryKey: ["auth", "me"] as const,
+    queryFn: () => http.get<CurrentUser>("/api/v1/auth/me"),
+    // Asked once per load and kept: a sign-in state that silently refetches
+    // mid-session can bounce someone to the login screen while they work.
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+export function useLoginUsers() {
+  return useQuery({
+    queryKey: ["auth", "users"] as const,
+    queryFn: () => http.get<UserList>("/api/v1/auth/users"),
+    staleTime: Infinity,
+  });
+}
+
+export function useLogin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { username: string; password: string }) =>
+      http.post<CurrentUser>("/api/v1/auth/login", body),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useLogout() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => http.post<CurrentUser>("/api/v1/auth/logout"),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
 
 export function useClusters(options?: Options<ClusterList>) {
   return useQuery({

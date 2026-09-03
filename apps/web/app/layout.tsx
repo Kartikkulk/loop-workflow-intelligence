@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { AuthGuard } from "@/components/auth-guard";
 import { Nav } from "@/components/nav";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -40,10 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans antialiased">
         <Providers>
-          <div className="flex min-h-screen">
-            <Nav />
-            <main className="min-w-0 flex-1">{children}</main>
-          </div>
+          <AuthGuard>
+            <div className="flex min-h-screen">
+              <Nav />
+              <main className="min-w-0 flex-1">{children}</main>
+            </div>
+          </AuthGuard>
         </Providers>
       </body>
     </html>

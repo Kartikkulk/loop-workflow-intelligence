@@ -106,6 +106,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...init?.headers,
       },
       cache: "no-store",
+      // The console and the API are separate origins in every deployment, and
+      // fetch omits cookies cross-origin unless told otherwise. Without this
+      // the session cookie never travels and every call reads as signed out.
+      credentials: "include",
     });
   } catch {
     throw new ApiError(

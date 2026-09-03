@@ -664,3 +664,20 @@ export interface SyncResult {
 export interface StartOut {
   authorize_url: string;
 }
+
+export interface CurrentUser {
+  username: string;
+  name: string;
+  signed_in: boolean;
+  login_required: boolean;
+}
+
+export interface UserOption {
+  username: string;
+  name: string;
+}
+
+export interface UserList {
+  users: UserOption[];
+  login_required: boolean;
+}

@@ -127,14 +127,6 @@ export default function LandingPage() {
                 automations. It finds the patterns people repeat, estimates what can be handed
                 over, chooses the right automation approach, and builds it for review.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3" style={{ animation: "fade-up 700ms ease-out 400ms both" }}>
-                <a className="btn-primary px-5 py-2.5 text-xs" href="#how">
-                  See how LOOP works
-                </a>
-                <Link className="btn-ghost px-5 py-2.5 text-xs" href="/discovery">
-                  Explore the workflow
-                </Link>
-              </div>
               <dl
                 className="mt-10 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-lg border border-ink-700 bg-ink-700"
                 style={{ animation: "fade-up 700ms ease-out 520ms both" }}
