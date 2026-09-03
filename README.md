@@ -205,6 +205,25 @@ Open the console URL, then **Sources → Download an example CSV → upload it**
 Discovery runs in well under a second and the database starts empty, so there
 is no seeding step.
 
+### Running n8n alongside it
+
+n8n is a third Cloud Run service. Two things it will not tell you it needs:
+
+- **Postgres, not its bundled SQLite.** Cloud Run's disk is ephemeral, so with
+  the default database every workflow disappears on the next cold start. Point
+  `DB_TYPE=postgresdb` at a free Neon database — and use Neon's *direct*
+  endpoint, not the `-pooler` one: n8n's migrations take advisory locks that
+  PgBouncer does not carry, and they fail with `Connection terminated`. Create
+  the schema first (`CREATE SCHEMA n8n`); n8n will not create one.
+- **`--no-cpu-throttling` for the first boot.** Cloud Run gives an idle
+  container almost no CPU, and n8n's ~100 startup migrations are not driven by
+  a request, so they starve and time out. Once migrated it can go back to
+  `--min-instances 0`, where a cold start is a few seconds and the workflows
+  live safely in Postgres.
+
+Set `N8N_ENCRYPTION_KEY` explicitly too — n8n generates a random one per boot
+otherwise and cannot decrypt what the last instance stored.
+
 ### Cost
 
 At demo traffic this stays inside the always-free tier. Set a hard ceiling
