@@ -53,7 +53,16 @@ collectors/dist/
 # ── generated data ─────────────────────────────────────────────────────────
 # The seed exports are reproducible from `make seed`, byte for byte, so
 # committing them would only create merge conflicts on a file nobody reads.
-apps/api/fixtures/
+# Excludes the *contents*, not the directory. Git never descends into an
+# excluded directory, so a `!` negation inside one is silently ignored — the
+# trailing-slash form made the exception below do nothing at all.
+apps/api/fixtures/*
+# ...except the demo activity log. It is 4KB, it is served to users by
+# `GET /api/v1/ingest/template.csv`, and the discovery tests read it directly —
+# so it is a shipped asset, not generated data. Ignoring the whole directory
+# (which is right for the 10MB northwind logs) left a fresh clone with 20
+# failing tests and a 404 on the template download.
+!apps/api/fixtures/support-escalation-demo.csv
 
 # Deliberately NOT ignored, both generated and both required:
 #   contracts/openapi.json         — the frontend/backend contract

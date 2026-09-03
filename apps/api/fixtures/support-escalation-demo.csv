@@ -1,0 +1,51 @@
+timestamp,application,domain,action,target,value,connector,session_id
+2026-09-01T09:15:00,Chrome,support.example.com,open,Support Portal,,browser,session-1
+2026-09-01T09:17:00,Chrome,support.example.com,search,Ticket,Ticket 1001,browser,session-1
+2026-09-01T09:19:00,Chrome,support.example.com,read,Customer,ABC,browser,session-1
+2026-09-01T09:21:00,Chrome,support.example.com,read,Issue,Login failure,browser,session-1
+2026-09-01T09:23:00,Chrome,support.example.com,read,Priority,High,browser,session-1
+2026-09-01T09:25:00,Jira,jira.example.com,open,Create Issue,,jira,session-1
+2026-09-01T09:27:00,Jira,jira.example.com,fill,Summary,ABC - Login failure,jira,session-1
+2026-09-01T09:29:00,Jira,jira.example.com,fill,Description,Customer ABC reported Login failure,jira,session-1
+2026-09-01T09:31:00,Jira,jira.example.com,set,Priority,High,jira,session-1
+2026-09-01T09:33:00,Jira,jira.example.com,create,Issue,SUP-4501,jira,session-1
+2026-09-02T09:22:00,Chrome,support.example.com,open,Support Portal,,browser,session-2
+2026-09-02T09:24:00,Chrome,support.example.com,search,Ticket,Ticket 1002,browser,session-2
+2026-09-02T09:26:00,Chrome,support.example.com,read,Customer,XYZ,browser,session-2
+2026-09-02T09:28:00,Chrome,support.example.com,read,Issue,Payment failure,browser,session-2
+2026-09-02T09:30:00,Chrome,support.example.com,read,Priority,High,browser,session-2
+2026-09-02T09:32:00,Jira,jira.example.com,open,Create Issue,,jira,session-2
+2026-09-02T09:34:00,Jira,jira.example.com,fill,Summary,XYZ - Payment failure,jira,session-2
+2026-09-02T09:36:00,Jira,jira.example.com,fill,Description,Customer XYZ reported Payment failure,jira,session-2
+2026-09-02T09:38:00,Jira,jira.example.com,set,Priority,High,jira,session-2
+2026-09-02T09:40:00,Jira,jira.example.com,create,Issue,SUP-4502,jira,session-2
+2026-09-03T09:29:00,Chrome,support.example.com,open,Support Portal,,browser,session-3
+2026-09-03T09:31:00,Chrome,support.example.com,search,Ticket,Ticket 1003,browser,session-3
+2026-09-03T09:33:00,Chrome,support.example.com,read,Customer,PQR,browser,session-3
+2026-09-03T09:35:00,Chrome,support.example.com,read,Issue,API failure,browser,session-3
+2026-09-03T09:37:00,Chrome,support.example.com,read,Priority,High,browser,session-3
+2026-09-03T09:39:00,Jira,jira.example.com,open,Create Issue,,jira,session-3
+2026-09-03T09:41:00,Jira,jira.example.com,fill,Summary,PQR - API failure,jira,session-3
+2026-09-03T09:43:00,Jira,jira.example.com,fill,Description,Customer PQR reported API failure,jira,session-3
+2026-09-03T09:45:00,Jira,jira.example.com,set,Priority,High,jira,session-3
+2026-09-03T09:47:00,Jira,jira.example.com,create,Issue,SUP-4503,jira,session-3
+2026-09-04T09:36:00,Chrome,support.example.com,open,Support Portal,,browser,session-4
+2026-09-04T09:38:00,Chrome,support.example.com,search,Ticket,Ticket 1004,browser,session-4
+2026-09-04T09:40:00,Chrome,support.example.com,read,Customer,Acme,browser,session-4
+2026-09-04T09:42:00,Chrome,support.example.com,read,Issue,Account locked,browser,session-4
+2026-09-04T09:44:00,Chrome,support.example.com,read,Priority,High,browser,session-4
+2026-09-04T09:46:00,Jira,jira.example.com,open,Create Issue,,jira,session-4
+2026-09-04T09:48:00,Jira,jira.example.com,fill,Summary,Acme - Account locked,jira,session-4
+2026-09-04T09:50:00,Jira,jira.example.com,fill,Description,Customer Acme reported Account locked,jira,session-4
+2026-09-04T09:52:00,Jira,jira.example.com,set,Priority,High,jira,session-4
+2026-09-04T09:54:00,Jira,jira.example.com,create,Issue,SUP-4504,jira,session-4
+2026-09-05T09:43:00,Chrome,support.example.com,open,Support Portal,,browser,session-5
+2026-09-05T09:45:00,Chrome,support.example.com,search,Ticket,Ticket 1005,browser,session-5
+2026-09-05T09:47:00,Chrome,support.example.com,read,Customer,DemoCorp,browser,session-5
+2026-09-05T09:49:00,Chrome,support.example.com,read,Issue,Sync failure,browser,session-5
+2026-09-05T09:51:00,Chrome,support.example.com,read,Priority,High,browser,session-5
+2026-09-05T09:53:00,Jira,jira.example.com,open,Create Issue,,jira,session-5
+2026-09-05T09:55:00,Jira,jira.example.com,fill,Summary,DemoCorp - Sync failure,jira,session-5
+2026-09-05T09:57:00,Jira,jira.example.com,fill,Description,Customer DemoCorp reported Sync failure,jira,session-5
+2026-09-05T09:59:00,Jira,jira.example.com,set,Priority,High,jira,session-5
+2026-09-05T10:01:00,Jira,jira.example.com,create,Issue,SUP-4505,jira,session-5
