@@ -14,6 +14,64 @@ Everything is built from one thing: a stream of **events** (small records of "wh
 did what, where"). Every screen and number in the app is calculated from those
 events. Nothing else is stored as the "truth".
 
+## The technical flow
+
+```mermaid
+flowchart TD
+    subgraph OBSERVE["1 · OBSERVE"]
+        C[Browser collector<br/>metadata only]
+        U[CSV / JSONL upload]
+        A[Connected accounts<br/>read-only OAuth]
+    end
+
+    C --> N[normaliser.py<br/>canonical events<br/>app : action : object]
+    U --> N
+    A --> N
+
+    subgraph DISCOVER["2 · DISCOVER"]
+        N --> S[sessioniser.py<br/>split on idle gap<br/>or declared session]
+        S --> K[clustering.py<br/>exact hash, then<br/>fuzzy + embedding]
+        K --> SC[scoring.py<br/>variance · effort<br/>automatability]
+        SC --> V[variables.py<br/>inputs vs constants<br/>guard candidates]
+    end
+
+    V --> G[generator.py<br/>flow definition<br/>steps · guards · deps]
+
+    subgraph BUILD["4 · BUILD"]
+        G --> P{execution_planner.py<br/>which runtime?}
+        P -->|browser + API| HY[hybrid_codegen]
+        P -->|no API at all| PW[playwright_codegen]
+        P -->|local files| PY[python_codegen]
+        P -->|all SaaS APIs| N8[n8n_export]
+    end
+
+    HY --> VAL[validation.py<br/>9 checks against<br/>the observed log]
+    PW --> VAL
+    PY --> VAL
+    N8 --> VAL
+
+    VAL -->|blocking finding| REPAIR[held for repair]
+    VAL -->|clean| DRY[dry run<br/>engine forces mocks<br/>0 side effects]
+    DRY --> HUMAN{{"6 · HUMAN APPROVAL"}}
+    HUMAN -->|rejected| REPAIR
+    HUMAN -->|approved| EX[engine.py<br/>replay · shadow · live]
+    EX --> HEAL[healing.py<br/>exception_learning.py<br/>drift → auto-demote]
+    HEAL -.->|re-detect| N
+
+    style HUMAN fill:#3a2c05,stroke:#f59e0b,color:#fcd34d
+    style VAL fill:#052e22,stroke:#10b981,color:#6ee7b7
+    style DRY fill:#052e22,stroke:#10b981,color:#6ee7b7
+    style REPAIR fill:#2d0a0a,stroke:#ef4444,color:#fca5a5
+```
+
+Two properties hold everywhere in that graph:
+
+- **Detection is a pure function of the event log.** Re-running it on the same
+  events produces the same clusters, so nothing downstream can become the truth.
+- **Nothing reaches a real system before the approval gate.** Replay and shadow
+  force mock connectors inside the engine, not in each connector, so a new
+  connector cannot forget to be safe.
+
 ## Step 1 — Where the data comes from
 
 Kriyā AI collects **events**. An event is just: a user, a time, an app, and an
@@ -64,8 +122,10 @@ Kriyā AI compares all the fingerprints and groups the matching ones into a
 2. Near-matches (same steps, slightly different order) get grouped by comparing
    how similar the sequences are.
 
-A group only counts as a real workflow if it happened **at least 8 times** and
-has **at least 3 steps**. That filters out one-off noise.
+A group counts as a real workflow once it clears a floor: **15 occurrences** in
+production, or **2** in demo mode, where a weak count has to be balanced by high
+run-to-run similarity before the candidate is shown at all. That filters out
+one-off noise without hiding a process somebody performed five times on stage.
 
 Result: from thousands of messy events, Kriyā AI surfaces a handful of clear,
 repeated workflows — without anyone telling it what to look for.
@@ -148,10 +208,15 @@ Browser / upload / prose  ──►  EVENTS  ──►  task instances  ──�
 ## What's real and what's mocked (honest limitations)
 
 - **Detection is real.** The workflow-finding runs on actual event data.
-- **Execution connectors are mocked.** The plumbing to really touch Gmail or an
-  ERP is written but hasn't run against a live system.
+- **Some connectors are live, most are declared.** `files`, `pdf` and `git` run
+  for real and need no credentials — the demo automation moves actual PDFs. The
+  SaaS connectors (Gmail, Sheets, ERP) are written and declare the credentials
+  they need, but have not been run against a live account.
 - **Demo data is synthetic** — deliberately realistic, but not a real company's.
-- **No login/authentication** — it's a single-user, local app.
+- **Sign-in is a demo shared password.** Named accounts each get their own
+  database, so one person's work is invisible to another — but one password
+  covers all of them, so the separation is between colleagues, not against an
+  attacker.
 
 ## For developers: the tech
 
