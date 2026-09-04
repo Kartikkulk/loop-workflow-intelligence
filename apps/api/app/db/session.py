@@ -208,9 +208,23 @@ async def init_db() -> None:
     from app import models  # noqa: F401  — ensures every model is registered
     from app.db.base import Base
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        await conn.run_sync(_backfill_added_columns)
+    # Retried, because the database may not be reachable the instant this
+    # process starts. On Cloud Run the connection goes through a sidecar proxy
+    # that mounts its socket as the container boots: the path exists before
+    # anything is listening on it, so the first attempt gets ECONNREFUSED and
+    # the container exits before it ever serves a request.
+    last: Exception | None = None
+    for attempt in range(10):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+                await conn.run_sync(_backfill_added_columns)
+            return
+        except Exception as exc:  # noqa: BLE001 — any connection fault is worth a retry
+            last = exc
+            logger.warning("database not ready (attempt %d/10): %s", attempt + 1, exc)
+            await asyncio.sleep(2)
+    raise RuntimeError(f"database never became reachable: {last}")
 
 
 #: Columns added after the first release. create_all creates missing *tables*
