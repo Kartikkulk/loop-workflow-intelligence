@@ -24,6 +24,7 @@ import base64
 import hashlib
 import hmac
 import re
+from urllib.parse import urlsplit, urlunsplit
 
 from app.config import settings
 
@@ -101,6 +102,30 @@ def database_url_for(username: str) -> str:
     """
     if not _SAFE_USERNAME.match(username):
         raise ValueError(f"unsafe username: {username!r}")
+
+    base = settings.database_url
+    if not base.startswith("sqlite"):
+        # A managed Postgres: same server, one database per person. Files on a
+        # container's disk do not survive the container, and losing somebody's
+        # discoveries because a deploy happened is not a demo trade-off — it is
+        # a broken product. The database name is built from a username that has
+        # already been matched against _SAFE_USERNAME, so it cannot carry a
+        # quote out of this function.
+        # Split the query off first. On Cloud Run the connection goes over a
+        # unix socket, so the URL ends `?host=/cloudsql/project:region:instance`
+        # — and a naive rpartition("/") would carve the database name out of
+        # the socket path instead of the path component.
+        split = urlsplit(base)
+        return urlunsplit(
+            (
+                split.scheme,
+                split.netloc,
+                f"/loop_{username}",
+                split.query,
+                split.fragment,
+            )
+        )
+
     root = settings.data_dir.rstrip("/")
     return f"sqlite+aiosqlite:///{root}/loop-{username}.db"
 

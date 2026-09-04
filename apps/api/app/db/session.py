@@ -1,11 +1,12 @@
 """Async engine, session factory and the FastAPI session dependency."""
 
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
 from fastapi import HTTPException, Request
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -14,6 +15,8 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.config import settings
+
+logger = logging.getLogger("loop.db")
 
 #: Duplicated from app.auth to avoid importing it at module scope, which would
 #: be circular — auth reads settings, settings is imported here.
@@ -107,6 +110,31 @@ def _build_engine(url: str) -> AsyncEngine:
     return built
 
 
+async def _ensure_postgres_database(url: str) -> None:
+    """Create this user's database if the server does not have it yet.
+
+    CREATE DATABASE cannot run inside a transaction, so it goes through a
+    connection in autocommit. Existence is checked first rather than relying on
+    catching the error, because "already exists" and "you may not create
+    databases" both arrive as the same exception class and only one of them is
+    fine to ignore.
+    """
+    target = url.rpartition("/")[2].split("?")[0]
+    admin_url = settings.database_url
+    admin = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+    try:
+        async with admin.connect() as conn:
+            exists = await conn.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": target}
+            )
+            if not exists:
+                # The name comes from _SAFE_USERNAME, so it cannot contain a
+                # quote; parameters are not allowed in DDL.
+                await conn.execute(text(f'CREATE DATABASE "{target}"'))
+                logger.info("created database %s", target)
+    finally:
+        await admin.dispose()
+
 async def sessionmaker_for(username: str) -> async_sessionmaker:
     """The session factory for one user, creating their database on first use.
 
@@ -122,8 +150,12 @@ async def sessionmaker_for(username: str) -> async_sessionmaker:
 
         from app.auth import database_url_for
 
-        Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
-        built = _build_engine(database_url_for(username))
+        url = database_url_for(username)
+        if url.startswith("sqlite"):
+            Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
+        else:
+            await _ensure_postgres_database(url)
+        built = _build_engine(url)
         async with built.begin() as conn:
             from app import models  # noqa: F401 — registers every table
             from app.db.base import Base
