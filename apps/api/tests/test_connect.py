@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import urllib.parse as urlparse
-from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -71,6 +70,11 @@ async def client():
         os.remove(DB)
 
 
+#: A fixed instant the stubbed messages are dated from, so repeated reads of
+#: the same message are byte-identical.
+_STUB_EPOCH_MS = 1_756_000_000_000
+
+
 def google_provider(request: httpx.Request) -> httpx.Response:
     """Enough of Google to exercise our side of the conversation."""
     url = str(request.url)
@@ -101,7 +105,13 @@ def google_provider(request: httpx.Request) -> httpx.Response:
 
     if "gmail/v1/users/me/messages/" in url:
         message_id = url.split("/messages/")[1].split("?")[0]
-        stamp = int((datetime.now(UTC) - timedelta(days=1)).timestamp() * 1000)
+        # Derived from the message id, not from the clock. Gmail returns the
+        # same internalDate for a given message every time it is read, and a
+        # stub that answers two identical requests with different timestamps is
+        # not simulating Gmail — it is manufacturing a change that never
+        # happened, which is exactly what the re-sync test needs to be sure
+        # about.
+        stamp = _STUB_EPOCH_MS + int(message_id[1:]) * 60_000
         return httpx.Response(
             200,
             json={
@@ -409,3 +419,36 @@ async def test_forgetting_credentials_also_disconnects(client, stub_google):
     assert google["configured"] is False
     assert google["connected"] is False
     assert google["has_secret"] is False
+
+
+async def test_a_later_change_to_the_same_record_is_imported(client, stub_google, monkeypatch):
+    """The second time somebody touches a record is new work, not a duplicate.
+
+    Deduplication used to key on (app, action, object_id) alone, so the first
+    import of a record was the only one that ever landed. Sync then answered
+    "nothing new" while the person was looking at a change they had just made.
+
+    Driven through the sync endpoint rather than by inserting rows, because the
+    thing under test is the dedup decision, not the table.
+    """
+    await save_credentials(client)
+    state = await authorize(client)
+    await client.get(
+        f"/api/v1/connect/google/callback?code=good-code&state={state}",
+        follow_redirects=False,
+    )
+    assert (await client.post("/api/v1/connect/google/sync")).json()["events_imported"] == 3
+
+    # Nothing changed upstream: the same read must import nothing.
+    assert (await client.post("/api/v1/connect/google/sync")).json()["events_imported"] == 0
+
+    # Now the same messages come back with a later timestamp — which is what a
+    # record looks like after somebody touches it again.
+    # Patched through globals() rather than by module name: pytest may import
+    # this file as `test_connect` while `tests.test_connect` is a second module
+    # object, and patching that one leaves the stub reading the original value.
+    monkeypatch.setitem(globals(), "_STUB_EPOCH_MS", _STUB_EPOCH_MS + 7_200_000)
+    again = (await client.post("/api/v1/connect/google/sync")).json()
+    assert again["events_imported"] == 3, (
+        "a later touch of the same record must be imported, not silently dropped"
+    )
