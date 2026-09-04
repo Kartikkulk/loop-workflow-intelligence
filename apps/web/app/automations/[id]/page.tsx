@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ExecutionPlanPanel } from "@/components/execution-plan";
+import { RunAutomation } from "@/components/run-automation";
 import { FlowDefinition } from "@/components/flow-definition";
 import { Badge, ErrorNote, PageHeader, PageSkeleton, Panel } from "@/components/ui";
 import { useAutomation, useN8nRuns } from "@/lib/api/queries";
@@ -72,6 +73,8 @@ export default function AutomationDetailPage() {
         >
           <FlowDefinition automation={automation} />
         </Panel>
+
+        <RunAutomation id={id} steps={automation.steps} />
 
         <ExecutionPlanPanel
           id={id}

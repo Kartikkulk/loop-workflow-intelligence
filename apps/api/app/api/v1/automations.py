@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -37,6 +38,9 @@ from app.schemas.automations import (
     ReplayReportOut,
     ReplayRequest,
     RuleOut,
+    RunItemOut,
+    RunResult,
+    RunStepOut,
     ShadowRunList,
     ShadowRunOut,
     StepOut,
@@ -589,6 +593,123 @@ async def _cluster_for(session: AsyncSession, automation: Automation) -> Cluster
     result = await session.execute(select(Cluster).where(Cluster.id == automation.cluster_id))
     return result.scalars().first()
 
+
+#: Connectors whose live implementation is local and needs no account. A run is
+#: offered only for automations built entirely from these — anything else would
+#: need credentials configured first, and a button that cannot work is worse
+#: than no button.
+RUNNABLE_CONNECTORS = frozenset({"files", "pdf", "git"})
+
+
+@router.post("/{automation_id}/run", response_model=RunResult)
+async def run_automation(
+    automation_id: str, session: AsyncSession = Depends(get_session)
+) -> RunResult:
+    """Execute the automation for real, over everything waiting in the inbox.
+
+    This is the live path: `ExecutionMode.LIVE` resolves real connectors, so
+    the files it reads and moves are genuinely read and moved. It is offered
+    only when every step is local work — the guard still holds anything the
+    observation said a person should look at.
+    """
+    automation = await _get_automation(session, automation_id)
+    steps = list(automation.steps or [])
+    connectors = {str(s.get("connector") or "") for s in steps}
+
+    unsupported = sorted(connectors - RUNNABLE_CONNECTORS)
+    if unsupported:
+        raise HTTPException(
+            409,
+            {
+                "message": "this automation needs an account before it can run",
+                "connectors": unsupported,
+                "hint": (
+                    "Steps on "
+                    + ", ".join(unsupported)
+                    + " need credentials. Export it to n8n and connect the account there."
+                ),
+            },
+        )
+
+    root = Path(settings.files_root).expanduser()
+    inbox = root / "Inbox"
+    if not inbox.is_dir():
+        raise HTTPException(
+            409,
+            {
+                "message": "there is nothing to process",
+                "hint": "Seed the workspace from the demo panel first.",
+            },
+        )
+
+    guards = dict(automation.guards or {})
+    items: list[RunItemOut] = []
+    side_effects: list[str] = []
+    completed = held = failed = 0
+
+    for path in sorted(p for p in inbox.iterdir() if p.is_file()):
+        result = await engine.run(
+            steps=steps,
+            guards=guards,
+            rules=list(automation.rules or []),
+            mode=ExecutionMode.LIVE,
+            trigger_payload={"filename": f"Inbox/{path.name}", "source_path": str(path)},
+        )
+        by_id = {str(s.get("id")): s for s in steps}
+        step_rows = [
+            RunStepOut(
+                step_id=r.step_id,
+                connector=str(by_id.get(r.step_id, {}).get("connector", "")),
+                action=str(by_id.get(r.step_id, {}).get("type", "")),
+                status=r.status,
+                detail=r.error
+                or ", ".join(f"{k}={v}" for k, v in list((r.outputs or {}).items())[:2]),
+            )
+            for r in result.step_results
+        ]
+        side_effects.extend(result.side_effects)
+
+        if result.needs_approval:
+            held += 1
+            status, detail = "held", result.approval_reason or "held by guard"
+        elif result.status == "ok":
+            completed += 1
+            status, detail = "done", ", ".join(result.side_effects[-1:]) or "filed"
+        else:
+            failed += 1
+            status, detail = "failed", result.error or "step failed"
+
+        items.append(RunItemOut(item=path.name, status=status, detail=detail, steps=step_rows))
+
+    processed = len(items)
+    # The files connector honours LOOP_FILES_DRY_RUN, and it defaults to on.
+    # Reporting "12 filed" while every step was a rehearsal is the worst thing
+    # this endpoint could do, so the mode is stated in the result rather than
+    # inferred from step statuses that look identical either way.
+    rehearsal = settings.files_dry_run
+    summary = (
+        f"{completed} filed, {held} held for a person, {failed} failed"
+        if processed
+        else "the inbox was empty"
+    )
+    if rehearsal and processed:
+        summary = (
+            f"DRY RUN — nothing was moved. {processed} item(s) would have been "
+            f"processed ({held} held by the guard). Set LOOP_FILES_DRY_RUN=false "
+            "to let it act."
+        )
+
+    return RunResult(
+        ok=failed == 0,
+        processed=processed,
+        completed=completed,
+        held=held,
+        failed=failed,
+        side_effects=side_effects[:40],
+        items=items[:40],
+        message=summary,
+        dry_run=rehearsal,
+    )
 
 @router.post("/{automation_id}/validate", response_model=ValidationReportOut)
 async def validate_automation(

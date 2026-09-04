@@ -7,10 +7,14 @@ nothing here fakes an outcome for the audience.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.ingest import _persist as persist_events
+from app.config import settings
 from app.db.session import get_session
 from app.models.automation import Automation
 from app.models.event import Event
@@ -22,10 +26,14 @@ from app.schemas.automations import (
 )
 from app.schemas.common import Message
 from app.schemas.governance import BreakSchemaRequest, BreakSchemaResult
+from app.schemas.ingest import DiscoveredWorkflow, IngestResult
 from app.services import trust
+from app.services.demo_workspace import build as build_invoice_workspace
 from app.services.engine import engine
 from app.services.exception_learning import recompute_coverage, record_exception
 from app.services.healing import detect_and_heal
+from app.services.normaliser import normalise_row
+from app.services.pipeline import run_detection
 from app.services.replay import source_payload, trigger_payload
 from app.services.sessioniser import sessionise
 from app.services.shadow import run_as_dict, simulate_shadow_run
@@ -264,6 +272,47 @@ async def seed_exceptions(
     )
 
 
+@router.post("/invoice-workspace", response_model=IngestResult)
+async def seed_invoice_workspace(
+    months: int = Query(default=6, ge=1, le=12),
+    session: AsyncSession = Depends(get_session),
+) -> IngestResult:
+    """Create real invoice files and the activity log of someone filing them.
+
+    Both halves describe the same work. The PDFs are genuine files on disk; the
+    activity is what detection reads. The automation built from that activity
+    then moves these very files — which is the whole point, and the reason this
+    seeds a workspace rather than inserting a pre-made workflow.
+    """
+    root = Path(settings.files_root).expanduser()
+    written, raw = build_invoice_workspace(root, months=months)
+
+    events = [normalise_row(row, source="demo") for row in raw]
+    ingested = await persist_events(session, events)
+    clusters = await run_detection(session)
+
+    return IngestResult(
+        ok=True,
+        events_ingested=ingested,
+        events_rejected=0,
+        errors=[],
+        source="demo",
+        clusters_detected=len(clusters),
+        sessions=len({e.session_id for e in events if e.session_id}),
+        applications=len({e.app for e in events}),
+        workflows=[
+            DiscoveredWorkflow(
+                id=c.id,
+                name=c.name,
+                occurrences=c.instance_count,
+                apps=list(c.apps or []),
+                annual_hours=round(c.annual_hours or 0.0, 1),
+                automatability=round(c.automatability or 0.0, 2),
+            )
+            for c in sorted(clusters, key=lambda c: -(c.annual_hours or 0))
+        ],
+        workflow_name=f"{written} invoice files written to {root / 'Inbox'}",
+    )
 @router.post("/reset", response_model=Message)
 async def reset(session: AsyncSession = Depends(get_session)) -> Message:
     """Reset to a known-good demo state: reseed, redetect, regenerate.

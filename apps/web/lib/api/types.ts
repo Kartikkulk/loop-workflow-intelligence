@@ -683,3 +683,31 @@ export interface UserList {
   users: UserOption[];
   login_required: boolean;
 }
+
+export interface RunStep {
+  step_id: string;
+  connector: string;
+  action: string;
+  status: string;
+  detail: string;
+}
+
+export interface RunItem {
+  item: string;
+  status: string;
+  detail: string;
+  steps: RunStep[];
+}
+
+export interface RunResult {
+  ok: boolean;
+  processed: number;
+  completed: number;
+  held: number;
+  failed: number;
+  side_effects: string[];
+  items: RunItem[];
+  message: string;
+  dry_run: boolean;
+}
+

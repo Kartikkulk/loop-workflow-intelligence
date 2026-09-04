@@ -3193,6 +3193,130 @@
         "title": "RuleOut",
         "type": "object"
       },
+      "RunItemOut": {
+        "description": "One item the automation processed.",
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "status": {
+            "description": "done, held or failed.",
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/RunStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item",
+          "status"
+        ],
+        "title": "RunItemOut",
+        "type": "object"
+      },
+      "RunResult": {
+        "description": "POST /api/v1/automations/{id}/run \u2014 a real execution.",
+        "properties": {
+          "completed": {
+            "default": 0,
+            "title": "Completed",
+            "type": "integer"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "failed": {
+            "default": 0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "held": {
+            "default": 0,
+            "title": "Held",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "processed": {
+            "default": 0,
+            "title": "Processed",
+            "type": "integer"
+          },
+          "side_effects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Side Effects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "RunResult",
+        "type": "object"
+      },
+      "RunStepOut": {
+        "description": "What one step did during a live run.",
+        "properties": {
+          "action": {
+            "default": "",
+            "title": "Action",
+            "type": "string"
+          },
+          "connector": {
+            "default": "",
+            "title": "Connector",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id",
+          "status"
+        ],
+        "title": "RunStepOut",
+        "type": "object"
+      },
       "SaveCredentialsRequest": {
         "description": "The two values the provider gave the person when they registered an app.",
         "properties": {
@@ -4747,6 +4871,49 @@
         ]
       }
     },
+    "/api/v1/automations/{automation_id}/run": {
+      "post": {
+        "description": "Execute the automation for real, over everything waiting in the inbox.\n\nThis is the live path: `ExecutionMode.LIVE` resolves real connectors, so\nthe files it reads and moves are genuinely read and moved. It is offered\nonly when every step is local work \u2014 the guard still holds anything the\nobservation said a person should look at.",
+        "operationId": "run_automation_api_v1_automations__automation_id__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "automation_id",
+            "required": true,
+            "schema": {
+              "title": "Automation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Automation",
+        "tags": [
+          "automations"
+        ]
+      }
+    },
     "/api/v1/automations/{automation_id}/shadow-runs": {
       "get": {
         "description": "Shadow-run history with per-field agreement.",
@@ -5561,6 +5728,52 @@
           }
         },
         "summary": "Break Schema",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/v1/demo/invoice-workspace": {
+      "post": {
+        "description": "Create real invoice files and the activity log of someone filing them.\n\nBoth halves describe the same work. The PDFs are genuine files on disk; the\nactivity is what detection reads. The automation built from that activity\nthen moves these very files \u2014 which is the whole point, and the reason this\nseeds a workspace rather than inserting a pre-made workflow.",
+        "operationId": "seed_invoice_workspace_api_v1_demo_invoice_workspace_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "months",
+            "required": false,
+            "schema": {
+              "default": 6,
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Months",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Seed Invoice Workspace",
         "tags": [
           "demo"
         ]

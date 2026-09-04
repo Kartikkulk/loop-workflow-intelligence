@@ -297,3 +297,40 @@ class DryRunResult(BaseModel):
     #: Restates the safety property in the response itself.
     side_effects_performed: int = 0
 
+
+class RunStepOut(BaseModel):
+    """What one step did during a live run."""
+
+    step_id: str
+    connector: str = ""
+    action: str = ""
+    status: str
+    detail: str = ""
+
+
+class RunItemOut(BaseModel):
+    """One item the automation processed."""
+
+    item: str
+    status: str = Field(description="done, held or failed.")
+    detail: str = ""
+    steps: list[RunStepOut] = Field(default_factory=list)
+
+
+class RunResult(BaseModel):
+    """POST /api/v1/automations/{id}/run — a real execution."""
+
+    ok: bool
+    processed: int = 0
+    completed: int = 0
+    held: int = 0
+    failed: int = 0
+    #: What actually changed on disk, so the result can be checked rather than
+    #: believed.
+    side_effects: list[str] = Field(default_factory=list)
+    items: list[RunItemOut] = Field(default_factory=list)
+    message: str = ""
+    #: True when the connector was rehearsing rather than acting. Reported
+    #: rather than inferred: a rehearsed step and a real one look the same.
+    dry_run: bool = False
+

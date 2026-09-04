@@ -17,6 +17,7 @@ import type {
   AutomationDetail,
   AutomationSummary,
   DryRunResult,
+  RunResult,
   GeneratedCode,
   ValidationReport,
   N8nPushResult,
@@ -162,6 +163,22 @@ export function useValidateAutomation(id: string) {
 export function useDryRun(id: string) {
   return useMutation({
     mutationFn: () => http.post<DryRunResult>(`/api/v1/automations/${id}/dry-run`),
+  });
+}
+
+export function useRunAutomation(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => http.post<RunResult>(`/api/v1/automations/${id}/run`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useSeedInvoiceWorkspace() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => http.post<IngestResult>("/api/v1/demo/invoice-workspace?months=3"),
+    onSuccess: () => client.invalidateQueries(),
   });
 }
 
