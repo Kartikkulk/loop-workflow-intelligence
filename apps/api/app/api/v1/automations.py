@@ -53,6 +53,7 @@ from app.services.engine import engine
 from app.services.exception_learning import recompute_coverage
 from app.services.execution_planner import NO_API_CONNECTORS, choose_execution_method
 from app.services.n8n_export import SCHEDULES, to_n8n_workflow
+from app.services.pipeline import field_name_for
 from app.services.replay import run_replay, source_payload, trigger_payload
 from app.services.shadow import run_as_dict
 from app.services.validation import validate
@@ -792,6 +793,17 @@ async def dry_run(
         if events:
             payload = source_payload(events)
             trigger = trigger_payload(events)
+            # The flow's fields are named after the step they were read on —
+            # a UI collector calls every captured datum `value`, so
+            # `browser:read:priority` produces `priority`. The raw event still
+            # carries `value`, so a dry run fed straight from the log resolves
+            # nothing: the automation asks for `priority` and the payload only
+            # offers `value`. Renamed here with the same rule the flow used.
+            for event in events:
+                for key, value in (event.payload or {}).items():
+                    renamed = field_name_for(event.step_token, key)
+                    if renamed != key and value not in (None, ""):
+                        payload.setdefault(renamed, value)
 
     result = await engine.run(
         steps=list(automation.steps or []),
