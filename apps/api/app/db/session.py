@@ -4,6 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request
 from sqlalchemy import event, text
@@ -119,7 +120,13 @@ async def _ensure_postgres_database(url: str) -> None:
     databases" both arrive as the same exception class and only one of them is
     fine to ignore.
     """
-    target = url.rpartition("/")[2].split("?")[0]
+    # urlsplit, not rpartition. On Cloud Run the URL carries the socket path in
+    # its query — `?host=/cloudsql/project:region:instance` — so cutting at the
+    # last slash returns a fragment of that path instead of the database name.
+    # The check then asked about a database nobody meant, found it missing,
+    # created *that*, and left the real one absent: every user but the two
+    # created by hand during local testing got InvalidCatalogNameError.
+    target = urlsplit(url).path.lstrip("/")
     admin_url = settings.database_url
     admin = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
     try:
