@@ -16,7 +16,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.config import settings
 from app.db.session import SessionLocal, get_session
 from app.models.automation import Automation
-from app.models.cluster import Cluster
+from app.models.cluster import Cluster, TaskInstance
 from app.models.event import Event
 from app.models.execution import ExecutionMode, ShadowRun
 from app.models.governance import ExceptionCase, Patch
@@ -53,7 +53,7 @@ from app.services.engine import engine
 from app.services.exception_learning import recompute_coverage
 from app.services.execution_planner import NO_API_CONNECTORS, choose_execution_method
 from app.services.n8n_export import SCHEDULES, to_n8n_workflow
-from app.services.replay import run_replay
+from app.services.replay import run_replay, source_payload, trigger_payload
 from app.services.shadow import run_as_dict
 from app.services.validation import validate
 from app.services.variables import Constant, guard_from_constants
@@ -768,24 +768,38 @@ async def dry_run(
     system.
     """
     automation = await _get_automation(session, automation_id)
-    cluster = await _cluster_for(session, automation)
 
-    # Feed it the fields the observed runs carried, so the dry run exercises
-    # the same shape of data a real trigger would.
-    source_payload: dict = {}
-    for constant in (cluster.constants or []) if cluster else []:
-        source_payload[constant.get("name", "")] = constant.get("value", "")
-    for variable in (cluster.variables or []) if cluster else []:
-        samples = variable.get("samples") or []
-        if samples:
-            source_payload[variable.get("name", "")] = samples[0]
+    # Fed from a real recorded instance of this workflow, not from a payload
+    # assembled out of the detected variables. That reconstruction only carried
+    # fields classification had labelled, so a field that was neither an input
+    # nor a constant — `invoice_date`, here — was simply absent, and the dry run
+    # failed on an unresolved dependency that a real run resolves perfectly
+    # well. A rehearsal that fails for a reason the real thing does not have is
+    # worse than no rehearsal: it teaches the reviewer to ignore it.
+    payload: dict = {}
+    trigger: dict = {}
+    instance = await session.execute(
+        select(TaskInstance)
+        .where(TaskInstance.cluster_id == automation.cluster_id)
+        .limit(1)
+    )
+    task = instance.scalars().first()
+    if task is not None:
+        rows = await session.execute(
+            select(Event).where(Event.id.in_(list(task.event_ids or [])))
+        )
+        events = list(rows.scalars().all())
+        if events:
+            payload = source_payload(events)
+            trigger = trigger_payload(events)
 
     result = await engine.run(
         steps=list(automation.steps or []),
         guards=dict(automation.guards or {}),
         rules=list(automation.rules or []),
         mode=ExecutionMode.REPLAY,
-        source_payload=source_payload,
+        source_payload=payload,
+        trigger_payload=trigger,
     )
 
     by_id = {str(s.get("id")): s for s in (automation.steps or [])}
