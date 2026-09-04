@@ -270,19 +270,35 @@ async def sync(
 
     # Re-importing the same window must not double-count the same work, or the
     # hours-per-year figures inflate every time the person presses Sync.
+    #
+    # The timestamp is part of the key, and has to be. Keyed on identity alone —
+    # (app, action, issue) — the second time somebody touched an issue that had
+    # already been imported was silently dropped, forever. Sync reported
+    # "nothing new" while the person was looking at a change they had just made.
+    # Jira moves an issue's `updated` field on every change, so including it
+    # admits the new touch and still rejects a genuine re-read of an unchanged
+    # one.
     existing = await session.execute(
-        select(Event.object_id, Event.app, Event.action).where(
+        select(Event.object_id, Event.app, Event.action, Event.timestamp).where(
             Event.source_id == _source_id(provider.key)
         )
     )
-    seen = {(row.app, row.action, row.object_id) for row in existing}
+    seen = {
+        (row.app, row.action, row.object_id, as_utc(row.timestamp).isoformat())
+        for row in existing
+    }
 
     known_apps: set[str] = set()
     added = 0
     latest = as_utc(connection.last_sync_at) if connection.last_sync_at else None
 
     for event in incoming:
-        key = (event.app, event.action, event.object_id)
+        key = (
+            event.app,
+            event.action,
+            event.object_id,
+            as_utc(event.timestamp).isoformat(),
+        )
         if key in seen:
             continue
         seen.add(key)
