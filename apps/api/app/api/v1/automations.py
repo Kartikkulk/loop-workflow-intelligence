@@ -499,6 +499,24 @@ async def n8n_runs(
             runs.raise_for_status()
             data = runs.json()
     except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            # The draft is gone from n8n but this automation still remembers its
+            # id. That happens whenever n8n's storage is reset — its workflows
+            # live on the instance's own disk — and the person sees a raw 404
+            # about an automation they approved and did nothing wrong with.
+            #
+            # Forgetting the id is the honest state: it was never exported, as
+            # far as anything can now tell. The console then offers to build it
+            # again, which is one click rather than a dead end.
+            automation.n8n_workflow_id = ""
+            await session.flush()
+            return N8nRunList(
+                ok=False,
+                message=(
+                    "The draft is no longer in n8n — its storage was reset. "
+                    "Approve it again to rebuild it."
+                ),
+            )
         return N8nRunList(
             ok=False,
             workflow_id=workflow_id,
