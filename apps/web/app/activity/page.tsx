@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Badge, Empty, ErrorNote, PageHeader, PageSkeleton, Panel } from "@/components/ui";
-import { useActivity, useSystem } from "@/lib/api/queries";
+import { useActivity, useAutoSyncConnections, useSystem } from "@/lib/api/queries";
 import { relativeTime } from "@/lib/format";
 import type { ActivityEvent } from "@/lib/api/types";
 
@@ -29,6 +29,8 @@ export default function ActivityPage() {
   const [source, setSource] = useState<string | null>(null);
   const activity = useActivity(200, source ?? undefined, app ?? undefined);
   const system = useSystem();
+  // Connected accounts keep pulling while this screen is open.
+  useAutoSyncConnections();
 
   // Memoised because `?? []` builds a fresh array each render, which would
   // make the useMemo below recompute on every one of them.

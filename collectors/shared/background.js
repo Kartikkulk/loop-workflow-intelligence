@@ -116,7 +116,29 @@ function enqueue(signal) {
 
     const stats = { ...(await getStats()), queued: trimmed.length };
     await chrome.storage.local.set({ [QUEUE_KEY]: trimmed, [STATS_KEY]: stats });
-  });
+  }).then(scheduleFlush);
+}
+
+//: How long to wait after an interaction before posting the queue.
+//
+// The alarm below is a backstop, not the mechanism: chrome.alarms will not fire
+// faster than roughly every thirty seconds, so waiting for it meant a click was
+// invisible in the console for half a minute. This posts a beat after activity
+// stops instead, which puts a step on screen about a second after it happens.
+//
+// Debounced rather than immediate because interactions arrive in bursts — a
+// click, a field blur, a route change within the same second — and one request
+// per burst is the difference between a collector people keep and one they
+// uninstall.
+const FLUSH_DEBOUNCE_MS = 900;
+let flushTimer = null;
+
+function scheduleFlush() {
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    void flush();
+  }, FLUSH_DEBOUNCE_MS);
 }
 
 async function flush() {
@@ -255,6 +277,9 @@ chrome.runtime.onMessage.addListener((message, _sender, respond) => {
   return false;
 });
 
+// A backstop for anything the debounced flush missed — a signal enqueued just
+// as the service worker was evicted, or a post that failed while the network
+// was down. The debounce above is what makes activity appear promptly.
 chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== FLUSH_ALARM) return;

@@ -57,7 +57,18 @@ function boot({ fetchImpl } = {}) {
       };
     });
 
-  const context = vm.createContext({ chrome, fetch: fetchStub, console, URL, TextEncoder });
+  // setTimeout/clearTimeout are part of a service worker's global scope, and
+  // the collector debounces its flush with them. Leaving them out of the
+  // sandbox tested a worker that could not exist.
+  const context = vm.createContext({
+    chrome,
+    fetch: fetchStub,
+    console,
+    URL,
+    TextEncoder,
+    setTimeout,
+    clearTimeout,
+  });
   vm.runInContext(SOURCE, context);
 
   const send = (message) =>

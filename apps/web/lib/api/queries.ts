@@ -488,6 +488,50 @@ export function useApproveAutomation() {
  * rather than take on trust. It is the evidence behind every discovery, and if
  * it is empty then nothing downstream is real either.
  */
+/**
+ * Keeps connected accounts pulling while somebody is watching the console.
+ *
+ * Gmail and Jira are polled APIs with published rate limits, so there is no
+ * per-second version of this — asking every second would be throttled long
+ * before it was useful, and would spend a shared quota on a question whose
+ * answer changes a few times an hour. A minute is frequent enough that work
+ * done during a demo appears, and slow enough to stay well inside every
+ * provider's budget.
+ *
+ * Driven from the browser rather than a server-side timer because the API
+ * scales to zero: a background loop would not survive the instance going away,
+ * and would run for nobody when it did.
+ */
+export function useAutoSyncConnections(enabled = true) {
+  const client = useQueryClient();
+  const providers = useProviders();
+  const connected = (providers.data?.items ?? []).filter((p) => p.connected);
+
+  return useQuery({
+    queryKey: ["auto-sync", connected.map((p) => p.key).join(",")] as const,
+    enabled: enabled && connected.length > 0,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    retry: false,
+    queryFn: async () => {
+      let imported = 0;
+      for (const provider of connected) {
+        try {
+          const r = await http.post<{ events_imported: number }>(
+            `/api/v1/connect/${provider.key}/sync`,
+          );
+          imported += r.events_imported ?? 0;
+        } catch {
+          // One provider being unreachable must not stop the others, and must
+          // not surface as a page-level error while someone is presenting.
+        }
+      }
+      if (imported > 0) void client.invalidateQueries();
+      return { imported, at: Date.now() };
+    },
+  });
+}
+
 export function useActivity(limit = 100, source?: string, app?: string) {
   // Filters go to the server, not to the fetched page. Filtering a page of 200
   // in the browser would only ever search the most recent 200 events, which on
@@ -500,7 +544,13 @@ export function useActivity(limit = 100, source?: string, app?: string) {
   return useQuery({
     queryKey: ["activity", query] as const,
     queryFn: () => http.get<ActivityPage>(`/api/v1/ingest/events?${query}`),
-    refetchInterval: 5_000,
+    // The collector posts about a second after an interaction, so a five-second
+    // poll meant a step could sit invisible for six. Watching the stream fill
+    // as you work is the whole point of this screen.
+    refetchInterval: 2_000,
+    // Only while the tab is in front. A background tab polling every two
+    // seconds is a battery cost for a screen nobody is reading.
+    refetchIntervalInBackground: false,
   });
 }
 
